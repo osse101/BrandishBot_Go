@@ -543,7 +543,21 @@
       "max_level": 1,
       "prerequisites": ["upgrade_progression_basic"],
       "sort_order": 75,
-      "auto_unlock": false
+      "auto_unlock": false,
+      "modifier_configs": [
+        {
+          "feature_key": "engagement_contribution_multiplier",
+          "modifier_type": "multiplicative",
+          "base_value": 1.0,
+          "per_level_value": 0.1
+        },
+        {
+          "feature_key": "job_xp_multiplier",
+          "modifier_type": "multiplicative",
+          "base_value": 1.0,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "upgrade_progression_two",

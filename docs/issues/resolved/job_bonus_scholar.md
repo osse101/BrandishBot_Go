@@ -8,18 +8,15 @@ The Scholar job affects the **progression system** — voting, predictions, and 
 
 ## Continuous Bonuses
 
-| Bonus Type             | Base | Per Level | Max  | Effect                                                           |
-| ---------------------- | ---- | --------- | ---- | ---------------------------------------------------------------- |
-| `engagement_xp_bonus`  | 0.00 | 0.01      | 0.25 | Global XP multiplier for ALL jobs. At level 10: +10%             |
-| `vote_weight`          | 0.00 | 0.1       | 2.0  | Extra weight on progression tree votes. At level 10: +1.0 weight |
-| `unlock_cost_discount` | 0.00 | 0.01      | 0.20 | Reduces progression node unlock cost. At level 10: -10%          |
+| Bonus Type             | Base | Per Level | Max  | Effect                                                  |
+| ---------------------- | ---- | --------- | ---- | ------------------------------------------------------- |
+| `unlock_cost_discount` | 0.00 | 0.01      | 0.20 | Reduces progression node unlock cost. At level 10: -10% |
 
 ## Level Gates
 
-| Level | Unlock                                         |
-| ----- | ---------------------------------------------- |
-| 3     | Can create predictions / propose vote topics   |
-| 10    | Higher voting weight (via `vote_weight` bonus) |
+| Level | Unlock                                       |
+| ----- | -------------------------------------------- |
+| 3     | Can create predictions / propose vote topics |
 
 ## Integration Points
 

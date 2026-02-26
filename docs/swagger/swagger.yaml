@@ -8,8 +8,8 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - platform
-    - username
+      - platform
+      - username
     type: object
   domain.ContributionBreakdown:
     properties:
@@ -116,8 +116,8 @@ definitions:
         type: array
       platform:
         enum:
-        - twitch
-        - youtube
+          - twitch
+          - youtube
         type: string
       total_points_spent:
         minimum: 0
@@ -125,10 +125,10 @@ definitions:
       winner:
         $ref: '#/definitions/domain.PredictionWinner'
     required:
-    - participants
-    - platform
-    - total_points_spent
-    - winner
+      - participants
+      - platform
+      - total_points_spent
+      - winner
     type: object
   domain.PredictionParticipant:
     properties:
@@ -179,7 +179,7 @@ definitions:
       node_key:
         type: string
       node_type:
-        description: '''feature'', ''item'', ''mechanic'', ''upgrade'''
+        description: "'feature', 'item', 'mechanic', 'upgrade'"
         type: string
       size:
         description: small, medium, large
@@ -237,7 +237,7 @@ definitions:
       node_key:
         type: string
       node_type:
-        description: '''feature'', ''item'', ''mechanic'', ''upgrade'''
+        description: "'feature', 'item', 'mechanic', 'upgrade'"
         type: string
       size:
         description: small, medium, large
@@ -267,7 +267,7 @@ definitions:
       unlocked_at:
         type: string
       unlocked_by:
-        description: '''vote'', ''admin'', ''auto'', ''instant_override'''
+        description: "'vote', 'admin', 'auto', 'instant_override'"
         type: string
     type: object
   domain.ProgressionVotingOption:
@@ -303,7 +303,7 @@ definitions:
       started_at:
         type: string
       status:
-        description: '''voting'', ''completed'''
+        description: "'voting', 'completed'"
         type: string
       voting_deadline:
         type: string
@@ -335,8 +335,8 @@ definitions:
         type: string
       platform:
         enum:
-        - twitch
-        - youtube
+          - twitch
+          - youtube
         type: string
       platform_user_id:
         type: string
@@ -347,12 +347,12 @@ definitions:
       username:
         type: string
     required:
-    - event_type
-    - platform
-    - platform_user_id
-    - tier_name
-    - timestamp
-    - username
+      - event_type
+      - platform
+      - platform_user_id
+      - tier_name
+      - timestamp
+      - username
     type: object
   domain.SubscriptionWithTier:
     properties:
@@ -470,9 +470,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item_name
-    - platform
-    - username
+      - item_name
+      - platform
+      - username
     type: object
   handler.AdminAddContributionRequest:
     properties:
@@ -504,7 +504,7 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - reset_by
+      - reset_by
     type: object
   handler.AvailableUnlocksResponse:
     properties:
@@ -530,10 +530,10 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item_name
-    - platform
-    - platform_id
-    - username
+      - item_name
+      - platform
+      - platform_id
+      - username
     type: object
   handler.BuyItemResponse:
     properties:
@@ -570,10 +570,10 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item
-    - platform
-    - platform_id
-    - username
+      - item
+      - platform
+      - platform_id
+      - username
     type: object
   handler.DisassembleItemResponse:
     properties:
@@ -624,12 +624,12 @@ definitions:
       receiver_platform:
         type: string
     required:
-    - item_name
-    - owner
-    - owner_platform
-    - owner_platform_id
-    - receiver
-    - receiver_platform
+      - item_name
+      - owner
+      - owner_platform
+      - owner_platform_id
+      - receiver
+      - receiver_platform
     type: object
   handler.HandleMessageRequest:
     properties:
@@ -643,9 +643,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - platform
-    - platform_id
-    - username
+      - platform
+      - platform_id
+      - username
     type: object
   handler.HarvestRewardsRequest:
     properties:
@@ -657,9 +657,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - platform
-    - platform_id
-    - username
+      - platform
+      - platform_id
+      - username
     type: object
   handler.HealthResponse:
     properties:
@@ -687,8 +687,8 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - event_type
-    - user_id
+      - event_type
+      - user_id
     type: object
   handler.RegisterUserRequest:
     properties:
@@ -704,11 +704,11 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - known_platform
-    - known_platform_id
-    - new_platform
-    - new_platform_id
-    - username
+      - known_platform
+      - known_platform_id
+      - new_platform
+      - new_platform_id
+      - username
     type: object
   handler.RemoveItemByUsernameRequest:
     properties:
@@ -725,9 +725,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item_name
-    - platform
-    - username
+      - item_name
+      - platform
+      - username
     type: object
   handler.RemoveItemResponse:
     properties:
@@ -771,9 +771,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - platform
-    - platform_id
-    - username
+      - platform
+      - platform_id
+      - username
     type: object
   handler.SearchResponse:
     properties:
@@ -797,10 +797,10 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item_name
-    - platform
-    - platform_id
-    - username
+      - item_name
+      - platform
+      - platform_id
+      - username
     type: object
   handler.SellItemResponse:
     properties:
@@ -826,9 +826,9 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - duration_seconds
-    - platform
-    - username
+      - duration_seconds
+      - platform
+      - username
     type: object
   handler.SuccessResponse:
     properties:
@@ -868,10 +868,10 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - item_name
-    - platform
-    - platform_id
-    - username
+      - item_name
+      - platform
+      - platform_id
+      - username
     type: object
   handler.UseItemResponse:
     properties:
@@ -893,10 +893,10 @@ definitions:
         maxLength: 100
         type: string
     required:
-    - option_index
-    - platform
-    - platform_id
-    - username
+      - option_index
+      - platform
+      - platform_id
+      - username
     type: object
   scenario.ActionInfo:
     properties:
@@ -916,26 +916,26 @@ definitions:
     type: object
   scenario.ActionType:
     enum:
-    - set_state
-    - time_warp
-    - inject_event
-    - assert
-    - execute_harvest
-    - inject_quest
-    - execute_quest
-    - trigger_search
-    - claim_reward
+      - set_state
+      - time_warp
+      - inject_event
+      - assert
+      - execute_harvest
+      - inject_quest
+      - execute_quest
+      - trigger_search
+      - claim_reward
     type: string
     x-enum-varnames:
-    - ActionSetState
-    - ActionTimeWarp
-    - ActionInjectEvent
-    - ActionAssert
-    - ActionExecuteHarvest
-    - ActionInjectQuest
-    - ActionExecuteQuest
-    - ActionTriggerSearch
-    - ActionClaimReward
+      - ActionSetState
+      - ActionTimeWarp
+      - ActionInjectEvent
+      - ActionAssert
+      - ActionExecuteHarvest
+      - ActionInjectQuest
+      - ActionExecuteQuest
+      - ActionTriggerSearch
+      - ActionClaimReward
   scenario.Assertion:
     properties:
       max:
@@ -969,28 +969,28 @@ definitions:
     type: object
   scenario.AssertionType:
     enum:
-    - equals
-    - greater_than
-    - less_than
-    - contains
-    - not_empty
-    - empty
-    - "true"
-    - "false"
-    - between
-    - error_contains
+      - equals
+      - greater_than
+      - less_than
+      - contains
+      - not_empty
+      - empty
+      - 'true'
+      - 'false'
+      - between
+      - error_contains
     type: string
     x-enum-varnames:
-    - AssertEquals
-    - AssertGreaterThan
-    - AssertLessThan
-    - AssertContains
-    - AssertNotEmpty
-    - AssertEmpty
-    - AssertTrue
-    - AssertFalse
-    - AssertBetween
-    - AssertErrorContains
+      - AssertEquals
+      - AssertGreaterThan
+      - AssertLessThan
+      - AssertContains
+      - AssertNotEmpty
+      - AssertEmpty
+      - AssertTrue
+      - AssertFalse
+      - AssertBetween
+      - AssertErrorContains
   scenario.CapabilityInfo:
     properties:
       actions:
@@ -1006,14 +1006,14 @@ definitions:
     type: object
   scenario.CapabilityType:
     enum:
-    - time_warp
-    - event_injector
-    - multi_user
+      - time_warp
+      - event_injector
+      - multi_user
     type: string
     x-enum-varnames:
-    - CapabilityTimeWarp
-    - CapabilityEventInjector
-    - CapabilityMultiUser
+      - CapabilityTimeWarp
+      - CapabilityEventInjector
+      - CapabilityMultiUser
   scenario.ExecutionResult:
     properties:
       completed_at:
@@ -1169,1559 +1169,1559 @@ info:
   description: API for BrandishBot game engine - inventory, crafting, economy, and
     stats management
   title: BrandishBot API
-  version: "1.0"
+  version: '1.0'
 paths:
   /admin/jobs/reset-daily-xp:
     post:
       description: Triggers an immediate reset of all users' daily XP counters
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             additionalProperties: true
             type: object
       summary: Manually trigger daily job XP reset
       tags:
-      - admin
+        - admin
   /admin/jobs/reset-status:
     get:
       description: Returns information about the last daily reset and when the next
         one is scheduled
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.DailyResetStatus'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             additionalProperties: true
             type: object
       summary: Get daily reset status
       tags:
-      - admin
+        - admin
   /admin/progression/reload-weights:
     post:
       description: Invalidate engagement weight cache to force reload from database
         (admin only)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
       summary: Admin reload weights
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /admin/reload-aliases:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Reloads the item name aliases and themes from JSON configuration
         files
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
       security:
-      - ApiKeyAuth: []
+        - ApiKeyAuth: []
       summary: Reload alias configuration
       tags:
-      - admin
+        - admin
   /admin/timeout/clear:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Remove a user's timeout (admin only)
       parameters:
-      - description: Clear timeout request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/admin.ClearTimeoutRequest'
+        - description: Clear timeout request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/admin.ClearTimeoutRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Clear user timeout
       tags:
-      - admin
+        - admin
   /api/v1/admin/cache/stats:
     get:
       description: Returns cache hit/miss statistics for monitoring (admin only)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/user.CacheStats'
       summary: Get user cache stats
       tags:
-      - admin
+        - admin
   /api/v1/admin/simulate/capabilities:
     get:
       description: Returns all available scenario capabilities for UI rendering
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.CapabilitiesResponse'
       summary: Get scenario capabilities
       tags:
-      - scenario
+        - scenario
   /api/v1/admin/simulate/run:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Executes a pre-built scenario by ID
       parameters:
-      - description: Run scenario request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RunScenarioRequest'
+        - description: Run scenario request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.RunScenarioRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/scenario.ExecutionResult'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Run a scenario
       tags:
-      - scenario
+        - scenario
   /api/v1/admin/simulate/run-custom:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Executes a custom scenario definition provided in the request
       parameters:
-      - description: Custom scenario request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RunCustomScenarioRequest'
+        - description: Custom scenario request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.RunCustomScenarioRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/scenario.ExecutionResult'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Run a custom scenario
       tags:
-      - scenario
+        - scenario
   /api/v1/admin/simulate/scenario:
     get:
       description: Returns details of a specific scenario by ID
       parameters:
-      - description: Scenario ID
-        in: query
-        name: id
-        required: true
-        type: string
+        - description: Scenario ID
+          in: query
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/scenario.Scenario'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get a specific scenario
       tags:
-      - scenario
+        - scenario
   /api/v1/admin/simulate/scenarios:
     get:
       description: Returns all pre-built scenarios available for execution
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.ScenariosResponse'
       summary: Get all scenarios
       tags:
-      - scenario
+        - scenario
   /api/v1/harvest:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Collect rewards that have accumulated since the last harvest
       parameters:
-      - description: Harvest request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.HarvestRewardsRequest'
+        - description: Harvest request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.HarvestRewardsRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: Harvest successful
           schema:
             $ref: '#/definitions/domain.HarvestResponse'
-        "400":
+        '400':
           description: Invalid request or harvest too soon
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Harvest accumulated rewards
       tags:
-      - harvest
+        - harvest
   /api/v1/message/handle:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Process a chat message for potential commands or triggers
       parameters:
-      - description: Message details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.HandleMessageRequest'
+        - description: Message details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.HandleMessageRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.MessageResult'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Handle chat message
       tags:
-      - message
+        - message
   /api/v1/prediction:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Convert channel points to progression contribution and award XP
         to participants
       parameters:
-      - description: Prediction outcome data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/domain.PredictionOutcomeRequest'
+        - description: Prediction outcome data
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/domain.PredictionOutcomeRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.PredictionResult'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Process prediction outcome
       tags:
-      - prediction
+        - prediction
   /api/v1/prices:
     get:
       description: Get current sell prices for items
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             items:
               $ref: '#/definitions/domain.Item'
             type: array
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get item prices
       tags:
-      - economy
+        - economy
   /api/v1/prices/buy:
     get:
       description: Get current buy prices for items
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             items:
               $ref: '#/definitions/domain.Item'
             type: array
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get item buy prices
       tags:
-      - economy
+        - economy
   /api/v1/progression/available:
     get:
       description: Returns nodes that are available for voting (prerequisites met,
         not maxed out)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.AvailableUnlocksResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get available unlocks
       tags:
-      - progression
+        - progression
   /api/v1/progression/engagement:
     get:
       description: Returns user's engagement contribution breakdown by type
       parameters:
-      - description: Platform (twitch, youtube, discord)
-        in: query
-        name: platform
-        required: true
-        type: string
-      - description: Platform-specific user ID
-        in: query
-        name: platform_id
-        required: true
-        type: string
+        - description: Platform (twitch, youtube, discord)
+          in: query
+          name: platform
+          required: true
+          type: string
+        - description: Platform-specific user ID
+          in: query
+          name: platform_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.ContributionBreakdown'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get user engagement
       tags:
-      - progression
+        - progression
   /api/v1/progression/engagement-by-username:
     get:
       description: Returns user's engagement contribution breakdown by type using
         username
       parameters:
-      - description: Platform (twitch, youtube, discord)
-        in: query
-        name: platform
-        required: true
-        type: string
-      - description: Username
-        in: query
-        name: username
-        required: true
-        type: string
+        - description: Platform (twitch, youtube, discord)
+          in: query
+          name: platform
+          required: true
+          type: string
+        - description: Username
+          in: query
+          name: username
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.ContributionBreakdown'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get user engagement by username
       tags:
-      - progression
+        - progression
   /api/v1/progression/leaderboard:
     get:
       description: Returns top contributors by total contributions
       parameters:
-      - description: Number of entries (default 10, max 100)
-        in: query
-        name: limit
-        type: integer
+        - description: Number of entries (default 10, max 100)
+          in: query
+          name: limit
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             items:
               $ref: '#/definitions/domain.ContributionLeaderboardEntry'
             type: array
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get contribution leaderboard
       tags:
-      - progression
+        - progression
   /api/v1/progression/status:
     get:
       description: Returns current community progression status including unlocks
         and engagement
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.ProgressionStatus'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get progression status
       tags:
-      - progression
+        - progression
   /api/v1/progression/tree:
     get:
       description: Returns the complete progression tree with unlock status for each
         node
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.ProgressionTreeResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get progression tree
       tags:
-      - progression
+        - progression
   /api/v1/progression/vote:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Cast a vote for the next unlock by selecting an option index (1-based)
       parameters:
-      - description: Vote request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.VoteRequest'
+        - description: Vote request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.VoteRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Vote for unlock
       tags:
-      - progression
+        - progression
   /api/v1/stats/event:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Record a custom user event
       parameters:
-      - description: Event details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RecordEventRequest'
+        - description: Event details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.RecordEventRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Record event
       tags:
-      - stats
+        - stats
   /api/v1/stats/leaderboard:
     get:
       description: Get leaderboard for a specific event type
       parameters:
-      - description: Event Type
-        in: query
-        name: event_type
-        required: true
-        type: string
-      - description: Period (daily, weekly, all_time)
-        in: query
-        name: period
-        type: string
-      - description: Limit (default 10)
-        in: query
-        name: limit
-        type: integer
+        - description: Event Type
+          in: query
+          name: event_type
+          required: true
+          type: string
+        - description: Period (daily, weekly, all_time)
+          in: query
+          name: period
+          type: string
+        - description: Limit (default 10)
+          in: query
+          name: limit
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get leaderboard
       tags:
-      - stats
+        - stats
   /api/v1/stats/system:
     get:
       description: Get system-wide statistics
       parameters:
-      - description: Period (daily, weekly, all_time)
-        in: query
-        name: period
-        type: string
+        - description: Period (daily, weekly, all_time)
+          in: query
+          name: period
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.StatsSummary'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get system stats
       tags:
-      - stats
+        - stats
   /api/v1/stats/user:
     get:
       description: Get statistics for a specific user
       parameters:
-      - description: Platform (twitch, youtube, discord)
-        in: query
-        name: platform
-        required: true
-        type: string
-      - description: Platform-specific user ID (self-mode)
-        in: query
-        name: platform_id
-        type: string
-      - description: Username (target-mode)
-        in: query
-        name: username
-        type: string
-      - description: Period (daily, weekly, all_time)
-        in: query
-        name: period
-        type: string
+        - description: Platform (twitch, youtube, discord)
+          in: query
+          name: platform
+          required: true
+          type: string
+        - description: Platform-specific user ID (self-mode)
+          in: query
+          name: platform_id
+          type: string
+        - description: Username (target-mode)
+          in: query
+          name: username
+          type: string
+        - description: Period (daily, weekly, all_time)
+          in: query
+          name: period
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.StatsSummary'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get user stats
       tags:
-      - stats
+        - stats
   /api/v1/subscriptions/event:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Processes subscription lifecycle events (subscribed, renewed, upgraded,
         downgraded, cancelled)
       parameters:
-      - description: Subscription event
-        in: body
-        name: event
-        required: true
-        schema:
-          $ref: '#/definitions/domain.SubscriptionEvent'
+        - description: Subscription event
+          in: body
+          name: event
+          required: true
+          schema:
+            $ref: '#/definitions/domain.SubscriptionEvent'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Receive subscription event from Streamer.bot
       tags:
-      - subscriptions
+        - subscriptions
   /api/v1/subscriptions/user:
     get:
       description: Retrieves subscription information for a user on a specific platform
       parameters:
-      - description: Platform (twitch or youtube)
-        in: query
-        name: platform
-        required: true
-        type: string
-      - description: Platform user ID
-        in: query
-        name: platform_id
-        required: true
-        type: string
+        - description: Platform (twitch or youtube)
+          in: query
+          name: platform
+          required: true
+          type: string
+        - description: Platform user ID
+          in: query
+          name: platform_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.SubscriptionWithTier'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get user subscription status
       tags:
-      - subscriptions
+        - subscriptions
   /api/v1/user/inventory:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Get the user's inventory
       parameters:
-      - description: Platform ID
-        in: query
-        name: platform_id
-        required: true
-        type: string
-      - description: Username
-        in: query
-        name: username
-        required: true
-        type: string
-      - description: Filter by item type (upgrade, sellable, consumable)
-        in: query
-        name: filter
-        type: string
+        - description: Platform ID
+          in: query
+          name: platform_id
+          required: true
+          type: string
+        - description: Username
+          in: query
+          name: username
+          required: true
+          type: string
+        - description: Filter by item type (upgrade, sellable, consumable)
+          in: query
+          name: filter
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.GetInventoryResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get inventory
       tags:
-      - inventory
+        - inventory
   /api/v1/user/inventory-by-username:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Get a user's inventory using only platform and username
       parameters:
-      - description: Platform
-        in: query
-        name: platform
-        required: true
-        type: string
-      - description: Username
-        in: query
-        name: username
-        required: true
-        type: string
-      - description: Filter by item type
-        in: query
-        name: filter
-        type: string
+        - description: Platform
+          in: query
+          name: platform
+          required: true
+          type: string
+        - description: Username
+          in: query
+          name: username
+          required: true
+          type: string
+        - description: Filter by item type
+          in: query
+          name: filter
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.GetInventoryResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get inventory by username
       tags:
-      - inventory
+        - inventory
   /api/v1/user/item/add:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Add an item to a user's inventory using only platform and username.
         This is an admin/system action.
       parameters:
-      - description: Item details including platform, username, and quantity
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.AddItemByUsernameRequest'
+        - description: Item details including platform, username, and quantity
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.AddItemByUsernameRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Invalid request data
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "401":
+        '401':
           description: Unauthorized
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       security:
-      - ApiKeyAuth: []
+        - ApiKeyAuth: []
       summary: Add item by username
       tags:
-      - inventory
+        - inventory
   /api/v1/user/item/buy:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Buy an item with currency
       parameters:
-      - description: Buy details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.BuyItemRequest'
+        - description: Buy details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.BuyItemRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.BuyItemResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "403":
+        '403':
           description: Feature locked
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Buy item
       tags:
-      - economy
+        - economy
   /api/v1/user/item/give:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Transfer an item from one user's inventory to another user.
       parameters:
-      - description: Transfer details including owner and receiver info
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.GiveItemRequest'
+        - description: Transfer details including owner and receiver info
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.GiveItemRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Invalid request or self-gifting attempt
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Give item to another user
       tags:
-      - inventory
+        - inventory
   /api/v1/user/item/remove:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Remove an item from a user's inventory using only platform and
         username
       parameters:
-      - description: Item details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RemoveItemByUsernameRequest'
+        - description: Item details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.RemoveItemByUsernameRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.RemoveItemResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Remove item by username
       tags:
-      - inventory
+        - inventory
   /api/v1/user/item/sell:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Sell an item from inventory for currency. Requires Economy feature
         to be unlocked.
       parameters:
-      - description: Details of the item to sell and quantity
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.SellItemRequest'
+        - description: Details of the item to sell and quantity
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.SellItemRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SellItemResponse'
-        "400":
+        '400':
           description: Item not found or not sellable
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "403":
+        '403':
           description: Economy feature locked
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Sell item
       tags:
-      - economy
+        - economy
   /api/v1/user/item/use:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Use an item from inventory
       parameters:
-      - description: Usage details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.UseItemRequest'
+        - description: Usage details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.UseItemRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.UseItemResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "403":
+        '403':
           description: Item locked by progression
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Use item
       tags:
-      - inventory
+        - inventory
   /api/v1/user/register:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Register a new user or link an existing user to a new platform
       parameters:
-      - description: Registration details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.RegisterUserRequest'
+        - description: Registration details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.RegisterUserRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: User updated
           schema:
             $ref: '#/definitions/domain.User'
-        "201":
+        '201':
           description: User created
           schema:
             $ref: '#/definitions/domain.User'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Register or link a user
       tags:
-      - user
+        - user
   /api/v1/user/search:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Allows players to search for loot boxes. Results depend on daily
         usage and character progression.
       parameters:
-      - description: User identification
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.SearchRequest'
+        - description: User identification
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.SearchRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SearchResponse'
-        "401":
+        '401':
           description: Invalid API Key
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "429":
+        '429':
           description: Action on cooldown
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal server error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Perform environment search
       tags:
-      - user
+        - user
   /api/v1/user/timeout:
     get:
       description: Get the remaining timeout duration for a user
       parameters:
-      - description: 'Platform (default: twitch)'
-        enum:
-        - twitch
-        - youtube
-        - discord
-        in: query
-        name: platform
-        type: string
-      - description: Username to check
-        in: query
-        name: username
-        required: true
-        type: string
+        - description: 'Platform (default: twitch)'
+          enum:
+            - twitch
+            - youtube
+            - discord
+          in: query
+          name: platform
+          type: string
+        - description: Username to check
+          in: query
+          name: username
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get user timeout
       tags:
-      - user
+        - user
   /healthz:
     get:
       description: Returns OK if the service is running
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.HealthResponse'
       summary: Liveness check
       tags:
-      - health
+        - health
   /progression/admin/contribution:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Manually add contribution points to the current unlock progress
         (admin only)
       parameters:
-      - description: Contribution request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.AdminAddContributionRequest'
+        - description: Contribution request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.AdminAddContributionRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin add contribution
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/end-voting:
     post:
       description: Freeze the current voting session until the next unlock completes
         (admin only)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin freeze voting
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/force-end-voting:
     post:
       description: Force end the current voting session and determine winner immediately
         (admin only)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.AdminEndVotingResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin force end voting
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/instant-unlock:
     post:
       description: Force immediate unlock of current vote leader (overrides 24hr timer)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.AdminInstantUnlockResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin instant unlock
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/reset:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Reset progression tree (annual reset, clears unlocks/voting)
       parameters:
-      - description: Reset request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.AdminResetRequest'
+        - description: Reset request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.AdminResetRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin reset tree
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/start-voting:
     post:
       description: Resume a frozen voting session OR start a new one if nodes are
         available (admin only)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "409":
+        '409':
           description: Conflict
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin start/resume voting
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/admin/unlock-all:
     post:
       description: Unlocks all progression nodes at their maximum level (for debugging)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.SuccessResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Admin unlock all nodes
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /progression/estimate/{nodeKey}:
     get:
       description: Returns estimated unlock time and requirements for a specific node
       parameters:
-      - description: Node Key
-        in: path
-        name: nodeKey
-        required: true
-        type: string
+        - description: Node Key
+          in: path
+          name: nodeKey
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.UnlockEstimate'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get unlock estimate
       tags:
-      - progression
+        - progression
   /progression/session:
     get:
       description: Returns the current voting session with all available options
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.ProgressionVotingSession'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get voting session
       tags:
-      - progression
+        - progression
   /progression/unlock-progress:
     get:
       description: Returns the current unlock progress including accumulated contributions
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.UnlockProgress'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get unlock progress
       tags:
-      - progression
+        - progression
   /progression/velocity:
     get:
       description: Returns engagement velocity metrics (points/day) and trend
       parameters:
-      - description: Number of days (default 7)
-        in: query
-        name: days
-        type: integer
+        - description: Number of days (default 7)
+          in: query
+          name: days
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/domain.VelocityMetrics'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get engagement velocity
       tags:
-      - progression
-      - admin
+        - progression
+        - admin
   /readyz:
     get:
       description: Returns OK if the service is ready to accept traffic (database
         connected)
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.HealthResponse'
-        "503":
+        '503':
           description: Service Unavailable
           schema:
             $ref: '#/definitions/handler.HealthResponse'
       summary: Readiness check
       tags:
-      - health
+        - health
   /recipes:
     get:
       description: Get recipe information. Can filter by item or get all unlocked
         recipes for a user.
       parameters:
-      - description: Item name to get recipe for
-        in: query
-        name: item
-        type: string
-      - description: Username to get unlocked recipes for
-        in: query
-        name: user
-        type: string
-      - description: Platform (required if user provided)
-        in: query
-        name: platform
-        type: string
-      - description: Platform ID (self-mode, optional for target-mode)
-        in: query
-        name: platform_id
-        type: string
+        - description: Item name to get recipe for
+          in: query
+          name: item
+          type: string
+        - description: Username to get unlocked recipes for
+          in: query
+          name: user
+          type: string
+        - description: Platform (required if user provided)
+          in: query
+          name: platform
+          type: string
+        - description: Platform ID (self-mode, optional for target-mode)
+          in: query
+          name: platform_id
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: Recipes or single recipe
           schema:
             additionalProperties: true
             type: object
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "404":
+        '404':
           description: Not Found
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Get recipes
       tags:
-      - crafting
+        - crafting
   /user/item/disassemble:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Disassemble an item into materials
       parameters:
-      - description: Disassemble details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.CraftingActionRequest'
+        - description: Disassemble details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.CraftingActionRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.DisassembleItemResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "403":
+        '403':
           description: Feature locked
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Disassemble item
       tags:
-      - crafting
+        - crafting
   /user/item/upgrade:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Upgrade an item to a higher tier
       parameters:
-      - description: Upgrade details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.CraftingActionRequest'
+        - description: Upgrade details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.CraftingActionRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             $ref: '#/definitions/handler.UpgradeItemResponse'
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "403":
+        '403':
           description: Feature locked
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Upgrade item
       tags:
-      - crafting
+        - crafting
   /user/timeout:
     put:
       consumes:
-      - application/json
+        - application/json
       description: Apply or extend a timeout for a user (accumulates with existing
         timeout)
       parameters:
-      - description: Timeout details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handler.SetTimeoutRequest'
+        - description: Timeout details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: '#/definitions/handler.SetTimeoutRequest'
       produces:
-      - application/json
+        - application/json
       responses:
-        "200":
+        '200':
           description: OK
           schema:
             additionalProperties: true
             type: object
-        "400":
+        '400':
           description: Bad Request
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
-        "500":
+        '500':
           description: Internal Server Error
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Set user timeout
       tags:
-      - user
+        - user
 securityDefinitions:
   ApiKeyAuth:
     in: header
     name: X-API-Key
     type: apiKey
-swagger: "2.0"
+swagger: '2.0'
