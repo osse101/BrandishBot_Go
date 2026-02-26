@@ -66,7 +66,7 @@ User asks for analysis/review/optimization?
 When performing these tasks, Claude should ask to fill in the complete pattern:
 
 **Adding a New API Endpoint:**
-See **[Add-Endpoint Workflow](.agent/workflows/add-endpoint.md)** for the step-by-step process.
+See **[Feature Development Guide](docs/development/FEATURE_DEVELOPMENT_GUIDE.md)** for the step-by-step process.
 
 **Adding a New Discord Command:**
 **Ask:** "I'll add this command. Please confirm:
