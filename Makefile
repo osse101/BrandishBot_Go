@@ -245,19 +245,29 @@ swagger:
 	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
-generate:
-	@echo "Generating Swagger documentation..."
-	@$(MAKE) swagger
+generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy
+
+generate-swagger: swagger
+
+generate-sqlc:
 	@echo "Generating sqlc code..."
 	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
+
+generate-progression:
 	@echo "Generating progression keys from config..."
 	@go run ./cmd/gen-progression-keys -config configs/progression_tree.json -output internal/progression/keys.go
 	@echo "✓ progression keys generated"
+
+generate-mocks:
 	@echo "Generating mocks..."
 	@$(MOCKERY)
 	@echo "✓ mocks generated"
+
+generate-tidy:
+	@echo "Running go mod tidy..."
 	@go mod tidy
+	@echo "✓ go mod tidy complete"
 
 # Docker commands
 docker-up:
