@@ -29,12 +29,12 @@ func TestHarvest(t *testing.T) {
 		user := &domain.User{ID: userID}
 		bin := &domain.CompostBin{UserID: userID, Status: domain.CompostBinStatusIdle}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
 
-		result, err := service.Harvest(ctx, "twitch", "123", "user")
+		result, err := service.Harvest(ctx, domain.PlatformTwitch, "123", "user")
 		require.NoError(t, err)
 		assert.False(t, result.Harvested)
 		assert.Equal(t, domain.CompostBinStatusIdle, result.Status.Status)
@@ -56,12 +56,12 @@ func TestHarvest(t *testing.T) {
 			ReadyAt: &readyAt,
 		}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
 
-		result, err := service.Harvest(ctx, "twitch", "123", "user")
+		result, err := service.Harvest(ctx, domain.PlatformTwitch, "123", "user")
 		require.NoError(t, err)
 		assert.False(t, result.Harvested)
 		assert.Equal(t, domain.CompostBinStatusComposting, result.Status.Status)
@@ -88,7 +88,7 @@ func TestHarvest(t *testing.T) {
 		}
 		item := domain.Item{InternalName: "apple", ID: 1, BaseValue: 10}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
@@ -106,7 +106,7 @@ func TestHarvest(t *testing.T) {
 		mockTx.On("Commit", ctx).Return(nil).Once()
 		mockTx.On("Rollback", ctx).Return(nil).Maybe()
 
-		result, err := service.Harvest(ctx, "twitch", "123", "user")
+		result, err := service.Harvest(ctx, domain.PlatformTwitch, "123", "user")
 		require.NoError(t, err)
 		assert.True(t, result.Harvested)
 		assert.False(t, result.Output.IsSludge)
@@ -134,7 +134,7 @@ func TestHarvest(t *testing.T) {
 		}
 		item := domain.Item{InternalName: "sludge", ID: 99, BaseValue: 1}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
@@ -151,7 +151,7 @@ func TestHarvest(t *testing.T) {
 		mockTx.On("Commit", ctx).Return(nil).Once()
 		mockTx.On("Rollback", ctx).Return(nil).Maybe()
 
-		result, err := service.Harvest(ctx, "twitch", "123", "user")
+		result, err := service.Harvest(ctx, domain.PlatformTwitch, "123", "user")
 		require.NoError(t, err)
 		assert.True(t, result.Harvested)
 		assert.True(t, result.Output.IsSludge)

@@ -26,7 +26,7 @@ func TestDeposit(t *testing.T) {
 		service := compost.NewService(mockRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 		userID := "user-123"
-		platform := "twitch"
+		platform := domain.PlatformTwitch
 		platformID := "12345"
 		itemID := 1
 		itemName := "apple"
@@ -54,8 +54,7 @@ func TestDeposit(t *testing.T) {
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
 
-		// "compost_capacity" string literal used because constant is unexported
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "compost_capacity", 3.0).Return(5.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureCompostCapacity, 3.0).Return(5.0, nil).Once()
 
 		mockUserRepo.On("GetAllItems", ctx).Return([]domain.Item{item}, nil).Once()
 
@@ -76,8 +75,8 @@ func TestDeposit(t *testing.T) {
 			return b.Status == domain.CompostBinStatusComposting && b.ItemCount == 3 && b.Capacity == 5
 		})).Return(nil).Once()
 
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "compost_speed", 0.0).Return(1.0, nil).Once()
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "sludge_extension", 0.0).Return(0.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureCompostSpeed, 0.0).Return(1.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureSludgeExtension, 0.0).Return(0.0, nil).Once()
 
 		mockTx.On("Commit", ctx).Return(nil).Once()
 		mockTx.On("Rollback", ctx).Return(nil).Maybe()
@@ -99,11 +98,11 @@ func TestDeposit(t *testing.T) {
 
 		userID := "user-123"
 		user := &domain.User{ID: userID}
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(&domain.CompostBin{}, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(false, nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{})
 		assert.ErrorIs(t, err, domain.ErrFeatureLocked)
 	})
 
@@ -116,12 +115,12 @@ func TestDeposit(t *testing.T) {
 
 		userID := "user-123"
 		user := &domain.User{ID: userID}
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(&domain.CompostBin{}, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(false, nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{})
 		assert.ErrorIs(t, err, domain.ErrFeatureLocked)
 	})
 
@@ -137,14 +136,14 @@ func TestDeposit(t *testing.T) {
 		bin := &domain.CompostBin{UserID: userID, Capacity: 2, ItemCount: 2}
 		item := domain.Item{InternalName: "apple", Types: []string{domain.CompostableTag}}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "compost_capacity", 3.0).Return(2.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureCompostCapacity, 3.0).Return(2.0, nil).Once()
 		mockUserRepo.On("GetAllItems", ctx).Return([]domain.Item{item}, nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{{ItemName: "apple", Quantity: 1}})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{{ItemName: "apple", Quantity: 1}})
 		assert.ErrorIs(t, err, domain.ErrCompostBinFull)
 	})
 
@@ -160,14 +159,14 @@ func TestDeposit(t *testing.T) {
 		bin := &domain.CompostBin{UserID: userID}
 		item := domain.Item{InternalName: "stone", Types: []string{}}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "compost_capacity", 3.0).Return(5.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureCompostCapacity, 3.0).Return(5.0, nil).Once()
 		mockUserRepo.On("GetAllItems", ctx).Return([]domain.Item{item}, nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{{ItemName: "stone", Quantity: 1}})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{{ItemName: "stone", Quantity: 1}})
 		assert.ErrorIs(t, err, domain.ErrCompostNotCompostable)
 	})
 
@@ -182,12 +181,12 @@ func TestDeposit(t *testing.T) {
 		user := &domain.User{ID: userID}
 		bin := &domain.CompostBin{UserID: userID, Status: domain.CompostBinStatusReady}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{})
 		assert.ErrorIs(t, err, domain.ErrCompostMustHarvest)
 	})
 
@@ -204,11 +203,11 @@ func TestDeposit(t *testing.T) {
 		bin := &domain.CompostBin{UserID: userID, Capacity: 10}
 		item := domain.Item{ID: 1, InternalName: "apple", Types: []string{domain.CompostableTag}}
 
-		mockRepo.On("GetUserByPlatformID", ctx, "twitch", "123").Return(user, nil).Once()
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil).Once()
 		mockRepo.On("GetBin", ctx, userID).Return(bin, nil).Once()
 		mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureCompost).Return(true, nil).Once()
 		mockJobSvc.On("IsJobFeatureUnlocked", ctx, userID, progression.FeatureCompost).Return(true, nil).Once()
-		mockProgressionSvc.On("GetModifiedValue", ctx, userID, "compost_capacity", 3.0).Return(10.0, nil).Once()
+		mockProgressionSvc.On("GetModifiedValue", ctx, userID, compost.FeatureCompostCapacity, 3.0).Return(10.0, nil).Once()
 		mockUserRepo.On("GetAllItems", ctx).Return([]domain.Item{item}, nil).Once()
 
 		mockRepo.On("BeginTx", ctx).Return(mockTx, nil).Once()
@@ -216,7 +215,7 @@ func TestDeposit(t *testing.T) {
 		mockTx.On("GetInventory", ctx, userID).Return(&domain.Inventory{Slots: []domain.InventorySlot{}}, nil).Once() // Empty inventory
 		mockTx.On("Rollback", ctx).Return(nil).Once()
 
-		_, err := service.Deposit(ctx, "twitch", "123", []compost.DepositItem{{ItemName: "apple", Quantity: 1}})
+		_, err := service.Deposit(ctx, domain.PlatformTwitch, "123", []compost.DepositItem{{ItemName: "apple", Quantity: 1}})
 		assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	})
 }
