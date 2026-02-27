@@ -28,7 +28,11 @@ func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, 
 		}
 	}
 	if !itemFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{ItemID: itemID, Quantity: actualQuantity})
+		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			ItemID:       itemID,
+			Quantity:     actualQuantity,
+			QualityLevel: domain.QualityCommon,
+		})
 	}
 }
 
