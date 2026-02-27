@@ -2,7 +2,7 @@
 
 ## Description
 
-The Duel and Compost systems are currently functionally blocked by "not implemented" placeholders in core service methods.
+The Duel and Compost systems were functionally blocked by "not implemented" placeholders in core service methods. This tracking issue documents the resolution status of these systems.
 
 ### 1. Duel System Incomplete
 
@@ -24,7 +24,7 @@ Previously incomplete, the Expedition system (`internal/expedition/service.go`) 
 
 - Implement the resolution logic for Duels including random winner selection and reward distribution.
 - ~~Implement the Compost system for item recycling.~~ (Done)
-- Add background workers or scheduler jobs to handle timeouts/expirations for Duels.
+- ~~Add background workers or scheduler jobs to handle timeouts/expirations for Expeditions.~~ (Done)
 
 ## Status Update (2026-01-30)
 
@@ -43,6 +43,6 @@ Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/ser
 
 ## Status Update (2026-02-28)
 
-- **Compost**: Resolved. Fully functional.
-- **Expeditions**: Resolved. Fully functional with worker support.
+- **Compost**: Resolved. Verified implementation in `internal/compost/` including service lifecycle, engine logic, and database integration.
+- **Expeditions**: Resolved. Verified implementation in `internal/expedition/` including encounter engine, skills, and background worker (`internal/worker/expedition_worker.go`).
 - **Duels**: PENDING. `Accept` method still returns "not implemented". This is the last remaining item in this tracking issue.
