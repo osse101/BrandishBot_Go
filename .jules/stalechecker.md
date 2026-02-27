@@ -5,3 +5,7 @@ benchmarks/results/baseline.txt
 .gitattributes
 .github/workflows/weekly-benchmark.yml
 .github/workflows/test.yml
+.golangci.yml
+.mockery.yaml
+.prettierignore
+.prettierrc
