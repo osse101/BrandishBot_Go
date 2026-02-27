@@ -78,38 +78,43 @@ pool.Stop() // Closes queue, waits for workers to finish current jobs
 
 ## Available Workers
 
-The package includes several specialized workers for specific domains:
+The package includes several specialized workers for specific domains. Each worker implements its own `Start()` method to begin scheduling or processing, and a `Shutdown(ctx)` method for graceful termination.
 
 ### 1. Daily Reset Worker (`DailyResetWorker`)
 
 - **File**: `daily_reset_worker.go`
 - **Purpose**: Handles daily reset tasks at 00:00 UTC+7.
 - **Tasks**: Resets daily limits (e.g., Job XP caps), clears temporary data.
+- **Logic**: Uses a two-stage timer approach (long-range standby vs. final approach) to efficiently sleep until the next reset window. Publishes `daily_reset_completed` events.
 
 ### 2. Weekly Reset Worker (`WeeklyResetWorker`)
 
 - **File**: `weekly_reset_worker.go`
 - **Purpose**: Handles weekly reset tasks.
 - **Tasks**: Resets weekly quotas (e.g., Weekly Quests), processes weekly rewards.
+- **Logic**: Calculates time until next Monday 00:00 UTC and schedules execution. Uses a mutex-protected timer to allow safe rescheduling.
 
 ### 3. Expedition Worker (`ExpeditionWorker`)
 
 - **File**: `expedition_worker.go`
 - **Purpose**: Manages expedition lifecycle.
 - **Tasks**: Processes expedition progress, handles completion events, distributes rewards.
+- **Logic**: Subscribes to `expedition.started` events and schedules execution after the join deadline.
 
 ### 4. Gamble Worker (`GambleWorker`)
 
 - **File**: `gamble_worker.go`
 - **Purpose**: Manages gambling sessions.
 - **Tasks**: Handles gamble timeouts, resolves active gambles if stuck.
+- **Logic**: Subscribes to `gamble.started` events and schedules execution after the join deadline.
 
 ### 5. Subscription Worker (`SubscriptionWorker`)
 
 - **File**: `subscription_worker.go`
 - **Purpose**: Manages subscription statuses.
 - **Tasks**: Checks for expired subscriptions, verifies status with external APIs (Twitch/YouTube).
+- **Logic**: Runs a periodic check (default 6 hours). Marks expired subscriptions as `expired` locally, then requests verification from the external service. Uses rate limiting to prevent API flooding.
 
 ## Base Worker
 
-A `BaseWorker` struct is available in `base.go` to provide common functionality for specialized workers, such as logging and basic lifecycle management.
+A `BaseWorker` struct is available in `base.go` to provide common functionality for specialized workers, such as timer management (`startTimer`, `stopTimer`), locking, and logging.

@@ -25,7 +25,13 @@ For detailed usage instructions, see the [Usage Guide](ADMIN_DASHBOARD_USAGE.md)
 
 5 tabbed panels:
 
-- **Progression**: Unlock nodes, start/freeze voting, reset tree, add contributions
+- **Progression**:
+  - View current voting session
+  - Control voting (Start, Freeze, Force End)
+  - Unlock/Relock specific nodes
+  - Instant unlock for leader
+  - Add engagement contributions
+  - **Dangerous**: Reset Tree, Unlock All Nodes
 - **Jobs**: Award XP, reset daily XP caps
 - **Cache**: View cache stats, reload aliases/weights
 - **Scenarios**: Run admin test scenarios
@@ -104,6 +110,9 @@ FROM golang:1.24-alpine AS builder
 All existing admin endpoints are used by the dashboard:
 
 - `/api/v1/progression/admin/*` (9 endpoints)
+  - `/start-voting`, `/end-voting`, `/force-end-voting`
+  - `/unlock`, `/relock`, `/unlock-all`, `/reset`
+  - `/contribution`, `/instant-unlock`
 - `/api/v1/admin/jobs/*` (3 endpoints)
 - `/api/v1/admin/cache/*` (1 endpoint)
 - `/api/v1/admin/simulate/*` (4 endpoints)
