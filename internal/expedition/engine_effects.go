@@ -4,35 +4,47 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-func (e *Engine) applyEffects(effects EffectsDef, actingMember *domain.PartyMemberState) {
-	// Apply fatigue
-	e.fatigue += effects.FatigueDelta
+func (e *Engine) applyFatigueDelta(delta int) {
+	e.fatigue += delta
 	if e.fatigue < 0 {
 		e.fatigue = 0
 	}
+}
 
-	// Apply purse change
-	e.purse += effects.PurseDelta
+func (e *Engine) applyPurseDelta(delta int) {
+	e.purse += delta
 	if e.purse < 0 {
 		e.purse = 0
 	}
+}
 
-	// Add reward to pool
-	if effects.Reward != "" {
-		e.rewardPool = append(e.rewardPool, effects.Reward)
+func (e *Engine) applyRewardPool(reward string) {
+	if reward != "" {
+		e.rewardPool = append(e.rewardPool, reward)
 	}
+}
 
-	// Apply KOs (scaled by party size)
-	if effects.KOScale > 0 {
-		koCount := ScaleEffect(effects.KOScale, e.initialParty, e.config.Settings.PartyScaleDivisor)
+func (e *Engine) applyKOsScaled(koScale int, actingMember *domain.PartyMemberState) {
+	if koScale > 0 {
+		koCount := ScaleEffect(koScale, e.initialParty, e.config.Settings.PartyScaleDivisor)
 		e.applyKOs(koCount, actingMember)
 	}
+}
 
-	// Apply revives (scaled by party size)
-	if effects.ReviveScale > 0 {
-		reviveCount := ScaleEffect(effects.ReviveScale, e.initialParty, e.config.Settings.PartyScaleDivisor)
+func (e *Engine) applyRevivesScaled(reviveScale int) {
+	if reviveScale > 0 {
+		reviveCount := ScaleEffect(reviveScale, e.initialParty, e.config.Settings.PartyScaleDivisor)
 		e.applyRevives(reviveCount)
 	}
+}
+
+func (e *Engine) applyEffects(effects EffectsDef, actingMember *domain.PartyMemberState) {
+	e.applyFatigueDelta(effects.FatigueDelta)
+	e.applyPurseDelta(effects.PurseDelta)
+	e.applyRewardPool(effects.Reward)
+
+	e.applyKOsScaled(effects.KOScale, actingMember)
+	e.applyRevivesScaled(effects.ReviveScale)
 
 	// Debuff primary
 	if effects.DebuffPrimary && actingMember != nil {
