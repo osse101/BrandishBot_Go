@@ -4,7 +4,7 @@
 
 The Explorer job affects **search** and **expeditions**. XP is earned through searching and expedition participation.
 
-## Status: Open
+## Status: Resolved
 
 ## Continuous Bonuses
 

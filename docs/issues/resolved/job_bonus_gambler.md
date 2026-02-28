@@ -4,7 +4,7 @@
 
 The Gambler job affects **lootbox gambles** and **duels**. XP is earned through gamble participation and duel participation.
 
-## Status: Open
+## Status: Resolved
 
 ## Continuous Bonuses
 

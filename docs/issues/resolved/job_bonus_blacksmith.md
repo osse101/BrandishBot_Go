@@ -4,7 +4,7 @@
 
 The Blacksmith job affects **crafting**, **upgrading**, and **disassembling**. XP is earned through these actions.
 
-## Status: Open
+## Status: Resolved
 
 ## Continuous Bonuses
 

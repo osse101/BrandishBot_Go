@@ -4,7 +4,7 @@
 
 The Merchant job affects **buying**, **selling**, **sales events**, and **quests**. XP is earned through transactions and quest completion.
 
-## Status: Open
+## Status: Resolved
 
 ## Continuous Bonuses
 
