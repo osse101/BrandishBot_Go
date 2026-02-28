@@ -34,12 +34,12 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using random selection (in case multiple slots exist with different quality levels)
-		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
-		if itemSlotIndex == -1 {
+		// Find total quantity in inventory across all slots (in case multiple slots exist with different quality levels)
+		totalQty := utils.GetTotalQuantity(inventory, itemToUse.ID)
+		if totalQty == 0 {
 			return domain.ErrNotInInventory
 		}
-		if slotQty < quantity {
+		if totalQty < quantity {
 			return domain.ErrInsufficientQuantity
 		}
 

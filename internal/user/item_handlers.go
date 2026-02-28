@@ -31,39 +31,36 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
-	qualityLevel, err := s.consumeLootboxFromInventory(inventory, lootboxItem, quantity)
+	totalAvailable := utils.GetTotalQuantity(inventory, lootboxItem.ID)
+	if totalAvailable == 0 {
+		return "", errors.New(ErrMsgItemNotFoundInInventory)
+	}
+	if totalAvailable < quantity {
+		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, s.rnd)
 	if err != nil {
 		return "", err
 	}
 
 	// 2. Use lootbox service to open lootboxes
-	drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, quantity, qualityLevel)
-	if err != nil {
-		log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
-		return "", fmt.Errorf("failed to open lootbox: %w", err)
+	var allDrops []lootbox.DroppedItem
+	for _, slot := range consumedSlots {
+		drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, slot.Quantity, slot.QualityLevel)
+		if err != nil {
+			log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
+			return "", fmt.Errorf("failed to open lootbox: %w", err)
+		}
+		allDrops = append(allDrops, drops...)
 	}
 
-	if len(drops) == 0 {
+	if len(allDrops) == 0 {
 		return MsgLootboxEmpty, nil
 	}
 
 	// 3. Process drops and generate feedback
-	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, drops)
-}
-
-func (s *service) consumeLootboxFromInventory(inventory *domain.Inventory, item *domain.Item, quantity int) (domain.QualityLevel, error) {
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
-	}
-
-	if slotQuantity < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
-	}
-
-	qualityLevel := inventory.Slots[itemSlotIndex].QualityLevel
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
-	return qualityLevel, nil
+	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, allDrops)
 }
 
 func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
@@ -203,20 +200,31 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	username := args.Username
 	platform := args.Platform
 
-	// Find item slot first (before target selection), randomly if multiple exist with different qualities
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability first (before target selection)
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughWeapons, "item", item.InternalName)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	qualityLevel := inventory.Slots[itemSlotIndex].QualityLevel
-	timeout := getWeaponTimeout(item.InternalName) + qualityLevel.GetTimeoutAdjustment()
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, qualityLevel)
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, s.rnd)
+	if err != nil {
+		return "", err
+	}
+
+	var timeout time.Duration
+	var displayName string
+	for i, slot := range consumedSlots {
+		baseTimeout := getWeaponTimeout(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
+		timeout += baseTimeout * time.Duration(slot.Quantity)
+		if i == 0 {
+			displayName = s.namingResolver.GetDisplayName(item.InternalName, slot.QualityLevel)
+		}
+	}
 
 	// Special handling for TNT - multi-target (5-9 targets)
 	if item.InternalName == domain.ItemTNT {
@@ -229,9 +237,6 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 			log.Warn("No active targets available for TNT", "error", err)
 			return "", errors.New(ErrMsgNoActiveTargets)
 		}
-
-		// Remove item from inventory
-		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 		// Apply timeout to all targets and collect names
 		hitUsernames := make([]string, 0, len(targets))
@@ -264,9 +269,6 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 			return "", errors.New(ErrMsgNoActiveTargets)
 		}
 
-		// Remove item from inventory
-		utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
-
 		// Apply timeout
 		if err := s.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
 			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", randomUsername)
@@ -286,9 +288,6 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		log.Warn(LogWarnTargetUsernameMissingWeapon)
 		return "", errors.New(ErrMsgTargetUsernameRequired)
 	}
-
-	// Remove item from inventory
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
 
 	// Apply timeout
 	if err := s.TimeoutUser(ctx, targetUsername, timeout, MsgBlasterReasonBy+username); err != nil {
@@ -350,22 +349,32 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	}
 	username := args.Username
 
-	// Find item slot (randomly if multiple exist with different qualities)
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		log.Warn(LogWarnReviveNotInInventory, "item", item.InternalName)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughRevives, "item", item.InternalName)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, s.rnd)
+	if err != nil {
+		return "", err
+	}
 
 	// Get recovery time for this revive type
-	qualityLevel := inventory.Slots[itemSlotIndex].QualityLevel
-	recovery := getReviveRecovery(item.InternalName) + qualityLevel.GetTimeoutAdjustment()
-	totalRecovery := time.Duration(quantity) * recovery
+	var totalRecovery time.Duration
+	var displayName string
+	for i, slot := range consumedSlots {
+		recovery := getReviveRecovery(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
+		totalRecovery += time.Duration(slot.Quantity) * recovery
+		if i == 0 {
+			displayName = s.namingResolver.GetDisplayName(item.InternalName, slot.QualityLevel)
+		}
+	}
 
 	// Reduce timeout for target user
 	if err := s.ReduceTimeout(ctx, targetUsername, totalRecovery); err != nil {
@@ -373,7 +382,6 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 		// Continue anyway, as the item was used
 	}
 
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, qualityLevel)
 	log.Info(LogMsgReviveUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
 	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
 }
@@ -464,14 +472,14 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 			return fmt.Errorf("failed to get inventory: %w", err)
 		}
 
-		txSlotIndex, txSlotQty := utils.FindRandomSlot(txInventory, item.ID, s.rnd)
-		if txSlotIndex == -1 || txSlotQty < 1 {
+		totalQty := utils.GetTotalQuantity(txInventory, item.ID)
+		if totalQty < 1 {
 			return fmt.Errorf("item no longer available")
 		}
 
 		maxPossible := quantity
-		if txSlotQty < maxPossible {
-			maxPossible = txSlotQty
+		if totalQty < maxPossible {
+			maxPossible = totalQty
 		}
 
 		if isMine && len(potentialTargets) == 1 && strings.EqualFold(potentialTargets[0], user.Username) {
@@ -479,9 +487,13 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 			badLuckSelf = true
 			itemsConsumed = 1
 			trapsPlaced = 1
+			err := utils.ConsumeItems(txInventory, item.ID, 1, s.rnd)
+			if err != nil {
+				return err
+			}
 			s.handleSelfTargetMine(ctx, user)
 		} else {
-			consumed, placed, triggered, badLuck, err := s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, txInventory.Slots[txSlotIndex].QualityLevel, isMine)
+			consumed, placed, triggered, badLuck, err := s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, txInventory, item, isMine)
 			if err != nil {
 				return err
 			}
@@ -492,7 +504,6 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 		}
 
 		if itemsConsumed > 0 {
-			utils.RemoveFromSlot(txInventory, txSlotIndex, itemsConsumed)
 			if err := tx.UpdateInventory(ctx, user.ID, *txInventory); err != nil {
 				return fmt.Errorf("failed to update inventory: %w", err)
 			}
@@ -503,16 +514,12 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err
 }
 
-func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, qualityLevel domain.QualityLevel, isMine bool) (int, int, bool, bool, error) {
+func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, inventory *domain.Inventory, item *domain.Item, isMine bool) (int, int, bool, bool, error) {
 	log := logger.FromContext(ctx)
 	itemsConsumed := 0
 	trapsPlaced := 0
 	selfTriggered := false
 	badLuckSelf := false
-
-	if qualityLevel == "" {
-		qualityLevel = domain.QualityCommon
-	}
 
 	for _, targetName := range potentialTargets {
 		if itemsConsumed >= maxPossible {
@@ -523,6 +530,10 @@ func (s *service) processTrapTargets(ctx context.Context, user *domain.User, pot
 			badLuckSelf = true
 			itemsConsumed++
 			trapsPlaced++
+			err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
+			if err != nil {
+				return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
+			}
 			s.handleSelfTargetMine(ctx, user)
 			break
 		}
@@ -541,11 +552,24 @@ func (s *service) processTrapTargets(ctx context.Context, user *domain.User, pot
 
 		if existingTrap != nil {
 			itemsConsumed++
+			err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
+			if err != nil {
+				return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
+			}
 			selfTriggered = true
 			if err := s.handleExistingTrapTrigger(ctx, user, targetName, existingTrap); err != nil {
 				return itemsConsumed, trapsPlaced, true, false, err
 			}
 			break
+		}
+
+		consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, 1, s.rnd)
+		if err != nil || len(consumedSlots) == 0 {
+			break // Should not happen since we checked maxPossible
+		}
+		qualityLevel := consumedSlots[0].QualityLevel
+		if qualityLevel == "" {
+			qualityLevel = domain.QualityCommon
 		}
 
 		itemsConsumed++
@@ -626,17 +650,19 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
 
-	// Find item slot (randomly if multiple exist with different qualities)
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		log.Warn(LogWarnShieldNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughShields)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+		return "", err
+	}
 
 	// Determine if this is a mirror shield
 	isMirror := item.InternalName == domain.ItemMirrorShield
@@ -669,17 +695,19 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 		return "", errors.New(ErrMsgJobNameRequired)
 	}
 
-	// Find item slot (randomly if multiple exist with different qualities)
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		log.Warn(LogWarnRareCandyNotInInventory)
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughRareCandy)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+		return "", err
+	}
 
 	// Award XP to the specified job via event
 	totalXP := quantity * rarecandyXPAmount
@@ -711,15 +739,17 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 
 	username := args.Username
 
-	// Find item slot (randomly if multiple exist with different qualities)
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+		return "", err
+	}
 
 	// Generate sticks (shovel generates 2 sticks per use)
 	stickItem, err := s.getItemByNameCached(ctx, domain.ItemStick)
@@ -742,15 +772,17 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 
 	username := args.Username
 
-	// Find item slot (randomly if multiple exist with different qualities)
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
 		return "", errors.New(ErrMsgItemNotFoundInInventory)
 	}
-	if slotQuantity < quantity {
+	if totalAvailable < quantity {
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	utils.RemoveFromSlot(inventory, itemSlotIndex, quantity)
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+		return "", err
+	}
 
 	return username + MsgStickUsed, nil
 }

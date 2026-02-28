@@ -25,14 +25,14 @@ func TestProcessBuyTransaction(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		initialInv     []domain.InventorySlot
-		moneySlotIdx   int
-		itemToBuyID    int
-		quantityToBuy  int
-		cost           int
-		expectedInv    []domain.InventorySlot
-		desc           string
+		name          string
+		initialInv    []domain.InventorySlot
+		moneySlotIdx  int
+		itemToBuyID   int
+		quantityToBuy int
+		cost          int
+		expectedInv   []domain.InventorySlot
+		desc          string
 	}{
 		{
 			name: "Buy new item with exact money",
@@ -107,8 +107,6 @@ func TestProcessBuyTransaction(t *testing.T) {
 			processBuyTransaction(inv, tt.itemToBuyID, tt.moneySlotIdx, tt.quantityToBuy, tt.cost)
 
 			// Helper to check if inventory matches expected (order-independent for added items usually, but slice order matters here)
-			// Since our implementation appends, order is predictable.
-			// However, money slot removal might shift indices.
 			assert.ElementsMatch(t, tt.expectedInv, inv.Slots, tt.desc)
 		})
 	}
@@ -120,13 +118,13 @@ func TestProcessSellTransaction(t *testing.T) {
 	moneyItemID := 1
 
 	tests := []struct {
-		name           string
-		initialInv     []domain.InventorySlot
-		itemSlotIdx    int
-		sellQuantity   int
-		moneyGained    int
-		expectedInv    []domain.InventorySlot
-		desc           string
+		name         string
+		initialInv   []domain.InventorySlot
+		itemSlotIdx  int
+		sellQuantity int
+		moneyGained  int
+		expectedInv  []domain.InventorySlot
+		desc         string
 	}{
 		{
 			name: "Sell entire stack",
@@ -158,8 +156,8 @@ func TestProcessSellTransaction(t *testing.T) {
 		{
 			name: "Sell with existing money",
 			initialInv: []domain.InventorySlot{
-				createSlot(10, 5),            // Item to sell
-				createSlot(moneyItemID, 50),  // Existing money
+				createSlot(10, 5),           // Item to sell
+				createSlot(moneyItemID, 50), // Existing money
 			},
 			itemSlotIdx:  0,
 			sellQuantity: 5,
@@ -206,9 +204,6 @@ func TestProcessSellTransaction_SplitMoneyStacks(t *testing.T) {
 	moneyItemID := 1
 
 	// Setup: Inventory has two money slots (shouldn't happen normally, but robust code handles it)
-	// Slot 0: Item to sell
-	// Slot 1: Money (Common)
-	// Slot 2: Money (Common) - maybe from a bug or manual insert
 	inv := &domain.Inventory{
 		Slots: []domain.InventorySlot{
 			createSlot(10, 5),
@@ -221,9 +216,6 @@ func TestProcessSellTransaction_SplitMoneyStacks(t *testing.T) {
 	processSellTransaction(inv, moneyItemID, 0, 5, 200)
 
 	// Assert: Logic searches for first matching money slot to add to.
-	// Slot 0 removed.
-	// Money added to Slot 1.
-	// Slot 2 untouched.
 	expected := []domain.InventorySlot{
 		createSlot(moneyItemID, 300), // 100 + 200
 		createSlot(moneyItemID, 50),
@@ -239,8 +231,8 @@ func TestProcessBuyTransaction_RemoveLastSlot(t *testing.T) {
 	// Setup: Money is at end
 	inv := &domain.Inventory{
 		Slots: []domain.InventorySlot{
-			createSlot(20, 1),   // Item A
-			createSlot(1, 100),  // Money (exact amount)
+			createSlot(20, 1),  // Item A
+			createSlot(1, 100), // Money (exact amount)
 		},
 	}
 

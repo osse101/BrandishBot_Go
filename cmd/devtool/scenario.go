@@ -13,6 +13,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/scenario"
 )
 
+const (
+	defaultAPIURL = "http://localhost:8080"
+)
+
 type ScenarioCommand struct{}
 
 func (c *ScenarioCommand) Name() string {
@@ -87,14 +91,7 @@ func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 	apiURL := c.getAPIURL()
 	apiKey := c.getAPIKey()
 
-	// Parse extra args as parameters if needed (key=value)
-	params := make(map[string]interface{})
-	for _, arg := range extraArgs {
-		parts := strings.SplitN(arg, "=", 2)
-		if len(parts) == 2 {
-			params[parts[0]] = parts[1]
-		}
-	}
+	params := c.parseParams(extraArgs)
 
 	reqBody := handler.RunScenarioRequest{
 		ScenarioID: scenarioID,
@@ -136,7 +133,27 @@ func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Print Summary
+	c.printExecutionResult(result)
+
+	if !result.Success {
+		return fmt.Errorf("scenario failed")
+	}
+
+	return nil
+}
+
+func (c *ScenarioCommand) parseParams(extraArgs []string) map[string]interface{} {
+	params := make(map[string]interface{})
+	for _, arg := range extraArgs {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) == 2 {
+			params[parts[0]] = parts[1]
+		}
+	}
+	return params
+}
+
+func (c *ScenarioCommand) printExecutionResult(result scenario.ExecutionResult) {
 	fmt.Printf("Scenario: %s\n", result.ScenarioName)
 	fmt.Printf("Duration: %d ms\n", result.DurationMS)
 
@@ -177,18 +194,12 @@ func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 			}
 		}
 	}
-
-	if !result.Success {
-		return fmt.Errorf("scenario failed")
-	}
-
-	return nil
 }
 
 func (c *ScenarioCommand) getAPIURL() string {
 	url := os.Getenv("API_URL")
 	if url == "" {
-		return "http://localhost:8080"
+		return defaultAPIURL
 	}
 	return url
 }
