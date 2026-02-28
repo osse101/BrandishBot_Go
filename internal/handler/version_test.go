@@ -14,10 +14,10 @@ import (
 
 func TestHandleVersion(t *testing.T) {
 	tests := []struct {
-		name        string
-		setupEnv    func()
-		cleanupEnv  func()
-		verifyBody  func(*testing.T, string)
+		name       string
+		setupEnv   func()
+		cleanupEnv func()
+		verifyBody func(*testing.T, string)
 	}{
 		{
 			name: "Success - Dev Version (Default)",
