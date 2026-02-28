@@ -9,58 +9,41 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// processBuyTransaction handles the inventory updates for buying an item
-func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, actualQuantity, cost int) {
-	// Deduct money
-	if inventory.Slots[moneySlotIndex].Quantity == cost {
-		inventory.Slots = append(inventory.Slots[:moneySlotIndex], inventory.Slots[moneySlotIndex+1:]...)
+// processExchangeTransaction is a helper handling the repeated pattern of removing a cost/item and adding a resulting item/money.
+func processExchangeTransaction(inventory *domain.Inventory, removeSlotIndex, removeAmount, addAmount, addItemID int) {
+	// Remove item cost/source
+	if inventory.Slots[removeSlotIndex].Quantity <= removeAmount {
+		inventory.Slots = append(inventory.Slots[:removeSlotIndex], inventory.Slots[removeSlotIndex+1:]...)
 	} else {
-		inventory.Slots[moneySlotIndex].Quantity -= cost
+		inventory.Slots[removeSlotIndex].Quantity -= removeAmount
 	}
 
-	// Add purchased item
+	// Add purchased/earned item
 	itemFound := false
 	for i, slot := range inventory.Slots {
-		if slot.ItemID == itemID {
-			inventory.Slots[i].Quantity += actualQuantity
+		if slot.ItemID == addItemID && slot.QualityLevel == domain.QualityCommon {
+			inventory.Slots[i].Quantity += addAmount
 			itemFound = true
 			break
 		}
 	}
 	if !itemFound {
 		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:       itemID,
-			Quantity:     actualQuantity,
+			ItemID:       addItemID,
+			Quantity:     addAmount,
 			QualityLevel: domain.QualityCommon,
 		})
 	}
 }
 
+// processBuyTransaction handles the inventory updates for buying an item
+func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, actualQuantity, cost int) {
+	processExchangeTransaction(inventory, moneySlotIndex, cost, actualQuantity, itemID)
+}
+
 // processSellTransaction handles the inventory updates for selling an item
 func processSellTransaction(inventory *domain.Inventory, moneyItemID, itemSlotIndex, actualSellQuantity, moneyGained int) {
-	// Remove sold items
-	if inventory.Slots[itemSlotIndex].Quantity <= actualSellQuantity {
-		inventory.Slots = append(inventory.Slots[:itemSlotIndex], inventory.Slots[itemSlotIndex+1:]...)
-	} else {
-		inventory.Slots[itemSlotIndex].Quantity -= actualSellQuantity
-	}
-
-	// Add money
-	moneyFound := false
-	for i, slot := range inventory.Slots {
-		if slot.ItemID == moneyItemID && slot.QualityLevel == domain.QualityCommon {
-			inventory.Slots[i].Quantity += moneyGained
-			moneyFound = true
-			break
-		}
-	}
-	if !moneyFound {
-		inventory.Slots = append(inventory.Slots, domain.InventorySlot{
-			ItemID:       moneyItemID,
-			Quantity:     moneyGained,
-			QualityLevel: domain.QualityCommon,
-		})
-	}
+	processExchangeTransaction(inventory, itemSlotIndex, actualSellQuantity, moneyGained, moneyItemID)
 }
 
 func (s *service) getMoneyBalance(ctx context.Context, tx repository.EconomyTx, userID string) (int, int, error) {

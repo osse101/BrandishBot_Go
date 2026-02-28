@@ -96,6 +96,23 @@ func TestProcessBuyTransaction(t *testing.T) {
 			},
 			desc: "Should add new item without disturbing others",
 		},
+		{
+			name: "Buy existing item (different quality)",
+			initialInv: []domain.InventorySlot{
+				createSlot(1, 200),                    // Money
+				createSlot(10, 2, domain.QualityRare), // Existing rare item
+			},
+			moneySlotIdx:  0,
+			itemToBuyID:   10,
+			quantityToBuy: 5,
+			cost:          100,
+			expectedInv: []domain.InventorySlot{
+				createSlot(1, 100),                      // Remaining money
+				createSlot(10, 2, domain.QualityRare),   // Rare item unaltered
+				createSlot(10, 5, domain.QualityCommon), // New common item stack
+			},
+			desc: "Should add new common stack when only different quality exists",
+		},
 	}
 
 	for _, tt := range tests {
