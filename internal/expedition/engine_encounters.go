@@ -4,32 +4,32 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
+func (e *Engine) calculateInvertedWeightsSum() float64 {
+	var invertedSum float64
+	for _, enc := range e.config.Encounters {
+		if enc.BaseWeight > 0 {
+			invertedSum += 1.0 / enc.BaseWeight
+		}
+	}
+	return invertedSum
+}
+
 // rollEncounter selects an encounter type using weighted random with progressive inversion
 func (e *Engine) rollEncounter() domain.EncounterType {
 	consciousCount := len(e.getConsciousMembers())
 	progress := float64(e.turn) / float64(e.config.Settings.MaxTurns)
 
-	// Build weight list with progressive inversion
 	type weightedEncounter struct {
 		key    string
 		weight float64
 	}
 
-	// Calculate inverted weights (proportional to 1/baseWeight)
-	var invertedSum float64
-	baseWeights := make(map[string]float64)
-	for name, enc := range e.config.Encounters {
-		if enc.BaseWeight > 0 {
-			baseWeights[name] = enc.BaseWeight
-			invertedSum += 1.0 / enc.BaseWeight
-		}
-	}
+	invertedSum := e.calculateInvertedWeightsSum()
 
 	candidates := make([]weightedEncounter, 0, len(e.config.Encounters))
 	var totalWeight float64
 
 	for name, enc := range e.config.Encounters {
-		// Skip encounters that require more party members than conscious
 		if enc.MinParty > consciousCount {
 			continue
 		}
@@ -37,7 +37,6 @@ func (e *Engine) rollEncounter() domain.EncounterType {
 		base := enc.BaseWeight
 		inverted := (1.0 / base) / invertedSum // normalized inverted weight
 
-		// Linear interpolation between base and inverted weights
 		effectiveWeight := base*(1.0-progress) + inverted*progress
 
 		if effectiveWeight > 0 {
@@ -49,7 +48,6 @@ func (e *Engine) rollEncounter() domain.EncounterType {
 		}
 	}
 
-	// Weighted random selection
 	r := e.rng.Float64() * totalWeight
 	cumulative := 0.0
 	for _, c := range candidates {
@@ -59,7 +57,6 @@ func (e *Engine) rollEncounter() domain.EncounterType {
 		}
 	}
 
-	// Fallback: return last candidate
 	if len(candidates) > 0 {
 		return domain.EncounterType(candidates[len(candidates)-1].key)
 	}
