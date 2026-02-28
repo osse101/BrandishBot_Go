@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -556,10 +557,6 @@ func checkEnvSync() error {
 	envRegex := regexp.MustCompile(`os\.Getenv\("([^"]+)"\)`)
 	foundMissing := false
 
-	// Use git grep to find os.Getenv calls in .go files (much faster)
-	//nolint:forbidigo
-	out, _ := getCommandOutput("git", "grep", "-E", `os\.Getenv\("([^"]+)"\)`, "--", "*.go")
-
 	// Environment variables that are optional and don't need to be in .env.example
 	// These are typically runtime overrides or container-specific variables
 	optionalEnvVars := map[string]bool{
@@ -570,22 +567,9 @@ func checkEnvSync() error {
 		"TEST_DB_CONN_STRING":    true, // Optional test database connection string (alternative)
 	}
 
-	lines = strings.Split(out, "\n")
-	for _, line := range lines {
-		matches := envRegex.FindAllStringSubmatch(line, -1)
-		for _, m := range matches {
-			if len(m) == 2 {
-				key := m[1]
-				// Skip optional environment variables
-				if optionalEnvVars[key] {
-					continue
-				}
-				if !exampleKeys[key] {
-					PrintError("Environment variable '%s' used in code but missing from .env.example", key)
-					foundMissing = true
-				}
-			}
-		}
+	foundMissing, scanErr := scanCodebaseForEnvVars(envRegex, optionalEnvVars, exampleKeys)
+	if scanErr != nil {
+		return fmt.Errorf("failed to scan codebase for env vars: %w", scanErr)
 	}
 
 	if foundMissing {
@@ -594,4 +578,45 @@ func checkEnvSync() error {
 
 	PrintSuccess(".env.example is in sync with codebase.")
 	return nil
+}
+
+func scanCodebaseForEnvVars(envRegex *regexp.Regexp, optionalEnvVars map[string]bool, exampleKeys map[string]bool) (bool, error) {
+	foundMissing := false
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "vendor" || name == "node_modules" || name == ".git" || name == "bin" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".go") {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil // ignore unreadable files
+		}
+
+		matches := envRegex.FindAllStringSubmatch(string(content), -1)
+		for _, m := range matches {
+			if len(m) == 2 {
+				key := m[1]
+				// Skip optional environment variables
+				if optionalEnvVars[key] {
+					continue
+				}
+				if !exampleKeys[key] {
+					PrintError("Environment variable '%s' used in code but missing from .env.example (found in %s)", key, path)
+					foundMissing = true
+				}
+			}
+		}
+		return nil
+	})
+	return foundMissing, err
 }
