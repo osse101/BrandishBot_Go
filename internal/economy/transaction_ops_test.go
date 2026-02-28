@@ -264,3 +264,51 @@ func TestProcessBuyTransaction_RemoveLastSlot(t *testing.T) {
 
 	assert.ElementsMatch(t, expected, inv.Slots)
 }
+
+// Edge case: Buying an item when the user already has multiple stacks of that exact item
+func TestProcessBuyTransaction_SplitItemStacks(t *testing.T) {
+	t.Parallel()
+
+	// Setup: Inventory has two sub-stacks of the item being bought
+	inv := &domain.Inventory{
+		Slots: []domain.InventorySlot{
+			createSlot(10, 2),  // Item A (stack 1)
+			createSlot(1, 100), // Money
+			createSlot(10, 3),  // Item A (stack 2)
+		},
+	}
+
+	// Act: Buy 5 more of Item A (ID: 10) for 100 money, money is at index 1
+	processBuyTransaction(inv, 10, 1, 5, 100)
+
+	// Assert: Logic should add to the first encountered stack (the one at index 0)
+	expected := []domain.InventorySlot{
+		createSlot(10, 7), // First stack gets added to: 2 + 5
+		createSlot(10, 3), // Second stack remains
+	}
+
+	assert.ElementsMatch(t, expected, inv.Slots)
+}
+
+// Edge case: Buying an item with a cost of 0
+func TestProcessBuyTransaction_ZeroCost(t *testing.T) {
+	t.Parallel()
+
+	// Setup: Money slot is present, but cost is 0
+	inv := &domain.Inventory{
+		Slots: []domain.InventorySlot{
+			createSlot(1, 100), // Money
+		},
+	}
+
+	// Act: Buy item with 0 cost
+	processBuyTransaction(inv, 20, 0, 1, 0)
+
+	// Assert: Money should not decrease
+	expected := []domain.InventorySlot{
+		createSlot(1, 100), // Money unchanged
+		createSlot(20, 1),  // New item
+	}
+
+	assert.ElementsMatch(t, expected, inv.Slots)
+}
