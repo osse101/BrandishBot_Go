@@ -964,5 +964,50 @@ namespace BrandishBot.Client
         [JsonProperty("rank")]
         public int Rank { get; set; }
     }
+
+    public class UserJobInfo
+    {
+        [JsonProperty("job_key")]
+        public string JobKey { get; set; }
+
+        [JsonProperty("display_name")]
+        public string DisplayName { get; set; }
+
+        [JsonProperty("level")]
+        public int Level { get; set; }
+
+        [JsonProperty("current_xp")]
+        public long CurrentXP { get; set; }
+
+        [JsonProperty("xp_to_next_level")]
+        public long XPToNextLevel { get; set; }
+
+        [JsonProperty("max_level")]
+        public int MaxLevel { get; set; }
+    }
+
+    public class GetUserJobsResponse
+    {
+        [JsonProperty("platform")]
+        public string Platform { get; set; }
+
+        [JsonProperty("platform_id")]
+        public string PlatformId { get; set; }
+
+        [JsonProperty("primary_job")]
+        public UserJobInfo PrimaryJob { get; set; }
+
+        [JsonProperty("jobs")]
+        public List<UserJobInfo> Jobs { get; set; }
+    }
+
+    public class HealthResponse
+    {
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+    }
 }
 

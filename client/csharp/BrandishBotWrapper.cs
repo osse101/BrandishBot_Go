@@ -1562,7 +1562,7 @@ public class CPHInline
             try
             {
                 var result = client.GetUserJobsByUsername(platform, targetUser).Result;
-                CPH.SetArgument("response", result);
+                CPH.SetArgument("response", ResponseFormatter.FormatUserJobs(result));
                 return true;
             }
             catch (Exception ex)
@@ -1584,7 +1584,7 @@ public class CPHInline
             try
             {
                 var result = client.GetUserJobs(platform, platformId, username).Result;
-                CPH.SetArgument("response", result);
+                CPH.SetArgument("response", ResponseFormatter.FormatUserJobs(result));
                 return true;
             }
             catch (Exception ex)
@@ -2110,7 +2110,7 @@ public class CPHInline
         try
         {
             var result = client.HealthCheck().Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatHealth(result));
             return true;
         }
         catch (Exception ex)
