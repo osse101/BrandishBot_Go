@@ -189,7 +189,7 @@ func (s *service) finalizeExpedition(ctx context.Context, expeditionID uuid.UUID
 
 	for _, p := range participants {
 		if s.progressionSvc != nil {
-			_ = s.progressionSvc.RecordEngagement(ctx, p.Username, "expedition_completed", 3)
+			_ = s.progressionSvc.RecordEngagement(ctx, p.Username, domain.MetricTypeExpeditionCompleted, 3)
 		}
 	}
 

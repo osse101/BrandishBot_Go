@@ -136,8 +136,8 @@ func (s *service) applyContributionModifier(ctx context.Context, baseContributio
 // recordTotalEngagement records the total channel points and progression contribution
 func (s *service) recordTotalEngagement(ctx context.Context, contribution int) error {
 	// Record the engagement metric using a system identifier for prediction totals
-	// We use PredictionContributionMetricType to indicate this value is already scaled
-	if err := s.progressionService.RecordEngagement(ctx, "prediction_system", PredictionContributionMetricType, contribution); err != nil {
+	// We use domain.MetricTypePredictionContribution to indicate this value is already scaled
+	if err := s.progressionService.RecordEngagement(ctx, "prediction_system", domain.MetricTypePredictionContribution, contribution); err != nil {
 		return fmt.Errorf("failed to record engagement: %w", err)
 	}
 

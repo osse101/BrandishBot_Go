@@ -44,11 +44,11 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 	// Fallback defaults if still no weight found
 	if weight == 0.0 {
 		switch metricType {
-		case "message":
+		case domain.MetricTypeMessage:
 			weight = 1.0
-		case "command":
+		case domain.MetricTypeCommand:
 			weight = 2.0
-		case "item_crafted":
+		case domain.MetricTypeItemCrafted:
 			weight = 3.0 // Note: Migration sets this to 200, this is just code fallback
 		default:
 			weight = 1.0 // Safe default

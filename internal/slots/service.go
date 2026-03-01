@@ -312,25 +312,25 @@ func (s *service) recordAllEngagement(ctx context.Context, userID string, result
 	log := logger.FromContext(ctx)
 
 	// Always track spin
-	if err := s.progressionService.RecordEngagement(ctx, userID, MetricSlotsSpin, 1); err != nil {
+	if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsSpin, 1); err != nil {
 		log.Warn("Failed to record slots spin engagement", "error", err)
 	}
 
 	// Track outcome-specific engagement
 	if result.IsWin {
-		if err := s.progressionService.RecordEngagement(ctx, userID, MetricSlotsWin, 1); err != nil {
+		if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsWin, 1); err != nil {
 			log.Warn("Failed to record slots win engagement", "error", err)
 		}
 	}
 
 	if result.PayoutMultiplier >= BigWinThreshold {
-		if err := s.progressionService.RecordEngagement(ctx, userID, MetricSlotsBigWin, 1); err != nil {
+		if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsBigWin, 1); err != nil {
 			log.Warn("Failed to record slots big win engagement", "error", err)
 		}
 	}
 
 	if result.PayoutMultiplier >= JackpotThreshold {
-		if err := s.progressionService.RecordEngagement(ctx, userID, MetricSlotsJackpot, 1); err != nil {
+		if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsJackpot, 1); err != nil {
 			log.Warn("Failed to record slots jackpot engagement", "error", err)
 		}
 	}

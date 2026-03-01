@@ -78,7 +78,7 @@ func (e *EngagementTracker) TrackCommand(next http.Handler) http.Handler {
 			metric := &domain.EngagementMetric{
 				UserID:      userID,
 				Platform:    platform,
-				MetricType:  MetricTypeCommand,
+				MetricType:  domain.MetricTypeCommand,
 				MetricValue: DefaultMetricValue,
 				RecordedAt:  time.Now(),
 				Metadata:    metadata,

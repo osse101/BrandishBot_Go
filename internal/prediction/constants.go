@@ -23,8 +23,7 @@ const (
 	BonusContribution  = 0.0     // No extra bonus needed for this scale
 
 	// Job and stat identifiers
-	GamblerJobKey                    = "gambler"
-	PredictionStatType               = "prediction_participation"
-	TotalPointsMetricType            = "prediction_total_points"
-	PredictionContributionMetricType = "prediction_contribution"
+	GamblerJobKey         = "gambler"
+	PredictionStatType    = "prediction_participation"
+	TotalPointsMetricType = "prediction_total_points"
 )

@@ -13,9 +13,6 @@ const (
 const (
 	// DefaultMetricValue is the default engagement metric value when no custom value is provided
 	DefaultMetricValue = 1
-
-	// MetricTypeCommand is the metric type for command execution tracking
-	MetricTypeCommand = "command"
 )
 
 // HTTP Request Parameter Names

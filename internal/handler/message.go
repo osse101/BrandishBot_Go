@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
@@ -65,7 +66,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 		middleware.TrackEngagementFromContext(
 			middleware.WithPlatform(middleware.WithUserID(ctx, result.User.ID), req.Platform),
 			eventBus,
-			"message",
+			domain.MetricTypeMessage,
 			1,
 		)
 

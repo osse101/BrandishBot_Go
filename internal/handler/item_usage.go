@@ -115,7 +115,7 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
-				string(domain.StatsEventItemUsed),
+				domain.MetricTypeItemUsed,
 				req.Quantity,
 			)
 		} else {
@@ -130,7 +130,7 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			"message", message)
 
 		// Record contribution for item usage
-		if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, string(domain.StatsEventItemUsed), req.Quantity); err != nil {
+		if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, domain.MetricTypeItemUsed, req.Quantity); err != nil {
 			log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
 			// Don't fail the request
 		}

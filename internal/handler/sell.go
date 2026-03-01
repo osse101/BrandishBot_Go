@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -71,13 +72,13 @@ func HandleSellItem(svc economy.Service, userSvc user.ManagementService, progres
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
-				"item_sold",
+				domain.MetricTypeItemSold,
 				itemsSold,
 			)
 		}
 
 		// Publish item.sold event
-		if err := PublishEvent(r.Context(), eventBus, "item.sold", map[string]interface{}{
+		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemSold, map[string]interface{}{
 			"user_id":      req.Username,
 			"item_name":    req.ItemName,
 			"quantity":     itemsSold,

@@ -30,7 +30,7 @@ func (s *service) VoteForUnlock(ctx context.Context, platform, platformID, usern
 	}
 
 	// 4. Record engagement
-	if err := s.RecordEngagement(ctx, user.ID, "vote_cast", 1); err != nil {
+	if err := s.RecordEngagement(ctx, user.ID, domain.MetricTypeVoteCast, 1); err != nil {
 		log.Warn("Failed to record vote engagement", "userID", user.ID, "error", err)
 	}
 

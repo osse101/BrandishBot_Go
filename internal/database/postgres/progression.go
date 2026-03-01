@@ -524,13 +524,13 @@ func (r *progressionRepository) GetUserEngagement(ctx context.Context, userID st
 	for _, row := range rows {
 		total := int(row.Total)
 		switch row.MetricType {
-		case "message":
+		case domain.MetricTypeMessage:
 			breakdown.MessagesSent = total
-		case "command":
+		case domain.MetricTypeCommand:
 			breakdown.CommandsUsed = total
-		case "item_crafted":
+		case domain.MetricTypeItemCrafted:
 			breakdown.ItemsCrafted = total
-		case "item_used":
+		case domain.MetricTypeItemUsed:
 			breakdown.ItemsUsed = total
 		}
 
@@ -560,10 +560,10 @@ func (r *progressionRepository) GetEngagementWeights(ctx context.Context) (map[s
 
 	if len(weights) == 0 {
 		weights = map[string]float64{
-			"message":      1.0,
-			"command":      2.0,
-			"item_crafted": 3.0,
-			"item_used":    1.5,
+			domain.MetricTypeMessage:     1.0,
+			domain.MetricTypeCommand:     2.0,
+			domain.MetricTypeItemCrafted: 3.0,
+			domain.MetricTypeItemUsed:    1.5,
 		}
 	}
 
