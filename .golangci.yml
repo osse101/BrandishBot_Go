@@ -149,6 +149,11 @@ issues:
       linters:
         - all
 
+    # Exclude forbidigo from cmd/devtool since we have explicit wrappers
+    - path: cmd/devtool/
+      linters:
+        - forbidigo
+
     # G115: Integer overflow conversion - acceptable in database context where IDs fit in int32
     - linters:
         - gosec

@@ -31,7 +31,6 @@ func GetDependentPackages(packages []string) ([]string, error) {
 }
 
 func getModulePath() (string, error) {
-	//nolint:forbidigo
 	out, err := getCommandOutput("go", "list", "-m")
 	if err != nil {
 		return "", fmt.Errorf("failed to get module path: %w", err)
@@ -41,7 +40,6 @@ func getModulePath() (string, error) {
 
 func getReverseDependencyGraph() (map[string][]string, error) {
 	// Use -e to tolerate errors (e.g. if a deleted package is still imported)
-	//nolint:forbidigo
 	out, err := getCommandOutput("go", "list", "-e", "-f", "{{.ImportPath}} {{range .Imports}}{{.}} {{end}}", "./...")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dependency graph: %w", err)

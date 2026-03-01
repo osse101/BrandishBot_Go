@@ -80,7 +80,6 @@ func (c *PreCommitCommand) Run(args []string) error {
 }
 
 func getStagedFiles() ([]string, error) {
-	//nolint:forbidigo
 	out, err := getCommandOutput("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	if err != nil {
 		return nil, err
@@ -132,11 +131,9 @@ func runGoFmt(files []string) error {
 
 	PrintInfo("Running go fmt...")
 	for _, f := range goFiles {
-		//nolint:forbidigo
 		if err := runCommand("go", "fmt", f); err != nil { // #nosec G204
 			return fmt.Errorf("go fmt failed for %s: %w", f, err)
 		}
-		//nolint:forbidigo
 		if err := runCommand("git", "add", f); err != nil { // #nosec G204
 			return fmt.Errorf("git add failed for %s: %w", f, err)
 		}
@@ -251,13 +248,11 @@ func checkFileForInterface(path string) bool {
 
 func runMakeTarget(target string) error {
 	PrintInfo("Running 'make %s'...", target)
-	//nolint:forbidigo
 	if err := runCommand("make", target); err != nil {
 		return fmt.Errorf("make %s failed: %w", target, err)
 	}
 
 	// Check for unstaged changes
-	//nolint:forbidigo
 	if err := runCommand("git", "diff", "--exit-code"); err != nil {
 		PrintError("'make %s' produced changes that are not staged.", target)
 		PrintWarning("Please stage the updated files and try again.")
@@ -303,7 +298,6 @@ func runUnitTests() error {
 	args := []string{"test", "-short"}
 	args = append(args, packages...)
 
-	//nolint:forbidigo
 	if err := runCommandVerbose("go", args...); err != nil {
 		return fmt.Errorf("unit tests failed")
 	}
@@ -330,7 +324,6 @@ func checkMigrationProtections() error {
 }
 
 func detectMigrationSquashAndChanges() (bool, []string, error) {
-	//nolint:forbidigo
 	out, err := getCommandOutput("git", "diff", "--cached", "--name-status")
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to get git status: %w", err)
