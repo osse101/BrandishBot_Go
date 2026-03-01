@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
@@ -23,41 +24,42 @@ type UseItemResponse struct {
 	Message string `json:"message"`
 }
 
+var itemToProgressionNodeMap = map[string]string{
+	// Weapons
+	domain.ItemMissile:     progression.ItemWeaponMissile,
+	domain.ItemGrenade:     progression.ItemGrenade,
+	domain.ItemTNT:         progression.ItemTnt,
+	domain.ItemHugeBlaster: progression.ItemHugemissile,
+
+	// Defense
+	domain.ItemShield:       progression.ItemShield,
+	domain.ItemMirrorShield: progression.ItemWeaponMirror,
+
+	// Recovery
+	domain.ItemReviveSmall: progression.ItemRevives,
+
+	// Progression
+	domain.ItemRareCandy: progression.ItemXpRarecandy,
+
+	// Lootboxes
+	domain.ItemLootbox0: progression.ItemLootbox0,
+	domain.ItemLootbox1: progression.ItemLootbox1,
+	domain.ItemLootbox2: progression.ItemLootbox2,
+	domain.ItemLootbox3: progression.ItemLootbox3,
+
+	// Utilities
+	domain.ItemShovel:      progression.ItemShovel,
+	domain.ItemStick:       progression.ItemStick,
+	domain.ItemVideoFilter: progression.ItemVideoFilter,
+
+	// Passive items (economy checks these separately)
+	domain.ItemScrap:  progression.ItemScrap,
+	domain.ItemScript: progression.ItemScript,
+}
+
 // mapItemToProgressionNode maps internal item names to progression node keys
 func mapItemToProgressionNode(itemName string) string {
-	mapping := map[string]string{
-		// Weapons
-		"weapon_missile":     progression.ItemWeaponMissile,
-		"item_grenade":       progression.ItemGrenade,
-		"explosive_tnt":      progression.ItemTnt,
-		"weapon_hugeblaster": progression.ItemHugemissile,
-
-		// Defense
-		"item_shield":   progression.ItemShield,
-		"weapon_mirror": progression.ItemWeaponMirror,
-
-		// Recovery
-		"revive_small": progression.ItemRevives,
-
-		// Progression
-		"xp_rarecandy": progression.ItemXpRarecandy,
-
-		// Lootboxes
-		"lootbox_tier0": progression.ItemLootbox0,
-		"lootbox_tier1": progression.ItemLootbox1,
-		"lootbox_tier2": progression.ItemLootbox2,
-		"lootbox_tier3": progression.ItemLootbox3,
-
-		// Utilities
-		"item_shovel":       progression.ItemShovel,
-		"item_stick":        progression.ItemStick,
-		"item_video_filter": progression.ItemVideoFilter,
-
-		// Passive items (economy checks these separately)
-		"item_scrap":  progression.ItemScrap,
-		"item_script": progression.ItemScript,
-	}
-	return mapping[itemName]
+	return itemToProgressionNodeMap[itemName]
 }
 
 // HandleUseItem handles using an item
@@ -105,31 +107,37 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			return
 		}
 
+		// Attempt to resolve the correct UUID for metrics/events
+		metricUserID := req.Username
+		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			metricUserID = userID
+
+			middleware.TrackEngagementFromContext(
+				middleware.WithUserID(r.Context(), userID),
+				eventBus,
+				string(domain.StatsEventItemUsed),
+				req.Quantity,
+			)
+		} else {
+			log.Warn("Could not resolve UUID for item usage metrics, using username", "username", req.Username, "error", err)
+		}
+
 		log.Info("Item used successfully",
+			"user_id", metricUserID,
 			"username", req.Username,
 			"item", req.ItemName,
 			"quantity", req.Quantity,
 			"message", message)
 
-		// Track engagement for item usage
-
 		// Record contribution for item usage
-		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_used", req.Quantity); err != nil {
-			log.Error("Failed to record use engagement", "error", err)
+		if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, string(domain.StatsEventItemUsed), req.Quantity); err != nil {
+			log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
 			// Don't fail the request
-		}
-		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
-			middleware.TrackEngagementFromContext(
-				middleware.WithUserID(r.Context(), userID),
-				eventBus,
-				"item_used",
-				req.Quantity,
-			)
 		}
 
 		// Publish item.used event
-		if err := PublishEvent(r.Context(), eventBus, "item.used", map[string]interface{}{
-			"user_id":  req.Username,
+		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemUsed, map[string]interface{}{
+			"user_id":  metricUserID,
 			"item":     req.ItemName,
 			"quantity": req.Quantity,
 			"target":   req.TargetUser,
