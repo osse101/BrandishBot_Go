@@ -140,7 +140,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 		// Validate filter parameter
 		if filter != "" && !domain.IsValidFilterType(filter) {
 			log.Warn("Invalid filter parameter", "filter", filter)
-			http.Error(w, fmt.Sprintf(ErrMsgInvalidFilterType, filter), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, fmt.Sprintf(ErrMsgInvalidFilterType, filter))
 			return
 		}
 
@@ -157,7 +157,7 @@ func HandleGetInventory(svc user.Service, progSvc progression.Service) http.Hand
 			}
 			if !unlocked {
 				log.Warn("Filter locked", "filter", filter, "username", username)
-				http.Error(w, fmt.Sprintf(ErrMsgFilterLocked, filter), http.StatusForbidden)
+				RespondError(w, http.StatusForbidden, fmt.Sprintf(ErrMsgFilterLocked, filter))
 				return
 			}
 		}
@@ -208,7 +208,7 @@ func HandleGetInventoryByUsername(svc user.Service, progSvc progression.Service)
 		// Validate filter parameter
 		if filter != "" && !domain.IsValidFilterType(filter) {
 			log.Warn("Invalid filter parameter", "filter", filter)
-			http.Error(w, fmt.Sprintf(ErrMsgInvalidFilterType, filter), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, fmt.Sprintf(ErrMsgInvalidFilterType, filter))
 			return
 		}
 
@@ -225,7 +225,7 @@ func HandleGetInventoryByUsername(svc user.Service, progSvc progression.Service)
 			}
 			if !unlocked {
 				log.Warn("Filter locked", "filter", filter, "username", username)
-				http.Error(w, fmt.Sprintf(ErrMsgFilterLocked, filter), http.StatusForbidden)
+				RespondError(w, http.StatusForbidden, fmt.Sprintf(ErrMsgFilterLocked, filter))
 				return
 			}
 		}

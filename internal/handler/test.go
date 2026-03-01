@@ -27,7 +27,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -41,7 +41,7 @@ func HandleTest(userService user.Service) http.HandlerFunc {
 		_, err := userService.HandleIncomingMessage(r.Context(), req.Platform, req.PlatformID, req.Username, "")
 		if err != nil {
 			log.Error("Failed to process user", "error", err, "username", req.Username)
-			http.Error(w, "Failed to process user: "+err.Error(), http.StatusInternalServerError)
+			RespondError(w, http.StatusInternalServerError, "Failed to process user: "+err.Error())
 			return
 		}
 

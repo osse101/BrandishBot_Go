@@ -36,7 +36,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -52,7 +52,7 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 			log.Debug("User not found by platform ID, will create new user", "platform", req.KnownPlatform)
 			if req.Username == "" {
 				log.Warn("Username required for new user")
-				http.Error(w, ErrMsgUsernameRequired, http.StatusBadRequest)
+				RespondError(w, http.StatusBadRequest, ErrMsgUsernameRequired)
 				return
 			}
 			isNewUser = true
