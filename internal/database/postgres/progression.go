@@ -820,6 +820,45 @@ func (r *progressionRepository) GetAllBonusModifiers(ctx context.Context) ([]dom
 	return configs, nil
 }
 
+// SyncBonusModifiers clear and reinstates bonus modifiers for a node
+func (r *progressionRepository) SyncBonusModifiers(ctx context.Context, nodeKey string, sourceType string, modifiers []domain.ModifierConfig) error {
+	h, err := beginTx(ctx, r.pool, r.q)
+	if err != nil {
+		return err
+	}
+	defer SafeRollback(ctx, h.Tx())
+
+	q := h.Queries()
+
+	if err := q.ClearBonusModifiersForNode(ctx, nodeKey); err != nil {
+		return fmt.Errorf("failed to clear bonus modifiers: %w", err)
+	}
+
+	for _, mod := range modifiers {
+		param := generated.InsertBonusModifierParams{
+			NodeKey:       nodeKey,
+			SourceType:    sourceType,
+			FeatureKey:    mod.FeatureKey,
+			ModifierType:  mod.ModifierType,
+			BaseValue:     float64ToNumeric(mod.BaseValue),
+			PerLevelValue: float64ToNumeric(mod.PerLevelValue),
+		}
+
+		if mod.MaxValue != nil {
+			param.MaxValue = float64ToNumeric(*mod.MaxValue)
+		}
+		if mod.MinValue != nil {
+			param.MinValue = float64ToNumeric(*mod.MinValue)
+		}
+
+		if err := q.InsertBonusModifier(ctx, param); err != nil {
+			return fmt.Errorf("failed to insert bonus modifier %s: %w", mod.FeatureKey, err)
+		}
+	}
+
+	return h.Commit(ctx)
+}
+
 // GetJobUnlockConfig retrieves the job configuration needed to unlock a feature
 func (r *progressionRepository) GetJobUnlockConfig(ctx context.Context, featureKey string) (*domain.JobUnlockConfig, error) {
 	row, err := r.q.GetJobUnlockConfig(ctx, featureKey)

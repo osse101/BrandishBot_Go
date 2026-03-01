@@ -182,7 +182,7 @@ func (q *Queries) GetAssociatedUpgradeRecipeID(ctx context.Context, disassembleR
 }
 
 const getBuyablePrices = `-- name: GetBuyablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -191,9 +191,12 @@ ORDER BY i.public_name
 `
 
 type GetBuyablePricesRow struct {
-	InternalName string      `json:"internal_name"`
-	PublicName   pgtype.Text `json:"public_name"`
-	BaseValue    pgtype.Int4 `json:"base_value"`
+	ItemID          int32       `json:"item_id"`
+	InternalName    string      `json:"internal_name"`
+	PublicName      pgtype.Text `json:"public_name"`
+	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ItemDescription pgtype.Text `json:"item_description"`
+	BaseValue       pgtype.Int4 `json:"base_value"`
 }
 
 func (q *Queries) GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, error) {
@@ -205,7 +208,14 @@ func (q *Queries) GetBuyablePrices(ctx context.Context) ([]GetBuyablePricesRow, 
 	var items []GetBuyablePricesRow
 	for rows.Next() {
 		var i GetBuyablePricesRow
-		if err := rows.Scan(&i.InternalName, &i.PublicName, &i.BaseValue); err != nil {
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.InternalName,
+			&i.PublicName,
+			&i.DefaultDisplay,
+			&i.ItemDescription,
+			&i.BaseValue,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -598,7 +608,7 @@ func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int3
 }
 
 const getSellablePrices = `-- name: GetSellablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -607,9 +617,12 @@ ORDER BY i.public_name
 `
 
 type GetSellablePricesRow struct {
-	InternalName string      `json:"internal_name"`
-	PublicName   pgtype.Text `json:"public_name"`
-	BaseValue    pgtype.Int4 `json:"base_value"`
+	ItemID          int32       `json:"item_id"`
+	InternalName    string      `json:"internal_name"`
+	PublicName      pgtype.Text `json:"public_name"`
+	DefaultDisplay  pgtype.Text `json:"default_display"`
+	ItemDescription pgtype.Text `json:"item_description"`
+	BaseValue       pgtype.Int4 `json:"base_value"`
 }
 
 func (q *Queries) GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow, error) {
@@ -621,7 +634,14 @@ func (q *Queries) GetSellablePrices(ctx context.Context) ([]GetSellablePricesRow
 	var items []GetSellablePricesRow
 	for rows.Next() {
 		var i GetSellablePricesRow
-		if err := rows.Scan(&i.InternalName, &i.PublicName, &i.BaseValue); err != nil {
+		if err := rows.Scan(
+			&i.ItemID,
+			&i.InternalName,
+			&i.PublicName,
+			&i.DefaultDisplay,
+			&i.ItemDescription,
+			&i.BaseValue,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -734,15 +754,16 @@ func (q *Queries) GetUserByPlatformUsername(ctx context.Context, arg GetUserByPl
 }
 
 const getUserPlatformLinks = `-- name: GetUserPlatformLinks :many
-SELECT p.name, upl.platform_user_id
+SELECT p.name, upl.platform_user_id, upl.platform_username
 FROM user_platform_links upl
 JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE upl.user_id = $1
 `
 
 type GetUserPlatformLinksRow struct {
-	Name           string `json:"name"`
-	PlatformUserID string `json:"platform_user_id"`
+	Name             string      `json:"name"`
+	PlatformUserID   string      `json:"platform_user_id"`
+	PlatformUsername pgtype.Text `json:"platform_username"`
 }
 
 func (q *Queries) GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([]GetUserPlatformLinksRow, error) {
@@ -754,7 +775,7 @@ func (q *Queries) GetUserPlatformLinks(ctx context.Context, userID uuid.UUID) ([
 	var items []GetUserPlatformLinksRow
 	for rows.Next() {
 		var i GetUserPlatformLinksRow
-		if err := rows.Scan(&i.Name, &i.PlatformUserID); err != nil {
+		if err := rows.Scan(&i.Name, &i.PlatformUserID, &i.PlatformUsername); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -875,19 +896,26 @@ func (q *Queries) UpdateUserTimestamp(ctx context.Context, userID uuid.UUID) err
 }
 
 const upsertUserPlatformLink = `-- name: UpsertUserPlatformLink :exec
-INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-VALUES ($1, $2, $3)
+INSERT INTO user_platform_links (user_id, platform_id, platform_user_id, platform_username)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id, platform_id) DO UPDATE
-SET platform_user_id = EXCLUDED.platform_user_id
+SET platform_user_id = EXCLUDED.platform_user_id, 
+    platform_username = COALESCE(EXCLUDED.platform_username, user_platform_links.platform_username)
 `
 
 type UpsertUserPlatformLinkParams struct {
-	UserID         uuid.UUID `json:"user_id"`
-	PlatformID     int32     `json:"platform_id"`
-	PlatformUserID string    `json:"platform_user_id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	PlatformID       int32       `json:"platform_id"`
+	PlatformUserID   string      `json:"platform_user_id"`
+	PlatformUsername pgtype.Text `json:"platform_username"`
 }
 
 func (q *Queries) UpsertUserPlatformLink(ctx context.Context, arg UpsertUserPlatformLinkParams) error {
-	_, err := q.db.Exec(ctx, upsertUserPlatformLink, arg.UserID, arg.PlatformID, arg.PlatformUserID)
+	_, err := q.db.Exec(ctx, upsertUserPlatformLink,
+		arg.UserID,
+		arg.PlatformID,
+		arg.PlatformUserID,
+		arg.PlatformUsername,
+	)
 	return err
 }

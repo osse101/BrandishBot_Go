@@ -221,6 +221,12 @@ When running background commands:
 ✅ CORRECT: Use tracked command ID for cleanup
 ```
 
+### Tool Execution & Linting
+
+1. **Prioritize Native Tooling**: Always use project-specific scripts (`make lint`, `make test`, `npm run x`) rather than manually invoking global/unpinned installations (e.g., calling `golangci-lint run` directly). This ensures you respect project-specific configurations, overrides, and exclusions.
+2. **Review Configurations First**: Before fixing errors reported by tools, inspect the native config files (e.g., `Makefile`, `.golangci.yml`) to understand what is intended to be checked and what is intentionally ignored.
+3. **Patience with Initialization**: Compilers, linters, and test runners frequently require time to download dependencies or build caches on their first run. Do not prematurely terminate these background commands simply because they do not produce immediate output. Tools can hang when run on the same millisecond as another tool and should be run sequentially.
+
 ### Coding Patterns
 
 - **Event Payloads**: Use `event.DecodePayload[T](e.Payload)` for type-safe event handling. Avoid manual map assertions.

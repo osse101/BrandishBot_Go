@@ -183,12 +183,14 @@
       "prerequisites": ["job_scholar", "-nodes_unlocked_below_tier:2:15"],
       "sort_order": 41,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "job_xp_multiplier",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "job_xp_multiplier",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "item_shield",
@@ -293,12 +295,14 @@
       "prerequisites": ["feature_gamble"],
       "sort_order": 43,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "gamble_win_bonus",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.05
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "gamble_win_bonus",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.05
+        }
+      ]
     },
     {
       "key": "weapon_missile",
@@ -455,12 +459,44 @@
       "prerequisites": ["feature_farming"],
       "sort_order": 73,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "farming_yield",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "farming_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        },
+        {
+          "feature_key": "harvest_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.02
+        },
+        {
+          "feature_key": "compost_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.01
+        },
+        {
+          "feature_key": "compost_speed",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.02
+        },
+        {
+          "feature_key": "compost_capacity",
+          "modifier_type": "linear",
+          "base_value": 3.0,
+          "per_level_value": 0.4
+        },
+        {
+          "feature_key": "harvest_tier",
+          "modifier_type": "linear",
+          "base_value": 3.0,
+          "per_level_value": 0.2
+        }
+      ]
     },
     {
       "key": "feature_compost",
@@ -487,12 +523,14 @@
       "prerequisites": ["progression_system", "-total_nodes_unlocked:5"],
       "sort_order": 90,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "progression_rate",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "progression_rate",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "job_scholar",
@@ -505,7 +543,21 @@
       "max_level": 1,
       "prerequisites": ["upgrade_progression_basic"],
       "sort_order": 75,
-      "auto_unlock": false
+      "auto_unlock": false,
+      "modifier_configs": [
+        {
+          "feature_key": "engagement_contribution_multiplier",
+          "modifier_type": "multiplicative",
+          "base_value": 1.0,
+          "per_level_value": 0.1
+        },
+        {
+          "feature_key": "job_xp_multiplier",
+          "modifier_type": "multiplicative",
+          "base_value": 1.0,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "upgrade_progression_two",
@@ -519,12 +571,14 @@
       "prerequisites": ["job_scholar"],
       "sort_order": 95,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "progression_rate",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "progression_rate",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "upgrade_progression_three",
@@ -538,12 +592,14 @@
       "prerequisites": ["upgrade_progression_two"],
       "sort_order": 97,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "progression_rate",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "progression_rate",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "upgrade_job_level_cap",
@@ -557,12 +613,14 @@
       "prerequisites": ["job_scholar"],
       "sort_order": 96,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "job_level_cap",
-        "modifier_type": "linear",
-        "base_value": 0,
-        "per_level_value": 10
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "job_level_cap",
+          "modifier_type": "linear",
+          "base_value": 0,
+          "per_level_value": 10
+        }
+      ]
     },
     {
       "key": "upgrade_exploration_1",
@@ -576,12 +634,14 @@
       "prerequisites": ["item_shovel"],
       "sort_order": 91,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "search_quality",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "search_quality",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "item_scrap",
@@ -608,12 +668,14 @@
       "prerequisites": ["item_scrap"],
       "sort_order": 92,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "crafting_success_rate",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "crafting_success_rate",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        }
+      ]
     },
     {
       "key": "upgrade_farming_1",
@@ -627,12 +689,44 @@
       "prerequisites": ["item_stick"],
       "sort_order": 93,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "farming_yield",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.1
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "farming_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.1
+        },
+        {
+          "feature_key": "harvest_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.1
+        },
+        {
+          "feature_key": "compost_yield",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.05
+        },
+        {
+          "feature_key": "compost_speed",
+          "modifier_type": "multiplicative",
+          "base_value": 0.0,
+          "per_level_value": 0.08
+        },
+        {
+          "feature_key": "spoil_extension",
+          "modifier_type": "linear",
+          "base_value": 0.0,
+          "per_level_value": 2.0
+        },
+        {
+          "feature_key": "sludge_extension",
+          "modifier_type": "linear",
+          "base_value": 0.0,
+          "per_level_value": 1.0
+        }
+      ]
     },
     {
       "key": "feature_events",
@@ -685,12 +779,14 @@
       "prerequisites": ["item_script"],
       "sort_order": 94,
       "auto_unlock": false,
-      "modifier_config": {
-        "feature_key": "economy_bonus",
-        "modifier_type": "multiplicative",
-        "base_value": 1,
-        "per_level_value": 0.05
-      }
+      "modifier_configs": [
+        {
+          "feature_key": "economy_bonus",
+          "modifier_type": "multiplicative",
+          "base_value": 1,
+          "per_level_value": 0.05
+        }
+      ]
     },
     {
       "key": "item_video_filter",

@@ -61,13 +61,13 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 				Username: req.Username,
 			}
 			// Set the known platform ID on the new user.
-			updatePlatformID(user, req.KnownPlatform, req.KnownPlatformID)
+			updatePlatformID(user, req.KnownPlatform, req.KnownPlatformID, req.Username)
 		} else {
 			log.Debug("Found existing user", "user_id", user.ID, "username", user.Username)
 		}
 
 		// Link the new platform ID.
-		updatePlatformID(user, req.NewPlatform, req.NewPlatformID)
+		updatePlatformID(user, req.NewPlatform, req.NewPlatformID, req.Username)
 		log.Debug("Linking new platform", "platform", req.NewPlatform)
 
 		updatedUser, err := userService.RegisterUser(r.Context(), *user)
@@ -91,7 +91,14 @@ func HandleRegisterUser(userService user.Service) http.HandlerFunc {
 	}
 }
 
-func updatePlatformID(user *domain.User, platform, platformID string) {
+func updatePlatformID(user *domain.User, platform, platformID, platformUsername string) {
+	if user.PlatformUsernames == nil {
+		user.PlatformUsernames = make(map[string]string)
+	}
+	if platformUsername != "" {
+		user.PlatformUsernames[platform] = platformUsername
+	}
+
 	switch platform {
 	case domain.PlatformTwitch:
 		user.TwitchID = platformID

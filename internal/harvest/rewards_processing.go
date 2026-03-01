@@ -2,23 +2,27 @@ package harvest
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-func (s *service) calculateBonuses(ctx context.Context, userID string) (float64, float64) {
+func (s *service) getBonusMultipliers(ctx context.Context, userID string) (float64, float64) {
 	log := logger.FromContext(ctx)
 	yieldMultiplier := 1.0
 	growthMultiplier := 1.0
 
-	if modifiedYield, err := s.progressionSvc.GetModifiedValue(ctx, userID, "harvest_yield", 1.0); err == nil {
+	if modifiedYield, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureHarvestYield, 1.0); err == nil {
 		yieldMultiplier = modifiedYield
 	} else {
 		log.Warn("Failed to get modified harvest yield", "error", err)
 	}
 
-	if modifiedGrowth, err := s.progressionSvc.GetModifiedValue(ctx, userID, "growth_speed", 1.0); err == nil {
+	if modifiedGrowth, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureGrowthSpeed, 1.0); err == nil {
 		growthMultiplier = modifiedGrowth
 	} else {
 		log.Warn("Failed to get modified growth speed", "error", err)
@@ -26,20 +30,30 @@ func (s *service) calculateBonuses(ctx context.Context, userID string) (float64,
 	return yieldMultiplier, growthMultiplier
 }
 
-func (s *service) calculateHarvestRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
-	if hoursElapsed > spoiledThreshold {
+func (s *service) calculateHarvestRewards(ctx context.Context, userID string, hoursElapsed float64, yieldMultiplier float64) (map[string]int, string) {
+	spoilExtension := 0.0
+	if ext, err := s.progressionSvc.GetModifiedValue(ctx, userID, featureSpoilExtension, 0.0); err == nil {
+		spoilExtension = ext
+	}
+
+	limitIndexFloat, _ := s.progressionSvc.GetModifiedValue(ctx, userID, featureHarvestTier, 3.0)
+	limitIndex := int(limitIndexFloat)
+
+	effectiveSpoiledThreshold := spoiledThreshold + spoilExtension
+
+	if hoursElapsed > effectiveSpoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
 		return map[string]int{
 			itemLootbox1: 1,
 			itemStick:    3,
 		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
 	}
-	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier), "Harvest successful!"
+	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier, limitIndex), "Harvest successful!"
 }
 
 // calculateRewards calculates the total rewards for a given elapsed time
 // Accumulates ALL items from all tiers up to and including the current tier
-func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64) map[string]int {
+func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yieldMultiplier float64, limitIndex int) map[string]int {
 	log := logger.FromContext(ctx)
 	rewards := make(map[string]int)
 	tiers := getRewardTiers()
@@ -52,6 +66,11 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yi
 		} else {
 			break // Tiers are ordered, so we can stop here
 		}
+	}
+
+	// Apply layer gating based on resolved progression limits:
+	if maxTierIndex > limitIndex {
+		maxTierIndex = limitIndex
 	}
 
 	// No tier reached
@@ -93,6 +112,81 @@ func (s *service) calculateRewards(ctx context.Context, hoursElapsed float64, yi
 	log.Info("Rewards calculated", "rewards", rewards, "tierCount", maxTierIndex+1)
 
 	return rewards
+}
+
+func (s *service) handleEmptyHarvest(ctx context.Context, tx repository.HarvestTx, userID string, now time.Time, hoursElapsed float64) (*domain.HarvestResponse, error) {
+	logger.FromContext(ctx).Warn("No rewards available - all items locked by progression")
+
+	if err := tx.UpdateHarvestState(ctx, userID, now); err != nil {
+		return nil, fmt.Errorf("failed to update harvest state: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &domain.HarvestResponse{
+		ItemsGained:       map[string]int{},
+		HoursSinceHarvest: hoursElapsed,
+		NextHarvestAt:     now.Add(time.Hour),
+		Message:           "No rewards available - unlock progression nodes to receive harvest items!",
+	}, nil
+}
+
+func (s *service) applyHarvestRewards(ctx context.Context, tx repository.HarvestTx, userID string, rewards map[string]int) error {
+	log := logger.FromContext(ctx)
+
+	// 1. Get inventory
+	inventory, err := tx.GetInventory(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get inventory: %w", err)
+	}
+
+	// 2. Get item IDs
+	itemNames := make([]string, 0, len(rewards))
+	for name := range rewards {
+		itemNames = append(itemNames, name)
+	}
+
+	items, err := s.userRepo.GetItemsByNames(ctx, itemNames)
+	if err != nil {
+		return fmt.Errorf("failed to get item details: %w", err)
+	}
+
+	itemNameToID := make(map[string]int)
+	for _, item := range items {
+		itemNameToID[item.InternalName] = item.ID
+	}
+
+	// 3. Update inventory structure
+	for name, qty := range rewards {
+		if qty <= 0 {
+			continue
+		}
+		id, ok := itemNameToID[name]
+		if !ok {
+			log.Warn("Item not found in database, skipping", "itemName", name)
+			continue
+		}
+
+		slotIndex, _ := utils.FindSlot(inventory, id)
+		if slotIndex != -1 {
+			inventory.Slots[slotIndex].Quantity += qty
+		} else {
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+				ItemID:       id,
+				Quantity:     qty,
+				QualityLevel: domain.QualityCommon,
+			})
+		}
+	}
+
+	// 4. Update database
+	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
+		return fmt.Errorf("failed to update inventory: %w", err)
+	}
+
+	return nil
 }
 
 // getRewardTiers returns the harvest reward tier configuration

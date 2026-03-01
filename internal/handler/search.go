@@ -65,7 +65,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
-				"search",
+				domain.ActionSearch,
 				1,
 			)
 		}

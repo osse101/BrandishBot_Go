@@ -72,7 +72,7 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, fmt.Errorf("failed to commit harvest: %w", err)
 	}
 
-	s.awardHarvestXP(ctx, user.ID, bin.InputValue, isSludge)
+	s.awardHarvestXP(ctx, user.ID, bin.ItemCount, bin.InputValue, isSludge)
 
 	return &domain.HarvestResult{
 		Harvested: true,
@@ -174,8 +174,8 @@ func (s *service) processHarvestItems(ctx context.Context, tx repository.Compost
 	return nil
 }
 
-func (s *service) awardHarvestXP(ctx context.Context, userID string, inputValue int, isSludge bool) {
-	xpAmount := inputValue / 10
+func (s *service) awardHarvestXP(ctx context.Context, userID string, itemCount int, inputValue int, isSludge bool) {
+	xpAmount := itemCount * 12
 	if xpAmount < 1 {
 		xpAmount = 1
 	}

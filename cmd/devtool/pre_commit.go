@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 )
-
-const generateTriggerPattern = `(\.sql$|interfaces\.go$|go\.mod$|go\.sum$|progression_tree\.json$)`
 
 type PreCommitCommand struct{}
 
@@ -52,7 +51,7 @@ func (c *PreCommitCommand) Run(args []string) error {
 	}
 
 	// 5. Generate Check
-	if err := checkGenerate(stagedFiles); err != nil {
+	if err := checkSmartGenerate(stagedFiles); err != nil {
 		return err
 	}
 
@@ -145,33 +144,123 @@ func runGoFmt(files []string) error {
 	return nil
 }
 
-func checkGenerate(files []string) error {
-	shouldRun := false
-	triggerPattern := regexp.MustCompile(generateTriggerPattern)
+func checkSmartGenerate(files []string) error {
+	triggers := detectTriggers(files)
 
-	for _, f := range files {
-		if triggerPattern.MatchString(f) {
-			shouldRun = true
-			break
+	var errs []error
+
+	if triggers["sqlc"] {
+		if err := runMakeTarget("generate-sqlc"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if triggers["progression"] {
+		if err := runMakeTarget("generate-progression"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if triggers["mocks"] {
+		if err := runMakeTarget("generate-mocks"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if triggers["swagger"] {
+		if err := runMakeTarget("generate-swagger"); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if triggers["tidy"] {
+		if err := runMakeTarget("generate-tidy"); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
-	if !shouldRun {
-		return nil
+	if len(errs) > 0 {
+		return fmt.Errorf("generation failed")
 	}
 
-	PrintInfo("Running 'make generate'...")
+	return nil
+}
+
+func detectTriggers(files []string) map[string]bool {
+	triggers := map[string]bool{
+		"sqlc":        false,
+		"progression": false,
+		"mocks":       false,
+		"swagger":     false,
+		"tidy":        false,
+	}
+
+	for _, f := range files {
+		if isSQLCTrigger(f) {
+			triggers["sqlc"] = true
+		}
+		if isProgressionTrigger(f) {
+			triggers["progression"] = true
+		}
+		if isSwaggerTrigger(f) {
+			triggers["swagger"] = true
+		}
+		if isTidyTrigger(f) {
+			triggers["tidy"] = true
+		}
+		if isMocksTrigger(f) {
+			triggers["mocks"] = true
+		}
+	}
+	return triggers
+}
+
+func isSQLCTrigger(f string) bool {
+	return (strings.HasSuffix(f, ".sql") && (strings.HasPrefix(f, "migrations/") || strings.HasPrefix(f, "internal/database/queries/"))) || f == "sqlc.yaml"
+}
+
+func isProgressionTrigger(f string) bool {
+	return f == "configs/progression_tree.json"
+}
+
+func isSwaggerTrigger(f string) bool {
+	return f == "cmd/app/main.go" || (strings.HasPrefix(f, "internal/handler/") && strings.HasSuffix(f, ".go") && !strings.HasSuffix(f, "_test.go"))
+}
+
+func isTidyTrigger(f string) bool {
+	return f == "go.mod" || f == "go.sum"
+}
+
+func isMocksTrigger(f string) bool {
+	if f == ".mockery.yaml" {
+		return true
+	}
+	if strings.HasSuffix(f, ".go") && !strings.HasSuffix(f, "_test.go") {
+		return checkFileForInterface(f)
+	}
+	return false
+}
+
+func checkFileForInterface(path string) bool {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	// Check for "type <Name> interface {"
+	// Split string to avoid self-match
+	pattern := "type" + `\s+\w+\s+` + "interface" + `\s*\{`
+	match, _ := regexp.Match(pattern, content)
+	return match
+}
+
+func runMakeTarget(target string) error {
+	PrintInfo("Running 'make %s'...", target)
 	//nolint:forbidigo
-	if err := runCommand("make", "generate"); err != nil {
-		return fmt.Errorf("make generate failed: %w", err)
+	if err := runCommand("make", target); err != nil {
+		return fmt.Errorf("make %s failed: %w", target, err)
 	}
 
 	// Check for unstaged changes
 	//nolint:forbidigo
 	if err := runCommand("git", "diff", "--exit-code"); err != nil {
-		// git diff --exit-code returns 1 if there are differences
-		PrintError("'make generate' produced changes that are not staged.")
-		PrintWarning("Please stage the updated files (mocks, sqlc, go.mod) and try again.")
+		PrintError("'make %s' produced changes that are not staged.", target)
+		PrintWarning("Please stage the updated files and try again.")
 		return fmt.Errorf("generated files are not staged")
 	}
 
@@ -468,10 +557,6 @@ func checkEnvSync() error {
 	envRegex := regexp.MustCompile(`os\.Getenv\("([^"]+)"\)`)
 	foundMissing := false
 
-	// Use git grep to find os.Getenv calls in .go files (much faster)
-	//nolint:forbidigo
-	out, _ := getCommandOutput("git", "grep", "-E", `os\.Getenv\("([^"]+)"\)`, "--", "*.go")
-
 	// Environment variables that are optional and don't need to be in .env.example
 	// These are typically runtime overrides or container-specific variables
 	optionalEnvVars := map[string]bool{
@@ -482,22 +567,9 @@ func checkEnvSync() error {
 		"TEST_DB_CONN_STRING":    true, // Optional test database connection string (alternative)
 	}
 
-	lines = strings.Split(out, "\n")
-	for _, line := range lines {
-		matches := envRegex.FindAllStringSubmatch(line, -1)
-		for _, m := range matches {
-			if len(m) == 2 {
-				key := m[1]
-				// Skip optional environment variables
-				if optionalEnvVars[key] {
-					continue
-				}
-				if !exampleKeys[key] {
-					PrintError("Environment variable '%s' used in code but missing from .env.example", key)
-					foundMissing = true
-				}
-			}
-		}
+	foundMissing, scanErr := scanCodebaseForEnvVars(envRegex, optionalEnvVars, exampleKeys)
+	if scanErr != nil {
+		return fmt.Errorf("failed to scan codebase for env vars: %w", scanErr)
 	}
 
 	if foundMissing {
@@ -506,4 +578,45 @@ func checkEnvSync() error {
 
 	PrintSuccess(".env.example is in sync with codebase.")
 	return nil
+}
+
+func scanCodebaseForEnvVars(envRegex *regexp.Regexp, optionalEnvVars map[string]bool, exampleKeys map[string]bool) (bool, error) {
+	foundMissing := false
+	err := filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "vendor" || name == "node_modules" || name == ".git" || name == "bin" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".go") {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil // ignore unreadable files
+		}
+
+		matches := envRegex.FindAllStringSubmatch(string(content), -1)
+		for _, m := range matches {
+			if len(m) == 2 {
+				key := m[1]
+				// Skip optional environment variables
+				if optionalEnvVars[key] {
+					continue
+				}
+				if !exampleKeys[key] {
+					PrintError("Environment variable '%s' used in code but missing from .env.example (found in %s)", key, path)
+					foundMissing = true
+				}
+			}
+		}
+		return nil
+	})
+	return foundMissing, err
 }

@@ -168,6 +168,86 @@ func NewEngagementEvent(userID, platformID int64, activityType string, userIDStr
 	}
 }
 
+// NewItemAddedEvent creates a new item added event
+func NewItemAddedEvent(userID, itemName string, quantity int, source string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeItemAdded),
+		Payload: domain.ItemAddedPayload{
+			UserID:    userID,
+			ItemName:  itemName,
+			Quantity:  quantity,
+			Source:    source,
+			Timestamp: time.Now().Unix(),
+		},
+		Metadata: map[string]interface{}{
+			"item_name": itemName,
+			"quantity":  quantity,
+			"source":    source,
+		},
+	}
+}
+
+// NewItemRemovedEvent creates a new item removed event
+func NewItemRemovedEvent(userID, itemName string, quantity int, source string) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeItemRemoved),
+		Payload: domain.ItemRemovedPayload{
+			UserID:    userID,
+			ItemName:  itemName,
+			Quantity:  quantity,
+			Source:    source,
+			Timestamp: time.Now().Unix(),
+		},
+		Metadata: map[string]interface{}{
+			"item_name": itemName,
+			"quantity":  quantity,
+			"source":    source,
+		},
+	}
+}
+
+// NewItemTransferredEvent creates a new item transferred event
+func NewItemTransferredEvent(fromUserID, toUserID, itemName string, quantity int) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeItemTransferred),
+		Payload: domain.ItemTransferredPayload{
+			FromUserID: fromUserID,
+			ToUserID:   toUserID,
+			ItemName:   itemName,
+			Quantity:   quantity,
+			Timestamp:  time.Now().Unix(),
+		},
+		Metadata: map[string]interface{}{
+			"item_name":    itemName,
+			"quantity":     quantity,
+			"from_user_id": fromUserID,
+			"to_user_id":   toUserID,
+		},
+	}
+}
+
+// NewItemUsedEvent creates a new item used event
+func NewItemUsedEvent(userID, itemName string, quantity int, metadata interface{}) Event {
+	return Event{
+		Version: EventSchemaVersion,
+		Type:    Type(domain.EventTypeItemUsed),
+		Payload: domain.ItemUsedPayload{
+			UserID:    userID,
+			ItemName:  itemName,
+			Quantity:  quantity,
+			Metadata:  metadata,
+			Timestamp: time.Now().Unix(),
+		},
+		Metadata: map[string]interface{}{
+			"item_name": itemName,
+			"quantity":  quantity,
+		},
+	}
+}
+
 // NewProgressionCycleEvent creates a new progression cycle event
 func NewProgressionCycleEvent(nodeKey, displayName, description string) Event {
 	return Event{

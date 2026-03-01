@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -24,6 +25,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 	}
 
 	var message string
+	var eventToPublish func()
+
 	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
@@ -31,12 +34,12 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in inventory using random selection (in case multiple slots exist with different quality levels)
-		itemSlotIndex, slotQty := utils.FindRandomSlot(inventory, itemToUse.ID, s.rnd)
-		if itemSlotIndex == -1 {
+		// Find total quantity in inventory across all slots (in case multiple slots exist with different quality levels)
+		totalQty := utils.GetTotalQuantity(inventory, itemToUse.ID)
+		if totalQty == 0 {
 			return domain.ErrNotInInventory
 		}
-		if slotQty < quantity {
+		if totalQty < quantity {
 			return domain.ErrInsufficientQuantity
 		}
 
@@ -66,8 +69,23 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		eventToPublish = func() {
+			if s.publisher != nil {
+				s.publisher.PublishWithRetry(ctx, event.NewItemUsedEvent(
+					user.ID,
+					itemToUse.InternalName,
+					quantity,
+					map[string]interface{}{"target": targetName},
+				))
+			}
+		}
+
 		return nil
 	})
+
+	if err == nil && eventToPublish != nil {
+		eventToPublish()
+	}
 
 	return message, err
 }

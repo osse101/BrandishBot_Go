@@ -266,6 +266,79 @@ func TestSellItem_InvalidInputs(t *testing.T) {
 	}
 }
 
+// =============================================================================
+// Context Cancellation Tests
+// =============================================================================
+
+func TestBuyItem_ContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Immediate Cancellation", func(t *testing.T) {
+		t.Parallel()
+		// ARRANGE
+		mockRepo := &MockRepository{}
+		// We need to create a service, but NewService is in the same package so it's accessible.
+		service := NewService(mockRepo, nil, nil, nil)
+
+		// Create a context that is already cancelled
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+
+		// We use mock.Anything for context because the exact context pointer might be tricky if wrappers were involved (though not here)
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(nil, context.Canceled)
+
+		// ACT
+		_, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
+
+		// ASSERT
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.Canceled)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("Cancellation During Transaction", func(t *testing.T) {
+		t.Parallel()
+		// ARRANGE
+		mockRepo := &MockRepository{}
+		service := NewService(mockRepo, nil, nil, nil)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		user := createTestUser()
+		item := createTestItem(10, domain.PublicNameLootbox, 100)
+		moneyItem := createMoneyItem()
+
+		// Initial fetches succeed
+		mockRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "").Return(user, nil)
+		mockRepo.On("GetItemByName", ctx, domain.PublicNameLootbox).Return(item, nil)
+		mockRepo.On("IsItemBuyable", ctx, domain.PublicNameLootbox).Return(true, nil)
+		mockRepo.On("GetItemByName", ctx, domain.ItemMoney).Return(moneyItem, nil)
+
+		mockTx := &MockTx{}
+		mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+
+		// Simulate cancellation during GetInventory (called by getMoneyBalance)
+		// Note: The service calls getMoneyBalance which calls tx.GetInventory(ctx, userID)
+		mockTx.On("GetInventory", ctx, user.ID).Run(func(args mock.Arguments) {
+			cancel() // Cancel the context to simulate a timeout or manual cancellation
+		}).Return(nil, context.Canceled)
+
+		// Rollback should be called because BeginTx succeeded but subsequent operation failed
+		mockTx.On("Rollback", ctx).Return(nil)
+
+		// ACT
+		_, err := service.BuyItem(ctx, domain.PlatformTwitch, "", "testuser", domain.PublicNameLootbox, 1)
+
+		// ASSERT
+		require.Error(t, err)
+		// Check that the error returned is or wraps context.Canceled
+		assert.ErrorIs(t, err, context.Canceled)
+
+		mockRepo.AssertExpectations(t)
+		mockTx.AssertExpectations(t)
+	})
+}
+
 // Quantity Boundary Tests - Critical for validating input constraints
 func TestSellItem_QuantityBoundaries(t *testing.T) {
 	t.Parallel()
@@ -1095,7 +1168,21 @@ func TestBuyItem_WeeklySale(t *testing.T) {
 			mockTx := &MockTx{}
 			mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
 			mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
-			mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+
+			// Use MatchedBy to verify the inventory update content robustly
+			mockTx.On("UpdateInventory", ctx, user.ID, mock.MatchedBy(func(inv domain.Inventory) bool {
+				// Find money slot
+				var finalMoney int
+				for _, slot := range inv.Slots {
+					if slot.ItemID == moneyItem.ID {
+						finalMoney = slot.Quantity
+						break
+					}
+				}
+				expectedMoney := 500 - tt.expectedCost
+				return finalMoney == expectedMoney
+			})).Return(nil)
+
 			mockTx.On("Commit", ctx).Return(nil)
 			mockTx.On("Rollback", ctx).Return(nil)
 
@@ -1106,26 +1193,8 @@ func TestBuyItem_WeeklySale(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 1, qty)
 
-			// Verify cost by inspecting inventory update results in mock call arguments.
-
-			// Let's capture the argument to UpdateInventory
-			// Calls: 0=GetInventory (check funds), 1=GetInventory (process), 2=UpdateInventory
-			call := mockTx.Calls[2]
-			require.Equal(t, "UpdateInventory", call.Method)
-			updatedInv := call.Arguments.Get(2).(domain.Inventory)
-
-			// Find money slot
-			var finalMoney int
-			for _, slot := range updatedInv.Slots {
-				if slot.ItemID == moneyItem.ID {
-					finalMoney = slot.Quantity
-				}
-			}
-
-			expectedMoney := 500 - tt.expectedCost
-			assert.Equal(t, expectedMoney, finalMoney, "Money should be deducted correctly")
-
 			mockRepo.AssertExpectations(t)
+			mockTx.AssertExpectations(t)
 			mockProgression.AssertExpectations(t)
 		})
 	}

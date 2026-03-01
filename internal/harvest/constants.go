@@ -17,3 +17,10 @@ const (
 	itemLootbox1 = domain.ItemLootbox1
 	itemLootbox2 = domain.ItemLootbox2
 )
+
+const (
+	featureGrowthSpeed    = "growth_speed"
+	featureHarvestYield   = "harvest_yield"
+	featureSpoilExtension = "spoil_extension"
+	featureHarvestTier    = "harvest_tier"
+)

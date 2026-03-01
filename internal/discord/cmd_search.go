@@ -11,7 +11,7 @@ import (
 // SearchCommand returns the search command definition and handler
 func SearchCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
-		Name:        "search",
+		Name:        domain.ActionSearch,
 		Description: "Search for items",
 	}
 

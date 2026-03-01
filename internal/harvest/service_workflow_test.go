@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
@@ -168,26 +169,28 @@ func TestHarvest_Workflow(t *testing.T) {
 			mockJobSvc := new(mocks.MockJobService)
 
 			// Default job bonus expectations (0 bonus)
-			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
-			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestYield, 1.0).Return(1.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureGrowthSpeed, 1.0).Return(1.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureSpoilExtension, 0.0).Return(0.0, nil).Maybe()
+			mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestTier, 3.0).Return(9.0, nil).Maybe()
 			svc := NewService(mockHarvestRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, nil)
 
 			// --- User Registration Workflow ---
 			if tt.userNotFound {
-				mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "123456").Return(nil, domain.ErrUserNotFound).Once()
+				mockUserRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "123456").Return(nil, domain.ErrUserNotFound).Once()
 				mockUserRepo.On("UpsertUser", mock.Anything, mock.MatchedBy(func(u *domain.User) bool {
 					return u.DiscordID == "123456" && u.Username == "TestUser"
 				})).Return(nil).Once()
-				mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "123456").Return(defaultUser, nil).Once()
+				mockUserRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "123456").Return(defaultUser, nil).Once()
 			} else {
-				mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "123456").Return(defaultUser, nil)
+				mockUserRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "123456").Return(defaultUser, nil)
 			}
 
 			// --- Feature Unlock ---
-			mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, "feature_farming").Return(!tt.featureLocked, nil)
+			mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, progression.FeatureFarming).Return(!tt.featureLocked, nil)
 
 			if tt.featureLocked {
-				_, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+				_, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123456", "TestUser")
 				assert.Error(t, err)
 				if tt.expectedErrorText != "" {
 					assert.Contains(t, err.Error(), tt.expectedErrorText)
@@ -203,7 +206,7 @@ func TestHarvest_Workflow(t *testing.T) {
 				}, nil)
 
 				// Execute and Assert for First Time
-				resp, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+				resp, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123456", "TestUser")
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				assert.Equal(t, 0.0, resp.HoursSinceHarvest)
@@ -228,7 +231,7 @@ func TestHarvest_Workflow(t *testing.T) {
 
 			// --- Validate Minimum Time ---
 			if tt.tooSoon {
-				_, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+				_, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123456", "TestUser")
 				assert.Error(t, err)
 				if tt.expectedErrorText != "" {
 					assert.Contains(t, err.Error(), tt.expectedErrorText)
@@ -252,7 +255,7 @@ func TestHarvest_Workflow(t *testing.T) {
 				mockTx.On("UpdateHarvestState", mock.Anything, defaultUser.ID, mock.Anything).Return(nil)
 				mockTx.On("Commit", mock.Anything).Return(nil)
 
-				resp, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+				resp, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123456", "TestUser")
 				assert.NoError(t, err)
 				assert.NotNil(t, resp)
 				assert.Empty(t, resp.ItemsGained)
@@ -310,7 +313,7 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 
 			// Execute
-			resp, err := svc.Harvest(context.Background(), "discord", "123456", "TestUser")
+			resp, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123456", "TestUser")
 
 			// Wait for async operations to complete
 			_ = svc.Shutdown(context.Background())

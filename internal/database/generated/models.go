@@ -442,9 +442,10 @@ type UserJob struct {
 }
 
 type UserPlatformLink struct {
-	UserID         uuid.UUID `json:"user_id"`
-	PlatformID     int32     `json:"platform_id"`
-	PlatformUserID string    `json:"platform_user_id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	PlatformID       int32       `json:"platform_id"`
+	PlatformUserID   string      `json:"platform_user_id"`
+	PlatformUsername pgtype.Text `json:"platform_username"`
 }
 
 type UserProgression struct {

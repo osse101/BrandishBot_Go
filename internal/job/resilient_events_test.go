@@ -56,6 +56,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		prog.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(float64(DefaultDailyCap), nil)
 		prog.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 		repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+		repo.On("GetUserByID", ctx, userID).Return(&domain.User{ID: userID, Username: "testuser", TwitchID: "t1"}, nil)
 		repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 			UserID: userID, JobID: jobID, CurrentXP: 0, CurrentLevel: 0,
 		}, nil)
@@ -107,6 +108,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		prog.On("GetModifiedValue", mock.Anything, "job_daily_cap", mock.Anything).Return(float64(DefaultDailyCap), nil)
 		prog.On("GetModifiedValue", mock.Anything, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
 		repo.On("GetJobByKey", ctx, jobKey).Return(job, nil)
+		repo.On("GetUserByID", ctx, userID).Return(&domain.User{ID: userID, Username: "testuser", TwitchID: "t1"}, nil)
 		repo.On("GetUserJob", ctx, userID, jobID).Return(&domain.UserJob{
 			UserID: userID, JobID: jobID, CurrentXP: 0, CurrentLevel: 0,
 		}, nil)

@@ -25,6 +25,9 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
+	capacityFloat, _ := s.progressionSvc.GetModifiedValue(ctx, user.ID, featureCompostCapacity, 3.0)
+	bin.Capacity = int(capacityFloat)
+
 	resolved, err := s.resolveDepositItems(ctx, items)
 	if err != nil {
 		return nil, err
@@ -38,6 +41,7 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
+	// Make sure capacity is intact for the returned structure
 	return bin, nil
 }
 
@@ -63,8 +67,15 @@ func (s *service) executeDepositTransaction(ctx context.Context, userID string, 
 	if err != nil {
 		return fmt.Errorf("failed to lock bin: %w", err)
 	}
+
+	// Preserve dynamic capacity which is not stored in DB
+	currentCapacity := bin.Capacity
+
 	// Copy data to the original bin pointer to maintain state for the caller
 	*bin = *binLocked
+
+	// Restore dynamic capacity
+	bin.Capacity = currentCapacity
 
 	inv, err := tx.GetInventory(ctx, userID)
 	if err != nil {
@@ -83,7 +94,7 @@ func (s *service) executeDepositTransaction(ctx context.Context, userID string, 
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 
-	s.updateBinWithDeposits(bin, resolved)
+	s.updateBinWithDeposits(ctx, bin, resolved)
 
 	if err := tx.UpdateBin(ctx, bin); err != nil {
 		return fmt.Errorf("failed to update bin: %w", err)
@@ -141,7 +152,7 @@ func (s *service) resolveDepositItems(ctx context.Context, items []DepositItem) 
 	return resolved, nil
 }
 
-func (s *service) updateBinWithDeposits(bin *domain.CompostBin, resolved []resolvedDeposit) {
+func (s *service) updateBinWithDeposits(ctx context.Context, bin *domain.CompostBin, resolved []resolvedDeposit) {
 	now := time.Now()
 	for _, r := range resolved {
 		bin.Items = append(bin.Items, domain.CompostBinItem{
@@ -163,8 +174,11 @@ func (s *service) updateBinWithDeposits(bin *domain.CompostBin, resolved []resol
 		bin.StartedAt = &now
 	}
 
-	readyAt := s.engine.CalculateReadyAt(*bin.StartedAt, bin.ItemCount)
+	compostSpeedMult, _ := s.progressionSvc.GetModifiedValue(ctx, bin.UserID, "compost_speed", 0.0)
+	sludgeExt, _ := s.progressionSvc.GetModifiedValue(ctx, bin.UserID, "sludge_extension", 0.0)
+
+	readyAt := s.engine.CalculateReadyAt(*bin.StartedAt, bin.ItemCount, compostSpeedMult)
 	bin.ReadyAt = &readyAt
-	sludgeAt := s.engine.CalculateSludgeAt(readyAt)
+	sludgeAt := s.engine.CalculateSludgeAt(readyAt, sludgeExt)
 	bin.SludgeAt = &sludgeAt
 }

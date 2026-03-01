@@ -93,6 +93,18 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 		return nil, domain.ErrFailedToGetUser
 	}
 
+	// Update platform username if it has changed
+	if user.PlatformUsernames == nil {
+		user.PlatformUsernames = make(map[string]string)
+	}
+	if user.PlatformUsernames[platform] != username {
+		log.Debug("Updating platform username", "platform", platform, "old", user.PlatformUsernames[platform], "new", username)
+		setPlatformInfo(user, platform, platformID, username)
+		if err := s.UpdateUser(ctx, *user); err != nil {
+			log.Warn("Failed to update platform username", "error", err)
+		}
+	}
+
 	// Track this user as an active chatter for random targeting
 	s.activeChatterTracker.Track(platform, user.ID, username)
 
@@ -157,7 +169,7 @@ func (s *service) getUserOrRegister(ctx context.Context, platform, platformID, u
 	// User not found, auto-register
 	log.Info("Auto-registering new user", "platform", platform, "platformID", platformID, "username", username)
 	newUser := domain.User{Username: username}
-	setPlatformID(&newUser, platform, platformID)
+	setPlatformInfo(&newUser, platform, platformID, username)
 
 	registered, err := s.RegisterUser(ctx, newUser)
 	if err != nil {

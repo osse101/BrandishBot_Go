@@ -19,3 +19,19 @@ const (
 	MsgHarvestComplete = "Composting complete!"
 	MsgHarvestFallback = "Composting complete! (converted to money)"
 )
+
+// Exported feature constants for testing
+const (
+	FeatureCompostYield    = "compost_yield"
+	FeatureCompostSpeed    = "compost_speed"
+	FeatureSludgeExtension = "sludge_extension"
+	FeatureCompostCapacity = "compost_capacity"
+)
+
+// Deprecated: use exported versions
+const (
+	featureCompostYield    = FeatureCompostYield
+	featureCompostSpeed    = FeatureCompostSpeed
+	featureSludgeExtension = FeatureSludgeExtension
+	featureCompostCapacity = FeatureCompostCapacity
+)

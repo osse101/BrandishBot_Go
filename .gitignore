@@ -9,6 +9,9 @@
 *.dylib
 bin/
 .vscode/
+.idea/
+.DS_Store
+*.swp
 
 # Built binaries
 /main
@@ -68,8 +71,6 @@ benchmarks/profiles/*.prof
 
 # Node.js
 node_modules/
-package-lock.json
 
 # Admin dashboard build artifacts
-web/admin/node_modules/
 web/admin/dist/

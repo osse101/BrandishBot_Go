@@ -13,6 +13,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
@@ -86,8 +87,8 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 
 	// Setup User and Harvest State
 	userID := "user-shutdown-test"
-	mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "123").Return(&domain.User{ID: userID}, nil)
-	mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, "feature_farming").Return(true, nil)
+	mockUserRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "123").Return(&domain.User{ID: userID}, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, progression.FeatureFarming).Return(true, nil)
 
 	// Setup initial harvest state check
 	lastHarvested := time.Now().Add(-6 * time.Hour) // 6 hours -> XP award triggered
@@ -101,8 +102,10 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
-	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestYield, 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureGrowthSpeed, 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureSpoilExtension, 0.0).Return(0.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestTier, 3.0).Return(9.0, nil).Maybe()
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 
@@ -114,7 +117,7 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	mockTx.On("Commit", mock.Anything).Return(nil)
 
 	// Execute Harvest
-	_, err := svc.Harvest(context.Background(), "discord", "123", "User")
+	_, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123", "User")
 	require.NoError(t, err)
 
 	// Immediately Shutdown and measure time
@@ -138,8 +141,8 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 
 	// Setup User and Harvest State
 	userID := "user-ctx-test"
-	mockUserRepo.On("GetUserByPlatformID", mock.Anything, "discord", "456").Return(&domain.User{ID: userID}, nil)
-	mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, "feature_farming").Return(true, nil)
+	mockUserRepo.On("GetUserByPlatformID", mock.Anything, domain.PlatformDiscord, "456").Return(&domain.User{ID: userID}, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", mock.Anything, progression.FeatureFarming).Return(true, nil)
 
 	// Setup initial harvest state check
 	lastHarvested := time.Now().Add(-6 * time.Hour) // 6 hours -> XP award triggered
@@ -153,8 +156,10 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 	mockTx.On("GetHarvestStateWithLock", mock.Anything, userID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
 
 	// Job Bonus
-	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "harvest_yield", 1.0).Return(1.0, nil).Maybe()
-	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, "growth_speed", 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestYield, 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureGrowthSpeed, 1.0).Return(1.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureSpoilExtension, 0.0).Return(0.0, nil).Maybe()
+	mockProgressionSvc.On("GetModifiedValue", mock.Anything, mock.Anything, featureHarvestTier, 3.0).Return(9.0, nil).Maybe()
 	// Progression/Items
 	mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 
@@ -169,7 +174,7 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Execute Harvest
-	_, err := svc.Harvest(ctx, "discord", "456", "User")
+	_, err := svc.Harvest(ctx, domain.PlatformDiscord, "456", "User")
 	require.NoError(t, err)
 
 	// Cancel context immediately

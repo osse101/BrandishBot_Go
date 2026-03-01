@@ -29,10 +29,11 @@ WHERE user_id = $2;
 SELECT platform_id FROM platforms WHERE name = $1;
 
 -- name: UpsertUserPlatformLink :exec
-INSERT INTO user_platform_links (user_id, platform_id, platform_user_id)
-VALUES ($1, $2, $3)
+INSERT INTO user_platform_links (user_id, platform_id, platform_user_id, platform_username)
+VALUES ($1, $2, $3, $4)
 ON CONFLICT (user_id, platform_id) DO UPDATE
-SET platform_user_id = EXCLUDED.platform_user_id;
+SET platform_user_id = EXCLUDED.platform_user_id, 
+    platform_username = COALESCE(EXCLUDED.platform_username, user_platform_links.platform_username);
 
 -- name: GetUserByPlatformID :one
 SELECT u.user_id, u.username
@@ -42,7 +43,7 @@ JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE p.name = $1 AND upl.platform_user_id = $2;
 
 -- name: GetUserPlatformLinks :many
-SELECT p.name, upl.platform_user_id
+SELECT p.name, upl.platform_user_id, upl.platform_username
 FROM user_platform_links upl
 JOIN platforms p ON upl.platform_id = p.platform_id
 WHERE upl.user_id = $1;
@@ -122,7 +123,7 @@ GROUP BY i.item_id
 ORDER BY i.item_id;
 
 -- name: GetSellablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id
@@ -197,7 +198,7 @@ ON CONFLICT (user_id, action_name) DO UPDATE
 SET last_used_at = EXCLUDED.last_used_at;
 
 -- name: GetBuyablePrices :many
-SELECT DISTINCT i.internal_name, i.public_name, i.base_value
+SELECT DISTINCT i.item_id, i.internal_name, i.public_name, i.default_display, i.item_description, i.base_value
 FROM items i
 INNER JOIN item_type_assignments ita ON i.item_id = ita.item_id
 INNER JOIN item_types it ON ita.item_type_id = it.item_type_id

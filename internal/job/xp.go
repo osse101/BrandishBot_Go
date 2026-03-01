@@ -12,15 +12,9 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
-// AwardXP awards XP to a user for a specific job
 func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
-	// Check if specific job is unlocked
-	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check job unlock: %w", err)
-	}
-	if !jobUnlocked {
-		return nil, fmt.Errorf("job %s is not unlocked: %w", jobKey, domain.ErrFeatureLocked)
+	if err := s.validateJobUnlocked(ctx, jobKey); err != nil {
+		return nil, err
 	}
 
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
@@ -43,15 +37,14 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	newXP := currentProgress.CurrentXP + int64(actualAmount)
 	newLevel := s.calculateNewLevel(ctx, newXP)
 
-	username := metadata.Username
-	platform := metadata.Platform
+	s.enrichMetadata(ctx, userID, &metadata)
 
 	now := time.Now()
 	if err := s.updateUserJobProgress(ctx, currentProgress, newXP, newLevel, actualAmount, &now); err != nil {
 		return nil, err
 	}
 
-	s.recordXPAndLevelUpEvents(ctx, userID, username, platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
+	s.recordXPAndLevelUpEvents(ctx, userID, metadata.Username, metadata.Platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
 
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
@@ -62,6 +55,75 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 	}, nil
 }
 
+func (s *service) validateJobUnlocked(ctx context.Context, jobKey string) error {
+	jobUnlocked, err := s.progressionSvc.IsNodeUnlocked(ctx, jobKey, 1)
+	if err != nil {
+		return fmt.Errorf("failed to check job unlock: %w", err)
+	}
+	if !jobUnlocked {
+		return fmt.Errorf("job %s is not unlocked: %w", jobKey, domain.ErrFeatureLocked)
+	}
+	return nil
+}
+
+func (s *service) enrichMetadata(ctx context.Context, userID string, metadata *domain.JobXPMetadata) {
+	// If both already set and valid, we're good
+	if metadata.Username != "" && metadata.Platform != "" && !s.isUUID(metadata.Username) {
+		return
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		if err != nil {
+			logger.FromContext(ctx).Warn("enrichMetadata failed to fetch user", "user_id", userID, "error", err)
+		}
+		return
+	}
+
+	if metadata.Platform == "" {
+		metadata.Platform = s.detectUserPlatform(user)
+	}
+
+	// Try to get a better username if current is empty or a UUID
+	if metadata.Username == "" || s.isUUID(metadata.Username) {
+		metadata.Username = s.resolveBestUsername(user, metadata.Platform)
+	}
+}
+
+func (s *service) detectUserPlatform(user *domain.User) string {
+	switch {
+	case user.TwitchID != "":
+		return domain.PlatformTwitch
+	case user.DiscordID != "":
+		return domain.PlatformDiscord
+	case user.YoutubeID != "":
+		return domain.PlatformYoutube
+	default:
+		return ""
+	}
+}
+
+func (s *service) resolveBestUsername(user *domain.User, platform string) string {
+	// Try platform-specific username first
+	if platform != "" {
+		if pu, ok := user.PlatformUsernames[platform]; ok && pu != "" {
+			return pu
+		}
+	}
+
+	// Fallback to global username if still needed
+	if user.Username != "" && !s.isUUID(user.Username) {
+		return user.Username
+	}
+
+	return user.Username // Final fallback
+}
+
+func (s *service) isUUID(str string) bool {
+	_, err := uuid.Parse(str)
+	return err == nil
+}
+
 func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platformID string, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
@@ -69,7 +131,11 @@ func (s *service) AwardXPByPlatform(ctx context.Context, platform string, platfo
 	}
 
 	if metadata.Username == "" {
-		metadata.Username = user.Username
+		if pu, ok := user.PlatformUsernames[platform]; ok && pu != "" {
+			metadata.Username = pu
+		} else {
+			metadata.Username = user.Username
+		}
 	}
 	if metadata.Platform == "" {
 		metadata.Platform = platform

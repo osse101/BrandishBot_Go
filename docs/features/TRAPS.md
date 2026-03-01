@@ -111,3 +111,8 @@ The item logic is handled in `internal/user/item_handlers.go` and executed via t
 
 - **Timeout System**: The User Service manages timeouts directly in-memory (`internal/user/timeout.go`). Timeouts accumulate if multiple are applied.
 - **Active Chatter Tracking**: The system tracks users who have recently messaged (`internal/user/active_chatter_tracker.go`) to determine valid targets for random-target items (Mines, TNT).
+  - The tracking logic is split into semantic files:
+    - `active_chatter_types.go`: Structs and constants.
+    - `active_chatter_ops.go`: Thread-safe state operations.
+    - `active_chatter_selection.go`: Target selection algorithms.
+    - `active_chatter_tracker.go`: Lifecycle and event handling.

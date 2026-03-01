@@ -8,26 +8,26 @@ namespace BrandishBot.Client
         /// <summary>
         /// Get user's job progress (self-mode)
         /// </summary>
-        public async Task<string> GetUserJobs(string platform, string platformId, string username)
+        public async Task<GetUserJobsResponse> GetUserJobs(string platform, string platformId, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,
                 "platform_id=" + platformId,
                 "username=" + username
             );
-            return await GetAsync<string>("/api/v1/jobs/user" + query);
+            return await GetAsync<GetUserJobsResponse>("/api/v1/jobs/user" + query);
         }
 
         /// <summary>
         /// Get user's job progress by username (target-mode)
         /// </summary>
-        public async Task<string> GetUserJobsByUsername(string platform, string username)
+        public async Task<GetUserJobsResponse> GetUserJobsByUsername(string platform, string username)
         {
             var query = BuildQuery(
                 "platform=" + platform,
                 "username=" + username
             );
-            return await GetAsync<string>("/api/v1/jobs/user" + query);
+            return await GetAsync<GetUserJobsResponse>("/api/v1/jobs/user" + query);
         }
 
         /// <summary>

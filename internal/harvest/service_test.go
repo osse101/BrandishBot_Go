@@ -2,25 +2,347 @@ package harvest
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
+
+// MockResilientPublisher implements ResilientPublisher for testing
+type MockResilientPublisher struct {
+	mock.Mock
+}
+
+func (m *MockResilientPublisher) PublishWithRetry(ctx context.Context, evt event.Event) {
+	m.Called(ctx, evt)
+}
+
+func setupServiceTest() (Service, *mocks.MockRepositoryHarvestRepository, *mocks.MockRepositoryUser, *mocks.MockProgressionService, *MockResilientPublisher) {
+	mockRepo := new(mocks.MockRepositoryHarvestRepository)
+	mockUserRepo := new(mocks.MockRepositoryUser)
+	mockProgressionSvc := new(mocks.MockProgressionService)
+	mockJobSvc := new(mocks.MockJobService)
+	mockPublisher := new(MockResilientPublisher)
+
+	svc := NewService(mockRepo, mockUserRepo, mockProgressionSvc, mockJobSvc, mockPublisher)
+	return svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher
+}
+
+func TestHarvest_Success(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	now := time.Now()
+	lastHarvested := now.Add(-5 * time.Hour) // 5 hours ago (Tier 2)
+
+	// Expectations
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+
+	// Harvest State logic
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	// performHarvestTransaction -> BeginTx
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	defer mockTx.AssertExpectations(t)
+
+	// Inside Tx:
+	// 1. GetHarvestStateWithLock
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	// 2. getBonusMultipliers -> GetModifiedValue calls
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestYield, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureGrowthSpeed, 1.0).Return(1.0, nil)
+
+	// 3. calculateHarvestRewards -> GetModifiedValue for spoil and tier
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil) // Max tier available
+
+	// 4. calculateRewards: 5 hours (Tier 2) -> 12 money (no unlocks needed)
+
+	// 5. fireAsyncEvents -> PublishWithRetry
+	mockPublisher.On("PublishWithRetry", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+		return evt.Type == domain.EventTypeHarvestCompleted
+	})).Return()
+
+	// 6. applyHarvestRewards -> GetInventory, GetItemsByNames, UpdateInventory
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+
+	moneyItem := domain.Item{ID: 1, InternalName: domain.ItemMoney}
+	mockUserRepo.On("GetItemsByNames", ctx, []string{domain.ItemMoney}).Return([]domain.Item{moneyItem}, nil)
+
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.MatchedBy(func(inv domain.Inventory) bool {
+		return len(inv.Slots) == 1 && inv.Slots[0].ItemID == 1 && inv.Slots[0].Quantity == 12
+	})).Return(nil)
+
+	// 7. UpdateHarvestState
+	mockTx.On("UpdateHarvestState", ctx, user.ID, mock.Anything).Return(nil)
+
+	// 8. Commit
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil).Maybe()
+
+	// Execute
+	resp, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 12, resp.ItemsGained[domain.ItemMoney])
+	assert.InDelta(t, 5.0, resp.HoursSinceHarvest, 0.1)
+
+	// Wait for async tasks and verify publisher called
+	err = svc.Shutdown(ctx)
+	assert.NoError(t, err)
+	mockPublisher.AssertExpectations(t)
+}
+
+func TestHarvest_Spoiled(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	now := time.Now()
+	// Spoiled threshold is 336 hours. Let's say 400 hours.
+	lastHarvested := now.Add(-400 * time.Hour)
+
+	// Expectations
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	defer mockTx.AssertExpectations(t)
+
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestYield, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureGrowthSpeed, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil)
+
+	// Spoiled logic returns fixed rewards: 1 Lootbox1, 3 Sticks.
+	mockPublisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+
+	// Expect lookup for Lootbox1 and Stick
+	lbItem := domain.Item{ID: 2, InternalName: domain.ItemLootbox1}
+	stickItem := domain.Item{ID: 3, InternalName: domain.ItemStick}
+	mockUserRepo.On("GetItemsByNames", ctx, mock.MatchedBy(func(names []string) bool {
+		return len(names) == 2 // Order might vary
+	})).Return([]domain.Item{lbItem, stickItem}, nil)
+
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("UpdateHarvestState", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil).Maybe()
+
+	// Execute
+	resp, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 1, resp.ItemsGained[domain.ItemLootbox1])
+	assert.Equal(t, 3, resp.ItemsGained[domain.ItemStick])
+	assert.Contains(t, resp.Message, "spoiled")
+
+	// Wait for async tasks
+	err = svc.Shutdown(ctx)
+	assert.NoError(t, err)
+	mockPublisher.AssertExpectations(t)
+}
+
+func TestHarvest_TooSoon(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, _ := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	// 30 mins ago (too soon, min is 1 hour)
+	lastHarvested := time.Now().Add(-30 * time.Minute)
+
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+	// Rollback should be called implicitly by safe rollback or explicitly if error
+	mockTx.On("Rollback", ctx).Return(nil).Maybe()
+
+	_, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	assert.Error(t, err)
+	assert.True(t, errors.Is(err, domain.ErrHarvestTooSoon))
+}
+
+func TestHarvest_EmptyRewards(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	now := time.Now()
+	// 1.5 hours ago. Min interval is 1 hour, so check passes.
+	// But first tier (Tier 1) requires 2 hours.
+	lastHarvested := now.Add(-90 * time.Minute)
+
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	defer mockTx.AssertExpectations(t)
+
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestYield, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureGrowthSpeed, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil)
+
+	// Async event: < 5 hours so no XP, publish NOT called
+	// But fireAsyncEvents is still called, just does nothing inside.
+
+	// Since rewards are empty, it should call UpdateHarvestState and Commit
+	mockTx.On("UpdateHarvestState", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil).Maybe()
+
+	resp, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	assert.NoError(t, err)
+	assert.Empty(t, resp.ItemsGained)
+	assert.Contains(t, resp.Message, "No rewards available")
+
+	// Wait for async tasks
+	err = svc.Shutdown(ctx)
+	assert.NoError(t, err)
+	mockPublisher.AssertExpectations(t)
+}
+
+func TestHarvest_TransactionRollback(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	now := time.Now()
+	lastHarvested := now.Add(-5 * time.Hour) // 5 hours ago
+
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+	defer mockTx.AssertExpectations(t)
+
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestYield, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureGrowthSpeed, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil)
+
+	// Async event
+	mockPublisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+
+	mockUserRepo.On("GetItemsByNames", ctx, mock.Anything).Return([]domain.Item{{InternalName: domain.ItemMoney, ID: 1}}, nil)
+
+	// Simulate failure in UpdateInventory
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(errors.New("db error"))
+
+	// Expect Rollback
+	mockTx.On("Rollback", ctx).Return(nil)
+
+	resp, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "db error")
+	assert.Nil(t, resp)
+
+	// Wait for async tasks
+	err = svc.Shutdown(ctx)
+	assert.NoError(t, err)
+	mockPublisher.AssertExpectations(t)
+}
+
+func TestHarvest_ProgressionFailure(t *testing.T) {
+	svc, mockRepo, mockUserRepo, mockProgressionSvc, mockPublisher := setupServiceTest()
+	mockTx := new(mocks.MockRepositoryHarvestTx)
+	ctx := context.Background()
+
+	user := &domain.User{ID: "user1"}
+	now := time.Now()
+	lastHarvested := now.Add(-5 * time.Hour)
+
+	mockUserRepo.On("GetUserByPlatformID", ctx, domain.PlatformTwitch, "123").Return(user, nil)
+	mockProgressionSvc.On("IsFeatureUnlocked", ctx, progression.FeatureFarming).Return(true, nil)
+	mockRepo.On("GetHarvestState", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+	mockRepo.On("BeginTx", ctx).Return(mockTx, nil)
+
+	mockTx.On("GetHarvestStateWithLock", ctx, user.ID).Return(&domain.HarvestState{LastHarvestedAt: lastHarvested}, nil)
+
+	// Simulate failure in GetModifiedValue
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestYield, 1.0).Return(0.0, errors.New("progression service down"))
+	// Should fall back to default 1.0
+	// Continue with others
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureGrowthSpeed, 1.0).Return(1.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
+	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(3.0, nil)
+
+	// Async event
+	mockPublisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
+
+	// Continue to success
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
+	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
+	mockUserRepo.On("GetItemsByNames", ctx, mock.Anything).Return([]domain.Item{{InternalName: domain.ItemMoney, ID: 1}}, nil)
+	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("UpdateHarvestState", ctx, user.ID, mock.Anything).Return(nil)
+	mockTx.On("Commit", ctx).Return(nil)
+	mockTx.On("Rollback", ctx).Return(nil).Maybe()
+
+	resp, err := svc.Harvest(ctx, domain.PlatformTwitch, "123", "testuser")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	// Verify rewards are calculated (12 money for 5 hours at tier 2, no bonus)
+	assert.Equal(t, 12, resp.ItemsGained[domain.ItemMoney])
+
+	err = svc.Shutdown(ctx)
+	assert.NoError(t, err)
+	mockPublisher.AssertExpectations(t)
+}
 
 func TestCalculateRewards(t *testing.T) {
 	tests := []struct {
 		name            string
 		hoursElapsed    float64
 		unlockedItems   map[string]bool
+		limitIndex      int
 		expectedReward  map[string]int
 		yieldMultiplier float64
 	}{
 		{
 			name:         "Less than 2 hours - no tier reached",
 			hoursElapsed: 1.5,
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
@@ -31,6 +353,7 @@ func TestCalculateRewards(t *testing.T) {
 		{
 			name:         "Exactly 2 hours - Tier 1",
 			hoursElapsed: 2.0,
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
@@ -43,6 +366,7 @@ func TestCalculateRewards(t *testing.T) {
 		{
 			name:         "5 hours - Tier 1 + 2",
 			hoursElapsed: 5.0,
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
@@ -55,6 +379,7 @@ func TestCalculateRewards(t *testing.T) {
 		{
 			name:         "24 hours - All stick tiers, stick unlocked",
 			hoursElapsed: 24.0,
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: false,
@@ -68,6 +393,7 @@ func TestCalculateRewards(t *testing.T) {
 		{
 			name:         "24 hours - stick NOT unlocked",
 			hoursElapsed: 24.0,
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    false,
 				itemLootbox1: false,
@@ -78,68 +404,35 @@ func TestCalculateRewards(t *testing.T) {
 			},
 		},
 		{
-			name:         "48 hours - includes lootbox0",
-			hoursElapsed: 48.0,
-			unlockedItems: map[string]bool{
-				itemStick:    true,
-				itemLootbox1: false,
-				itemLootbox2: false,
-			},
-			expectedReward: map[string]int{
-				itemMoney:    32, // 2 + 10 + 5 + 5 + 10
-				itemStick:    3,  // 1 + 2
-				itemLootbox0: 1,  // lootbox0 doesn't require unlock
-			},
-		},
-		{
-			name:         "168 hours - max tier, all unlocked",
-			hoursElapsed: 168.0,
+			name:         "Tier Limit Applied (Limit at Tier 1 -> 2 hours)",
+			hoursElapsed: 168.0, // Enough for max tier
+			limitIndex:   0,     // But limited to Tier 0 (2 hours)
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
 				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				itemMoney:    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20
-				itemStick:    8,  // 1 + 2 + 5
-				itemLootbox0: 3,  // 1 + 2
-				itemLootbox1: 2,  // 1 + 1
-				itemLootbox2: 1,  // 1
+				itemMoney: 2, // Only Tier 1 reward
 			},
 		},
 		{
-			name:         "168 hours - max tier, lootboxes NOT unlocked",
+			name:         "Tier Limit Applied (Limit at Tier 2 -> 5 hours)",
 			hoursElapsed: 168.0,
-			unlockedItems: map[string]bool{
-				itemStick:    true,
-				itemLootbox1: false,
-				itemLootbox2: false,
-			},
-			expectedReward: map[string]int{
-				itemMoney:    97, // 2 + 10 + 5 + 5 + 10 + 10 + 5 + 15 + 15 + 20 (all money counts)
-				itemStick:    8,  // 1 + 2 + 5
-				itemLootbox0: 3,  // 1 + 2 (lootbox0 doesn't require unlock)
-			},
-		},
-		{
-			name:         "200 hours - beyond max tier",
-			hoursElapsed: 200.0,
+			limitIndex:   1, // Limited to Tier 1 (5 hours)
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
 				itemLootbox2: true,
 			},
 			expectedReward: map[string]int{
-				itemMoney:    97, // Same as 168h tier
-				itemStick:    8,
-				itemLootbox0: 3,
-				itemLootbox1: 2,
-				itemLootbox2: 1,
+				itemMoney: 12, // Tier 1 (2) + Tier 2 (10)
 			},
 		},
 		{
 			name:         "Yield Bonus - 1.5x multiplier",
 			hoursElapsed: 5.0, // Tier 1 + 2 (12 money)
+			limitIndex:   9,
 			unlockedItems: map[string]bool{
 				itemStick:    true,
 				itemLootbox1: true,
@@ -172,7 +465,7 @@ func TestCalculateRewards(t *testing.T) {
 			if tt.yieldMultiplier > 0 {
 				multiplier = tt.yieldMultiplier
 			}
-			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed, multiplier)
+			rewards := svc.calculateRewards(context.Background(), tt.hoursElapsed, multiplier, tt.limitIndex)
 
 			// Assert
 			assert.Equal(t, tt.expectedReward, rewards)

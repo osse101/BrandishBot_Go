@@ -65,6 +65,13 @@ func numericToFloat64(n pgtype.Numeric) (float64, error) {
 	return val.Float64, nil
 }
 
+// float64ToNumeric safely converts float64 to pgtype.Numeric.
+func float64ToNumeric(f float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	_ = n.Scan(fmt.Sprintf("%f", f))
+	return n
+}
+
 // txHelper wraps common transaction begin logic.
 // Returns a transaction and queries instance with the transaction applied.
 type txHelper struct {
@@ -113,8 +120,9 @@ func textToPtr(t pgtype.Text) *string {
 // mapUserAndLinks maps database rows to a User domain object
 func mapUserAndLinks(ctx context.Context, q *generated.Queries, userID uuid.UUID, username string) (*domain.User, error) {
 	user := domain.User{
-		ID:       userID.String(),
-		Username: username,
+		ID:                userID.String(),
+		Username:          username,
+		PlatformUsernames: make(map[string]string),
 	}
 
 	links, err := q.GetUserPlatformLinks(ctx, userID)
@@ -123,6 +131,9 @@ func mapUserAndLinks(ctx context.Context, q *generated.Queries, userID uuid.UUID
 	}
 
 	for _, link := range links {
+		if link.PlatformUsername.Valid {
+			user.PlatformUsernames[link.Name] = link.PlatformUsername.String
+		}
 		switch link.Name {
 		case "twitch":
 			user.TwitchID = link.PlatformUserID

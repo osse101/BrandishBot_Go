@@ -489,5 +489,39 @@ namespace BrandishBot.Client
         {
             return info?.Description ?? "(no info available)";
         }
+
+        /// <summary>
+        /// Format user jobs response for readability
+        /// </summary>
+        public static string FormatUserJobs(GetUserJobsResponse response)
+        {
+            if (response?.Jobs == null || response.Jobs.Count == 0)
+                return "No job progress found.";
+
+            var jobStrings = new List<string>();
+            foreach (var job in response.Jobs)
+            {
+                string jobStr = $"{job.DisplayName} (Lv {job.Level})";
+                if (response.PrimaryJob != null && response.PrimaryJob.JobKey == job.JobKey)
+                {
+                    jobStr = "⭐ " + jobStr;
+                }
+                jobStrings.Add(jobStr);
+            }
+
+            return "Jobs: " + string.Join(" | ", jobStrings);
+        }
+
+        /// <summary>
+        /// Format health response
+        /// </summary>
+        public static string FormatHealth(HealthResponse response)
+        {
+            if (response == null) return "Unknown health status";
+            string msg = response.Status;
+            if (!string.IsNullOrEmpty(response.Message))
+                msg += $": {response.Message}";
+            return "Server Status: " + msg;
+        }
     }
 }

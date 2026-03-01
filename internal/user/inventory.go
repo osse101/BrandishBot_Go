@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -33,7 +34,9 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 		return domain.ErrItemNotFound
 	}
 
-	return s.withTx(ctx, func(tx repository.UserTx) error {
+	var eventToPublish func()
+
+	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
@@ -60,8 +63,25 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		eventToPublish = func() {
+			if s.publisher != nil {
+				s.publisher.PublishWithRetry(ctx, event.NewItemAddedEvent(
+					user.ID,
+					itemName,
+					quantity,
+					"admin",
+				))
+			}
+		}
+
 		return nil
 	})
+
+	if err == nil && eventToPublish != nil {
+		eventToPublish()
+	}
+
+	return err
 }
 
 // removeItemFromUserInternal removes an item from a user's inventory within a transaction
@@ -78,6 +98,8 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 	}
 
 	var removed int
+	var eventToPublish func()
+
 	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		inventory, err := tx.GetInventory(ctx, user.ID)
 		if err != nil {
@@ -108,8 +130,25 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		if removed > 0 {
+			eventToPublish = func() {
+				if s.publisher != nil {
+					s.publisher.PublishWithRetry(ctx, event.NewItemRemovedEvent(
+						user.ID,
+						itemName,
+						removed,
+						"admin",
+					))
+				}
+			}
+		}
+
 		return nil
 	})
+
+	if err == nil && eventToPublish != nil {
+		eventToPublish()
+	}
 
 	return removed, err
 }
@@ -251,56 +290,15 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		return err
 	}
 
-	// Build map of item names -> item IDs
-	itemIDMap := make(map[string]int)
-
-	// Optimization: Identify missing items in cache first
-	var missingNames []string
-
-	s.itemCacheMu.RLock()
-	for itemName := range items {
-		if item, ok := s.itemCacheByName[itemName]; ok {
-			itemIDMap[itemName] = item.ID
-		} else {
-			missingNames = append(missingNames, itemName)
-		}
-	}
-	s.itemCacheMu.RUnlock()
-
-	// Batch fetch missing items from DB
-	if len(missingNames) > 0 {
-		missingItems, err := s.repo.GetItemsByNames(ctx, missingNames)
-		if err != nil {
-			log.Error("Failed to get missing items", "error", err)
-			return domain.ErrItemNotFound
-		}
-
-		// Update cache and map
-		s.itemCacheMu.Lock()
-		for _, item := range missingItems {
-			s.itemCacheByName[item.InternalName] = item
-			s.itemIDToName[item.ID] = item.InternalName
-			itemIDMap[item.InternalName] = item.ID
-		}
-		s.itemCacheMu.Unlock()
-	}
-
 	// Build slots list: converts item names to IDs and sets default COMMON quality levels.
-	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
-	for itemName, quantity := range items {
-		itemID, ok := itemIDMap[itemName]
-		if !ok {
-			log.Warn("Item not found", "itemName", itemName)
-			return domain.ErrItemNotFound
-		}
-		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
-			ItemID:       itemID,
-			Quantity:     quantity,
-			QualityLevel: domain.QualityCommon,
-		})
+	slotsToAdd, err := s.resolveItemsToSlots(ctx, items)
+	if err != nil {
+		return err
 	}
 
 	// Start single transaction for all items
+	var eventsToPublish []func()
+
 	err = s.withTx(ctx, func(tx repository.UserTx) error {
 		// Get inventory once
 		inventory, err := tx.GetInventory(ctx, user.ID)
@@ -318,10 +316,29 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		for itemName, quantity := range items {
+			name := itemName
+			qty := quantity
+			eventsToPublish = append(eventsToPublish, func() {
+				if s.publisher != nil {
+					s.publisher.PublishWithRetry(ctx, event.NewItemAddedEvent(
+						user.ID,
+						name,
+						qty,
+						"lootbox",
+					))
+				}
+			})
+		}
+
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	for _, pubFunc := range eventsToPublish {
+		pubFunc()
 	}
 
 	log.Info("Items added successfully", "username", username, "itemCount", len(items))
@@ -378,7 +395,9 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain.User, item *domain.Item, quantity int) error {
 	log := logger.FromContext(ctx)
 
-	return s.withTx(ctx, func(tx repository.UserTx) error {
+	var eventToPublish func()
+
+	err := s.withTx(ctx, func(tx repository.UserTx) error {
 		ownerInventory, err := tx.GetInventory(ctx, owner.ID)
 		if err != nil {
 			log.Error("Failed to get owner inventory", "error", err)
@@ -433,9 +452,26 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		eventToPublish = func() {
+			if s.publisher != nil {
+				s.publisher.PublishWithRetry(ctx, event.NewItemTransferredEvent(
+					owner.ID,
+					receiver.ID,
+					item.InternalName,
+					quantity,
+				))
+			}
+		}
+
 		log.Info("Item transferred", "owner", owner.Username, "receiver", receiver.Username, "item", item.InternalName, "quantity", quantity)
 		return nil
 	})
+
+	if err == nil && eventToPublish != nil {
+		eventToPublish()
+	}
+
+	return err
 }
 
 func (s *service) GetInventory(ctx context.Context, platform, platformID, username, filter string) ([]InventoryItem, error) {
@@ -492,4 +528,51 @@ func (s *service) addItemToTx(ctx context.Context, tx repository.UserTx, userID 
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 	return nil
+}
+
+func (s *service) resolveItemsToSlots(ctx context.Context, items map[string]int) ([]domain.InventorySlot, error) {
+	log := logger.FromContext(ctx)
+	itemIDMap := make(map[string]int)
+	var missingNames []string
+
+	s.itemCacheMu.RLock()
+	for itemName := range items {
+		if item, ok := s.itemCacheByName[itemName]; ok {
+			itemIDMap[itemName] = item.ID
+		} else {
+			missingNames = append(missingNames, itemName)
+		}
+	}
+	s.itemCacheMu.RUnlock()
+
+	if len(missingNames) > 0 {
+		missingItems, err := s.repo.GetItemsByNames(ctx, missingNames)
+		if err != nil {
+			log.Error("Failed to get missing items", "error", err)
+			return nil, domain.ErrItemNotFound
+		}
+
+		s.itemCacheMu.Lock()
+		for _, item := range missingItems {
+			s.itemCacheByName[item.InternalName] = item
+			s.itemIDToName[item.ID] = item.InternalName
+			itemIDMap[item.InternalName] = item.ID
+		}
+		s.itemCacheMu.Unlock()
+	}
+
+	slotsToAdd := make([]domain.InventorySlot, 0, len(items))
+	for itemName, quantity := range items {
+		itemID, ok := itemIDMap[itemName]
+		if !ok {
+			log.Warn("Item not found", "itemName", itemName)
+			return nil, domain.ErrItemNotFound
+		}
+		slotsToAdd = append(slotsToAdd, domain.InventorySlot{
+			ItemID:       itemID,
+			Quantity:     quantity,
+			QualityLevel: domain.QualityCommon,
+		})
+	}
+	return slotsToAdd, nil
 }

@@ -94,3 +94,23 @@ func syncDynamicPrerequisites(ctx context.Context, repo repository.Progression, 
 	// Update database
 	return dynamicSyncer.UpdateNodeDynamicPrerequisites(ctx, nodeID, jsonData)
 }
+
+// BonusModifierSyncer is an optional interface for syncing bonus modifiers
+type BonusModifierSyncer interface {
+	SyncBonusModifiers(ctx context.Context, nodeKey string, sourceType string, modifiers []domain.ModifierConfig) error
+}
+
+// syncBonusModifiers syncs a node's bonus modifiers
+func syncBonusModifiers(ctx context.Context, repo repository.Progression, config *NodeConfig) error {
+	syncer, ok := repo.(BonusModifierSyncer)
+	if !ok {
+		return nil
+	}
+
+	sourceType := ProgressionSourceType
+	if config.Type == "job" {
+		sourceType = JobSourceType
+	}
+
+	return syncer.SyncBonusModifiers(ctx, config.Key, sourceType, config.ModifierConfigs)
+}

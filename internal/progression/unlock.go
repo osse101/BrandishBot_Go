@@ -3,6 +3,7 @@ package progression
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // IsFeatureUnlocked checks if a feature is available
@@ -27,7 +28,10 @@ func (s *service) IsFeatureUnlocked(ctx context.Context, featureKey string) (boo
 // IsItemUnlocked checks if an item is available
 func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
 	// Item names are prefixed with "item_"
-	nodeKey := fmt.Sprintf("item_%s", itemName)
+	nodeKey := itemName
+	if !strings.HasPrefix(nodeKey, "item_") {
+		nodeKey = "item_" + itemName
+	}
 
 	// Check cache first
 	if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
@@ -78,7 +82,11 @@ func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map
 
 	// Check cache first for all items
 	for _, itemName := range itemNames {
-		nodeKey := fmt.Sprintf("item_%s", itemName)
+		nodeKey := itemName
+		if !strings.HasPrefix(nodeKey, "item_") {
+			nodeKey = "item_" + itemName
+		}
+
 		if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
 			result[itemName] = unlocked
 		} else {

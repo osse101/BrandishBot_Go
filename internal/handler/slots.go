@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -43,21 +42,9 @@ func (h *SlotsHandler) HandleSpinSlots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode request
+	// Decode and validate request
 	var req SpinSlotsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		RespondError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	// Validate request
-	if req.Platform == "" || req.PlatformID == "" || req.Username == "" {
-		RespondError(w, http.StatusBadRequest, "Missing required fields")
-		return
-	}
-
-	if req.BetAmount < slots.MinBetAmount || req.BetAmount > slots.MaxBetAmount {
-		RespondError(w, http.StatusBadRequest, "Bet amount must be between 10 and 10,000")
+	if err := DecodeAndValidateRequest(r, w, &req, "Spin slots"); err != nil {
 		return
 	}
 

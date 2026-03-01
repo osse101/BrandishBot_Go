@@ -76,6 +76,7 @@ type UserProgression struct {
 type EngagementMetric struct {
 	ID          int                    `json:"id"`
 	UserID      string                 `json:"user_id"`
+	Platform    string                 `json:"platform,omitempty"`
 	MetricType  string                 `json:"metric_type"` // 'message', 'command', 'item_crafted', 'item_used'
 	MetricValue int                    `json:"metric_value"`
 	RecordedAt  time.Time              `json:"recorded_at"`

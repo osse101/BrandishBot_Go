@@ -15,7 +15,7 @@ const (
 )
 
 const (
-	TierScalingFactor = 1.50
+	TierScalingFactor = 2
 	BaseCostSmall     = 25
 	BaseCostMedium    = 50
 	BaseCostLarge     = 100
@@ -47,7 +47,6 @@ func CalculateUnlockCost(tier int, size NodeSize) (int, error) {
 	// Calculate exponential tier multiplier: TierScalingFactor^tier
 	tierMultiplier := math.Pow(TierScalingFactor, float64(tier))
 
-	// Final cost = baseCost * tierMultiplier
 	cost := float64(baseCost) * tierMultiplier
 
 	return int(math.Round(cost)), nil

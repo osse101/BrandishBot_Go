@@ -12,11 +12,21 @@ type SimpleInventoryItem struct {
 // to a simplified format containing only name and quantity for Discord display.
 // This helper eliminates duplication when converting inventory API response types.
 func ConvertToSimpleInventory(inventoryItems []user.InventoryItem) []SimpleInventoryItem {
-	items := make([]SimpleInventoryItem, 0, len(inventoryItems))
+	itemsMap := make(map[string]int)
+	itemOrder := make([]string, 0)
+
 	for _, item := range inventoryItems {
+		if _, exists := itemsMap[item.PublicName]; !exists {
+			itemOrder = append(itemOrder, item.PublicName)
+		}
+		itemsMap[item.PublicName] += item.Quantity
+	}
+
+	items := make([]SimpleInventoryItem, 0, len(itemOrder))
+	for _, name := range itemOrder {
 		items = append(items, SimpleInventoryItem{
-			Name:     item.PublicName,
-			Quantity: item.Quantity,
+			Name:     name,
+			Quantity: itemsMap[name],
 		})
 	}
 	return items

@@ -2,38 +2,33 @@
 
 ## Description
 
-The Compost system, intended for recycling items into gems/resources, is currently incomplete. The service interface is defined, but core methods contain placeholders.
+The Compost system, intended for recycling items into gems/resources, is now fully implemented. It allows players to deposit compostable items, wait for them to process, and harvest the results.
 
 ## Status
 
-**Implementation Status: In Progress**
+**Implementation Status: ✅ Completed**
 
-- **Service**: `internal/compost/service.go` exists.
-- **Deposit**: Contains TODOs for inventory validation and removal.
-- **Harvest**: Returns `not implemented`.
-- **Status**: Seemingly implemented (`GetStatus`).
+- **Service**: `internal/compost/service.go` (Lifecycle, validation, status checks)
+- **Deposit**: `internal/compost/deposit.go` (Inventory validation, capacity checks, bin updates)
+- **Harvest**: `internal/compost/harvest.go` (Output calculation, inventory updates, XP awarding)
+- **Engine**: `internal/compost/engine.go` (Core logic for time and output calculation)
 
-## Missing Components
+## Completed Components
 
-1.  **Inventory Consumption**: `Deposit` method needs to actually remove items from user inventory.
-2.  **Validation**: Ensure user owns the items.
-3.  **Reward Logic**: `Harvest` needs to calculate rewards (Gems?) based on item rarity and quantity.
-4.  **Ready Logic**: `Deposit` sets a hardcoded 24h timer. This should likely be dynamic based on item type/rarity.
+1.  **Inventory Consumption**: `Deposit` method validates and removes items from user inventory.
+2.  **Validation**: Ensures user owns the items and that they are compostable.
+3.  **Reward Logic**: `Harvest` calculates rewards based on input value, dominant type, and progression modifiers.
+4.  **Dynamic Logic**: Processing time is dynamic based on item count and progression speed modifiers.
+5.  **Sludge Mechanic**: Implemented spoilage if items are left too long (`sludge_extension` modifier supported).
 
 ## Location
 
-- `internal/compost/service.go`
+- `internal/compost/`
 
-## Action Items
+## Status Update (2026-02-23)
 
-- [ ] Implement `Deposit` logic (inventory check/remove).
-- [ ] Implement `Harvest` logic (reward calculation, database update).
-- [ ] Implement dynamic composting times (if required).
-- [ ] Verify `GetStatus` accuracy.
+**Implementation Status: Completed**
 
-## Status Update (2026-02-14)
-
-**Implementation Status: No Change**
-
-- Confirmed `Deposit` method in `internal/compost/service.go` still contains TODOs for inventory operations.
-- Confirmed `Harvest` method returns `not implemented`.
+- Confirmed `Deposit` method in `internal/compost/deposit.go` is fully implemented.
+- Confirmed `Harvest` method in `internal/compost/harvest.go` is fully implemented.
+- Confirmed `Engine` logic handles calculations correctly.

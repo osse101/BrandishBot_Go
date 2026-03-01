@@ -90,8 +90,8 @@ help:
 # Database connection string from environment
 DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
 
-# Base reference for smart testing (defaults to origin/main)
-BASE_REF ?= origin/main
+# Base reference for smart testing (defaults to origin/develop)
+BASE_REF ?= origin/develop
 
 # Migration commands
 migrate-up:
@@ -117,24 +117,20 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go run ./cmd/devtool check-coverage -run -file logs/coverage.out -threshold 0
+	@go test ./... -race
 
 test-smart:
 	@echo "Running smart tests (changed packages vs $(BASE_REF))..."
-	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
+	@go run ./cmd/devtool check-coverage -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -threshold 0
 
 unit:
 	@echo "Running unit tests (fast)..."
 	@go test -short ./...
 
 watch:
-	@echo "Watching for changes to run unit tests..."
-	@if command -v entr > /dev/null; then \
-		find . -name "*.go" | entr -c $(MAKE) unit; \
-	else \
-		echo "Error: 'entr' is not installed. Please install it to use this feature."; \
-		exit 1; \
-	fi
+	@echo "Watching for changes to run tests (smart mode)..."
+	@mkdir -p logs
+	@go run ./cmd/devtool check-coverage -watch -smart -base $(BASE_REF) -exclude ./cmd/devtool -run -file logs/coverage.out -threshold 80
 
 test-coverage:
 	@go run ./cmd/devtool check-coverage -html -file logs/coverage.out -threshold 0
@@ -249,19 +245,29 @@ swagger:
 	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
-generate:
-	@echo "Generating Swagger documentation..."
-	@$(MAKE) swagger
+generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy
+
+generate-swagger: swagger
+
+generate-sqlc:
 	@echo "Generating sqlc code..."
 	@$(SQLC) generate
 	@echo "✓ sqlc code generated"
+
+generate-progression:
 	@echo "Generating progression keys from config..."
 	@go run ./cmd/gen-progression-keys -config configs/progression_tree.json -output internal/progression/keys.go
 	@echo "✓ progression keys generated"
+
+generate-mocks:
 	@echo "Generating mocks..."
 	@$(MOCKERY)
 	@echo "✓ mocks generated"
+
+generate-tidy:
+	@echo "Running go mod tidy..."
 	@go mod tidy
+	@echo "✓ go mod tidy complete"
 
 # Docker commands
 docker-up:

@@ -63,17 +63,17 @@ namespace BrandishBot.Client
         /// <summary>
         /// Check if API is alive
         /// </summary>
-        public async Task<string> HealthCheck()
+        public async Task<HealthResponse> HealthCheck()
         {
-            return await GetAsync<string>("/healthz");
+            return await GetAsync<HealthResponse>("/healthz");
         }
 
         /// <summary>
         /// Check if API is ready
         /// </summary>
-        public async Task<string> ReadyCheck()
+        public async Task<HealthResponse> ReadyCheck()
         {
-            return await GetAsync<string>("/readyz");
+            return await GetAsync<HealthResponse>("/readyz");
         }
     }
 }

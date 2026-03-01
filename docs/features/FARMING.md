@@ -47,8 +47,9 @@ If you wait longer than **336 hours (2 weeks)**, your crops will spoil!
 
 The system is implemented in `internal/harvest/`.
 
-- **Service**: `internal/harvest/service.go`
-- **Tiers**: `internal/harvest/reward_tiers.go`
+- **Service Interface**: `internal/harvest/service.go`
+- **Core Logic**: `internal/harvest/harvest.go`
+- **Rewards**: `internal/harvest/rewards.go`
 - **Persistence**: Harvest state is stored in the database, tracking `last_harvested_at`.
 
 ### Technical Implementation
@@ -108,6 +109,10 @@ If you leave your finished compost in the bin for too long (**1 Week** after fin
 
 The compost system uses a "Garbage In, Value Out" engine in `internal/compost/engine.go`.
 
-- **Service**: `internal/compost/service.go` handles transactions and validation.
-- **Engine**: Pure logic for calculating ready times and outputs.
+- **Service**: Service logic is split across multiple files in `internal/compost/`:
+  - `service.go`: Interface definitions, lifecycle management, and validation.
+  - `deposit.go`: Logic for adding items to the bin.
+  - `harvest.go`: Logic for checking status and collecting rewards.
+- **Engine**: `internal/compost/engine.go` contains pure logic for calculating ready times, spoil times, and output items based on input value and types.
+- **Shutdown**: The service implements `Shutdown(ctx)` to gracefully wait for asynchronous operations (using `sync.WaitGroup`) before the application stops.
 - **Events**: Publishes `compost.harvested` for stats and notifications.

@@ -39,40 +39,39 @@ const (
 // XP award amounts for different actions
 const (
 	// Blacksmith XP awards
-	BlacksmithXPPerItem = 10
+	BlacksmithXPPerItem = 25
 
 	// Gambler XP awards
-	GamblerXPPerLootbox = 20
-	GamblerWinBonus     = 20
+	GamblerXPPerLootbox = 50
+	GamblerWinBonus     = 50
 
 	// Explorer XP awards
-	ExplorerXPPerItem = 20
+	ExplorerXPPerItem = 45
 
 	// Merchant XP awards (value-based)
-	MerchantXPValueDivisor = 10.0 // XP = ceil(transactionValue / divisor)
-	MerchantBonusPerLevel  = 0.5  // 0.5% price adjustment per level
+	MerchantXPValueDivisor = 5.0 // XP = ceil(transactionValue / divisor)
+	MerchantBonusPerLevel  = 0.5 // 0.5% price adjustment per level
 
 	// Scholar XP awards
-	ScholarXPPerEngagement = 2
-	ScholarBonusPerLevel   = 10.0 // 10% engagement value increase per level
+	ScholarXPPerEngagement = 1
 )
 
 // XP source types for tracking and special behavior
 const (
-	SourceEngagement     = "engagement"      // Engagement XP
-	SourceSearch         = "search"          // Search XP
-	SourceRareCandy      = "rarecandy"       // Rare candy usage - bypasses daily cap
-	SourceHarvest        = "harvest"         // Harvest XP - bypasses daily cap
-	SourcePrediction     = "prediction"      // Prediction XP
-	SourceQuest          = "quest"           // Quest XP
-	SourceUpgrade        = "upgrade"         // Item upgrade XP
-	SourceDisassemble    = "disassemble"     // Item disassemble XP
-	SourceSlots          = "slots"           // Slots XP
-	SourceCompostHarvest = "compost_harvest" // Compost harvest XP
-	SourceExpedition     = "expedition"      // Expedition XP
-	SourceGambleWin      = "win"             // Gamble win XP
-	SourceSell           = "sell"            // Item sell XP
-	SourceBuy            = "buy"             // Item buy XP
+	SourceEngagement     = "engagement"        // Engagement XP
+	SourceSearch         = domain.ActionSearch // Search XP
+	SourceRareCandy      = "rarecandy"         // Rare candy usage - bypasses daily cap
+	SourceHarvest        = "harvest"           // Harvest XP - bypasses daily cap
+	SourcePrediction     = "prediction"        // Prediction XP
+	SourceQuest          = "quest"             // Quest XP
+	SourceUpgrade        = "upgrade"           // Item upgrade XP
+	SourceDisassemble    = "disassemble"       // Item disassemble XP
+	SourceSlots          = "slots"             // Slots XP
+	SourceCompostHarvest = "compost_harvest"   // Compost harvest XP
+	SourceExpedition     = "expedition"        // Expedition XP
+	SourceGambleWin      = "win"               // Gamble win XP
+	SourceSell           = "sell"              // Item sell XP
+	SourceBuy            = "buy"               // Item buy XP
 )
 
 // Log source constants for better tracking in logs

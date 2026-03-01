@@ -1,4 +1,0 @@
-Scholar levelup too fast
-Levelup to twitch shows UserID instead of username
-Levelup to Discord shows generic user instead of username
-Levelup shows cross platform when it should be specific to the platform

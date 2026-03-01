@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
@@ -70,7 +69,12 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		}
 
 		// Apply Scholar bonus (per-user contribution multiplier)
-		scholarMultiplier := s.calculateScholarBonus(ctx, userID)
+		scholarMultiplier, err := s.GetModifiedValue(ctx, userID, "engagement_contribution_multiplier", 1.0)
+		if err != nil {
+			logger.FromContext(ctx).Warn("Failed to apply engagement_contribution_multiplier", "error", err)
+			scholarMultiplier = 1.0
+		}
+
 		if scholarMultiplier > 1.0 {
 			log := logger.FromContext(ctx)
 			log.Info("Applying Scholar bonus",
@@ -95,30 +99,6 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 func (s *service) GetEngagementScore(ctx context.Context) (int, error) {
 	// Get score since last unlock (or beginning)
 	return s.repo.GetEngagementScore(ctx, nil)
-}
-
-// calculateScholarBonus calculates the contribution multiplier from Scholar job
-// Returns 1.0 + (level × 0.10), e.g., level 5 = 1.5x multiplier
-func (s *service) calculateScholarBonus(ctx context.Context, userID string) float64 {
-	log := logger.FromContext(ctx)
-
-	if s.jobService == nil {
-		return 1.0
-	}
-
-	level, err := s.jobService.GetJobLevel(ctx, userID, job.JobKeyScholar)
-	if err != nil {
-		log.Warn("Failed to get Scholar level, using 1.0x multiplier", "error", err)
-		return 1.0
-	}
-
-	if level == 0 {
-		return 1.0
-	}
-
-	// 10% bonus per level
-	multiplier := 1.0 + (float64(level) * job.ScholarBonusPerLevel / 100.0)
-	return multiplier
 }
 
 // GetUserEngagement returns user's contribution breakdown

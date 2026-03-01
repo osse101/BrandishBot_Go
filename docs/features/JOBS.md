@@ -8,7 +8,7 @@ The Job system provides RPG-style progression for players, allowing them to leve
 | :------------- | :-------------------- | :------------------------------------------- |
 | **Blacksmith** | Crafting & Creation   | Upgrading items, Disassembling items.        |
 | **Merchant**   | Trading & Economy     | Buying items, Selling items.                 |
-| **Farmer**     | Resource Gathering    | Harvesting crops, Composting (In Dev).       |
+| **Farmer**     | Resource Gathering    | Harvesting crops, Composting.                |
 | **Gambler**    | Risk & Reward         | Opening lootboxes, Spinning slots, Gambling. |
 | **Scholar**    | Knowledge & Discovery | Performing searches, Analyzing items.        |
 | **Explorer**   | Adventure & Travel    | Leading expeditions, Discovering locations.  |
@@ -83,5 +83,5 @@ POST /api/v1/jobs/award-xp
 
 - **Service**: `internal/job/service.go`
 - **Repository**: `internal/repository/job.go`
-- **Database**: `jobs`, `user_jobs`, `job_xp_events`, `job_level_bonuses` tables.
+- **Database**: `jobs`, `user_jobs`, `job_xp_events`, `bonus_config` tables.
 - **Daily Reset**: Handled by [Daily Reset System](./DAILY_RESET.md).

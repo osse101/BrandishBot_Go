@@ -1062,7 +1062,7 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 	lastEvent := mockBus.PublishedEvents[len(mockBus.PublishedEvents)-1]
 	require.Equal(t, event.Type(domain.EventTypeSearchPerformed), lastEvent.Type)
 	payload := lastEvent.Payload.(domain.SearchPerformedPayload)
-	assert.Equal(t, 20, payload.XPAmount, "Normal search should give 20 XP")
+	assert.Equal(t, 45, payload.XPAmount, "Normal search should give 45 XP")
 
 	// 2. Diminished Search
 	statsSvc := svc.statsService.(*mockStatsService)
@@ -1079,8 +1079,8 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 
 	lastEvent = mockBus.PublishedEvents[len(mockBus.PublishedEvents)-1]
 	payload = lastEvent.Payload.(domain.SearchPerformedPayload)
-	// 20 * 0.1 = 2
-	assert.Equal(t, 2, payload.XPAmount, "Diminished search should give 2 XP")
+	// 45 * 0.1 = 4.5 -> 4
+	assert.Equal(t, 4, payload.XPAmount, "Diminished search should give 4 XP")
 }
 
 // Test Streak Bonus

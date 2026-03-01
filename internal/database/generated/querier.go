@@ -27,6 +27,7 @@ type Querier interface {
 	ClearAllVoting(ctx context.Context) error
 	ClearAllVotingOptions(ctx context.Context) error
 	ClearAllVotingSessions(ctx context.Context) error
+	ClearBonusModifiersForNode(ctx context.Context, nodeKey string) error
 	ClearDisassembleOutputs(ctx context.Context, recipeID int32) error
 	ClearItemTags(ctx context.Context, itemID int32) error
 	ClearNodePrerequisites(ctx context.Context, nodeID int32) error
@@ -192,6 +193,7 @@ type Querier interface {
 	IncrementOptionVote(ctx context.Context, id int32) error
 	IncrementQuestProgress(ctx context.Context, arg IncrementQuestProgressParams) error
 	IncrementVote(ctx context.Context, arg IncrementVoteParams) error
+	InsertBonusModifier(ctx context.Context, arg InsertBonusModifierParams) error
 	InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRecipeParams) (int32, error)
 	InsertDisassembleOutput(ctx context.Context, arg InsertDisassembleOutputParams) error
 	InsertDisassembleRecipe(ctx context.Context, arg InsertDisassembleRecipeParams) (int32, error)

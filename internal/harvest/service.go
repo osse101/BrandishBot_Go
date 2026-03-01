@@ -24,8 +24,13 @@ type service struct {
 	userRepo       repository.User
 	progressionSvc progression.Service
 	jobSvc         job.Service
-	publisher      *event.ResilientPublisher
+	publisher      ResilientPublisher
 	wg             sync.WaitGroup
+}
+
+// ResilientPublisher defines the interface for resilient event publishing
+type ResilientPublisher interface {
+	PublishWithRetry(ctx context.Context, evt event.Event)
 }
 
 // NewService creates a new harvest service
@@ -34,7 +39,7 @@ func NewService(
 	userRepo repository.User,
 	progressionSvc progression.Service,
 	jobSvc job.Service,
-	publisher *event.ResilientPublisher,
+	publisher ResilientPublisher,
 ) Service {
 	return &service{
 		harvestRepo:    harvestRepo,

@@ -26,6 +26,11 @@ const (
 	ModifierTypePercentage ModifierType = "percentage"
 )
 
+const (
+	JobSourceType         = "job"
+	ProgressionSourceType = "progression"
+)
+
 // ValueModifier represents a progression-based value modification with current state
 type ValueModifier struct {
 	NodeKey       string       // Progression node key
@@ -94,7 +99,7 @@ func (s *service) GetAllModifiersForFeature(ctx context.Context, userID string, 
 		var currentLevel int
 
 		// If this is a job bonus, get the user's specific job level
-		if config.SourceType == "job" {
+		if config.SourceType == JobSourceType {
 			if userID == "" || s.jobService == nil {
 				continue // Skip user-specific bonuses if no user context available
 			}
@@ -104,7 +109,7 @@ func (s *service) GetAllModifiersForFeature(ctx context.Context, userID string, 
 				continue
 			}
 			currentLevel = level
-		} else if config.SourceType == "progression" {
+		} else if config.SourceType == ProgressionSourceType {
 			currentLevel = config.ProgressionLevel
 		}
 

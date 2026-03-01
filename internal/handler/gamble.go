@@ -31,10 +31,10 @@ func NewGambleHandler(service gamble.Service, userSvc user.ManagementService, pr
 }
 
 type StartGambleRequest struct {
-	Platform   string              `json:"platform"`
-	PlatformID string              `json:"platform_id"`
-	Username   string              `json:"username"`
-	Bets       []domain.LootboxBet `json:"bets"`
+	Platform   string              `json:"platform" validate:"required,platform"`
+	PlatformID string              `json:"platform_id" validate:"required"`
+	Username   string              `json:"username" validate:"required"`
+	Bets       []domain.LootboxBet `json:"bets" validate:"required,min=1,dive"`
 }
 
 type StartGambleResponse struct {
@@ -87,9 +87,9 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 }
 
 type JoinGambleRequest struct {
-	Platform   string `json:"platform"`
-	PlatformID string `json:"platform_id"`
-	Username   string `json:"username"`
+	Platform   string `json:"platform" validate:"required,platform"`
+	PlatformID string `json:"platform_id" validate:"required"`
+	Username   string `json:"username" validate:"required"`
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
