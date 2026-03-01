@@ -22,7 +22,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, velocity)
 		assert.Equal(t, 0.0, velocity.PointsPerDay)
-		assert.Equal(t, "stable", velocity.Trend)
+		assert.Equal(t, domain.TrendStable, velocity.Trend)
 		assert.Equal(t, 0, velocity.SampleSize)
 	})
 
@@ -38,7 +38,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, velocity)
 		assert.InDelta(t, 100.0, velocity.PointsPerDay, 0.1) // 700 / 7
-		assert.Equal(t, "stable", velocity.Trend)
+		assert.Equal(t, domain.TrendStable, velocity.Trend)
 		assert.Equal(t, 7, velocity.SampleSize)
 	})
 
@@ -55,7 +55,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 
 		velocity, err := service.GetEngagementVelocity(ctx, 7)
 		assert.NoError(t, err)
-		assert.Equal(t, "increasing", velocity.Trend)
+		assert.Equal(t, domain.TrendIncreasing, velocity.Trend)
 		assert.Equal(t, 40.0, velocity.PointsPerDay) // Avg of 10..70 is 40
 	})
 
@@ -71,7 +71,7 @@ func TestGetEngagementVelocity(t *testing.T) {
 
 		velocity, err := service.GetEngagementVelocity(ctx, 7)
 		assert.NoError(t, err)
-		assert.Equal(t, "decreasing", velocity.Trend)
+		assert.Equal(t, domain.TrendDecreasing, velocity.Trend)
 	})
 }
 
@@ -110,8 +110,8 @@ func TestEstimateUnlockTime(t *testing.T) {
 		assert.NotNil(t, estimate)
 		assert.Equal(t, 500, estimate.RequiredPoints) // 1000 - 500
 		assert.InDelta(t, 100.0, estimate.CurrentVelocity, 0.1)
-		assert.InDelta(t, 5.0, estimate.EstimatedDays, 0.1) // 500 / 100 = 5 days
-		assert.Equal(t, "high", estimate.Confidence)        // 7 days sample + stable
+		assert.InDelta(t, 5.0, estimate.EstimatedDays, 0.1)         // 500 / 100 = 5 days
+		assert.Equal(t, domain.ConfidenceHigh, estimate.Confidence) // 7 days sample + stable
 		assert.NotNil(t, estimate.EstimatedUnlockDate)
 	})
 
@@ -121,7 +121,7 @@ func TestEstimateUnlockTime(t *testing.T) {
 
 		estimate, err := service.EstimateUnlockTime(ctx, "target_node")
 		assert.NoError(t, err)
-		assert.Equal(t, "low", estimate.Confidence)
+		assert.Equal(t, domain.ConfidenceLow, estimate.Confidence)
 	})
 
 	t.Run("Already Unlocked", func(t *testing.T) {

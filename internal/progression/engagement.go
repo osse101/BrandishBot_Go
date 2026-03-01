@@ -155,7 +155,7 @@ func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.
 	if sampleSize == 0 {
 		return &domain.VelocityMetrics{
 			PointsPerDay: 0,
-			Trend:        "stable",
+			Trend:        domain.TrendStable,
 			PeriodDays:   days,
 			SampleSize:   0,
 			TotalPoints:  0,
@@ -180,7 +180,7 @@ func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.
 	avg := float64(totalPoints) / float64(days)
 
 	// Trend detection
-	trend := "stable"
+	trend := domain.TrendStable
 	if sampleSize >= 2 {
 		half := sampleSize / 2
 		firstHalfSum := 0
@@ -197,9 +197,9 @@ func (s *service) GetEngagementVelocity(ctx context.Context, days int) (*domain.
 		secondHalfAvg := float64(secondHalfSum) / float64(sampleSize-half)
 
 		if secondHalfAvg > firstHalfAvg*1.1 {
-			trend = "increasing"
+			trend = domain.TrendIncreasing
 		} else if secondHalfAvg < firstHalfAvg*0.9 {
-			trend = "decreasing"
+			trend = domain.TrendDecreasing
 		}
 	}
 
@@ -241,7 +241,7 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 		return &domain.UnlockEstimate{
 			NodeKey:             nodeKey,
 			EstimatedDays:       0,
-			Confidence:          "high",
+			Confidence:          domain.ConfidenceHigh,
 			RequiredPoints:      0,
 			CurrentProgress:     node.UnlockCost,
 			CurrentVelocity:     velocity.PointsPerDay,
@@ -265,15 +265,15 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 		estimatedDays = -1 // Infinite
 	}
 
-	confidence := "low"
+	confidence := domain.ConfidenceLow
 	if velocity.SampleSize >= 7 {
-		if velocity.Trend == "stable" || velocity.Trend == "increasing" {
-			confidence = "high"
+		if velocity.Trend == domain.TrendStable || velocity.Trend == domain.TrendIncreasing {
+			confidence = domain.ConfidenceHigh
 		} else {
-			confidence = "medium"
+			confidence = domain.ConfidenceMedium
 		}
 	} else if velocity.SampleSize >= 3 {
-		confidence = "medium"
+		confidence = domain.ConfidenceMedium
 	}
 
 	return &domain.UnlockEstimate{
