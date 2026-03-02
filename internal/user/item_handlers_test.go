@@ -337,3 +337,44 @@ func TestHandler_Mine(t *testing.T) {
 		assert.Equal(t, 4, invAfter.Slots[0].Quantity)
 	})
 }
+
+func TestFormatTargetList(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected string
+	}{
+		{
+			name:     "empty list",
+			input:    []string{},
+			expected: "",
+		},
+		{
+			name:     "single user",
+			input:    []string{"Alice"},
+			expected: "Alice",
+		},
+		{
+			name:     "two users",
+			input:    []string{"Alice", "Bob"},
+			expected: "Alice and Bob",
+		},
+		{
+			name:     "three users",
+			input:    []string{"Alice", "Bob", "Charlie"},
+			expected: "Alice, Bob, and Charlie",
+		},
+		{
+			name:     "five users",
+			input:    []string{"Alice", "Bob", "Charlie", "Dave", "Eve"},
+			expected: "Alice, Bob, Charlie, Dave, and Eve",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatTargetList(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
