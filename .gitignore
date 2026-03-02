@@ -59,10 +59,9 @@ tmp/
 
 # AI usage files and development artifacts
 .mcp.json
-.agent/*
 .agents/*
 .claude/*
-.Jules/*
+.jules/
 
 # Benchmark results (keep baseline.txt, ignore temporary files)
 benchmarks/results/*.txt
