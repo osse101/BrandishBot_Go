@@ -1,10 +1,11 @@
 package user
 
 import (
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -125,9 +126,7 @@ func TestStringFinder_FindMatches(t *testing.T) {
 				return tt.want[i].Code < tt.want[j].Code || (tt.want[i].Code == tt.want[j].Code && tt.want[i].Value < tt.want[j].Value)
 			})
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("StringFinder.FindMatches() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -206,11 +205,9 @@ func TestStringFinder_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sf.FindMatches(tt.message)
-			if len(got) != tt.wantMatches {
-				t.Errorf("StringFinder.FindMatches() got %d matches, want %d", len(got), tt.wantMatches)
-			}
-			if len(got) > 0 && got[0].Code != tt.wantCode {
-				t.Errorf("StringFinder.FindMatches() code = %s, want %s", got[0].Code, tt.wantCode)
+			assert.Len(t, got, tt.wantMatches)
+			if len(got) > 0 {
+				assert.Equal(t, tt.wantCode, got[0].Code)
 			}
 		})
 	}
@@ -274,9 +271,7 @@ func TestStringFinder_BoundaryConditions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sf.FindMatches(tt.message)
-			if len(got) != tt.wantMatches {
-				t.Errorf("StringFinder.FindMatches() got %d matches, want %d", len(got), tt.wantMatches)
-			}
+			assert.Len(t, got, tt.wantMatches)
 		})
 	}
 }
@@ -289,9 +284,7 @@ func TestStringFinder_EmptyRules(t *testing.T) {
 	// Don't add any rules, don't compile
 
 	got := sf.FindMatches("Bapanada gary shedinja")
-	if got != nil {
-		t.Errorf("StringFinder.FindMatches() with no rules should return nil, got %v", got)
-	}
+	assert.Empty(t, got)
 }
 
 // TestStringFinder_PriorityFiltering tests that only highest priority matches are returned
@@ -332,11 +325,9 @@ func TestStringFinder_PriorityFiltering(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := sf.FindMatches(tt.message)
-			if len(got) != tt.wantLen {
-				t.Errorf("StringFinder.FindMatches() len = %d, want %d", len(got), tt.wantLen)
-			}
-			if len(got) > 0 && got[0].Code != tt.wantCode {
-				t.Errorf("StringFinder.FindMatches() code = %s, want %s", got[0].Code, tt.wantCode)
+			assert.Len(t, got, tt.wantLen)
+			if len(got) > 0 {
+				assert.Equal(t, tt.wantCode, got[0].Code)
 			}
 		})
 	}

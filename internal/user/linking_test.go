@@ -4,6 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -125,31 +128,23 @@ func TestMergeUsers(t *testing.T) {
 
 			// Merge users
 			err := svc.MergeUsers(context.Background(), primary.ID, secondary.ID)
-			if err != nil {
-				t.Fatalf("MergeUsers failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			// Verify merged inventory
 			mergedInv := repo.inventories[primary.ID]
-			if len(mergedInv.Slots) != tt.expectedSlots {
-				t.Errorf("expected %d slots, got %d", tt.expectedSlots, len(mergedInv.Slots))
-			}
+			assert.Len(t, mergedInv.Slots, tt.expectedSlots)
 
 			// Verify quantities
 			for itemID, expectedQty := range tt.expectedQuantities {
 				found := false
 				for _, slot := range mergedInv.Slots {
 					if slot.ItemID == itemID {
-						if slot.Quantity != expectedQty {
-							t.Errorf("item %d: expected quantity %d, got %d", itemID, expectedQty, slot.Quantity)
-						}
+						assert.Equal(t, expectedQty, slot.Quantity)
 						found = true
 						break
 					}
 				}
-				if !found {
-					t.Errorf("item %d not found in merged inventory", itemID)
-				}
+				assert.True(t, found, "item %d not found in merged inventory", itemID)
 			}
 		})
 	}
@@ -228,21 +223,13 @@ func TestMergeUsers_PlatformMerge(t *testing.T) {
 			repo.inventories[tt.secondaryUser.ID] = &domain.Inventory{Slots: []domain.InventorySlot{}}
 
 			err := svc.MergeUsers(context.Background(), tt.primaryUser.ID, tt.secondaryUser.ID)
-			if err != nil {
-				t.Fatalf("MergeUsers failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			// Verify merged user
 			mergedUser, _ := repo.GetUserByID(context.Background(), tt.primaryUser.ID)
-			if mergedUser.DiscordID != tt.expectedDiscordID {
-				t.Errorf("expected DiscordID %s, got %s", tt.expectedDiscordID, mergedUser.DiscordID)
-			}
-			if mergedUser.TwitchID != tt.expectedTwitchID {
-				t.Errorf("expected TwitchID %s, got %s", tt.expectedTwitchID, mergedUser.TwitchID)
-			}
-			if mergedUser.YoutubeID != tt.expectedYoutubeID {
-				t.Errorf("expected YoutubeID %s, got %s", tt.expectedYoutubeID, mergedUser.YoutubeID)
-			}
+			assert.Equal(t, tt.expectedDiscordID, mergedUser.DiscordID)
+			assert.Equal(t, tt.expectedTwitchID, mergedUser.TwitchID)
+			assert.Equal(t, tt.expectedYoutubeID, mergedUser.YoutubeID)
 		})
 	}
 }
@@ -317,31 +304,21 @@ func TestUnlinkPlatform(t *testing.T) {
 			err := svc.UnlinkPlatform(context.Background(), tt.initialUser.ID, tt.platform)
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error, got nil")
-				}
+				require.Error(t, err)
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("UnlinkPlatform failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			// Verify platform was unlinked
 			user, _ := repo.GetUserByID(context.Background(), tt.initialUser.ID)
 			switch tt.expectedField {
 			case "DiscordID":
-				if user.DiscordID != "" {
-					t.Errorf("DiscordID should be empty, got %s", user.DiscordID)
-				}
+				assert.Empty(t, user.DiscordID)
 			case "TwitchID":
-				if user.TwitchID != "" {
-					t.Errorf("TwitchID should be empty, got %s", user.TwitchID)
-				}
+				assert.Empty(t, user.TwitchID)
 			case "YoutubeID":
-				if user.YoutubeID != "" {
-					t.Errorf("YoutubeID should be empty, got %s", user.YoutubeID)
-				}
+				assert.Empty(t, user.YoutubeID)
 			}
 		})
 	}
@@ -407,14 +384,10 @@ func TestGetLinkedPlatforms(t *testing.T) {
 
 			platforms, err := svc.GetLinkedPlatforms(context.Background(), tt.queryPlatform, tt.queryPlatformID)
 
-			if err != nil {
-				t.Fatalf("GetLinkedPlatforms failed: %v", err)
-			}
+			require.NoError(t, err)
 
 			// Verify platform count
-			if len(platforms) != len(tt.expectedPlatforms) {
-				t.Errorf("expected %d platforms, got %d", len(tt.expectedPlatforms), len(platforms))
-			}
+			assert.Len(t, platforms, len(tt.expectedPlatforms))
 
 			// Verify all expected platforms are present
 			platformMap := make(map[string]bool)
@@ -422,9 +395,7 @@ func TestGetLinkedPlatforms(t *testing.T) {
 				platformMap[p] = true
 			}
 			for _, expected := range tt.expectedPlatforms {
-				if !platformMap[expected] {
-					t.Errorf("expected platform %s not found", expected)
-				}
+				assert.True(t, platformMap[expected], "expected platform %s not found", expected)
 			}
 		})
 	}

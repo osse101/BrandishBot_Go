@@ -2,8 +2,10 @@ package user
 
 import (
 	"context"
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -38,29 +40,19 @@ func TestGetInventoryByUsername(t *testing.T) {
 
 	t.Run("successful retrieval", func(t *testing.T) {
 		items, err := svc.GetInventoryByUsername(context.Background(), "twitch", "alice", "")
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
-		if len(items) != 2 {
-			t.Fatalf("Expected 2 items, got %d", len(items))
-		}
+		require.NoError(t, err)
+		assert.Len(t, items, 2)
 	})
 
 	t.Run("case insensitive", func(t *testing.T) {
 		items, err := svc.GetInventoryByUsername(context.Background(), "twitch", "ALICE", "")
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
-		if len(items) != 2 {
-			t.Fatalf("Expected 2 items with uppercase username, got %d", len(items))
-		}
+		require.NoError(t, err)
+		assert.Len(t, items, 2)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.GetInventoryByUsername(context.Background(), "twitch", "nonexistent", "")
-		if !errors.Is(err, domain.ErrFailedToGetUser) {
-			t.Fatalf("Expected ErrFailedToGetUser, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrFailedToGetUser)
 	})
 }
 
@@ -85,21 +77,17 @@ func TestAddItemByUsername(t *testing.T) {
 
 	t.Run("successful addition", func(t *testing.T) {
 		err := svc.AddItemByUsername(context.Background(), "twitch", "bob", "gold", 100)
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
+		require.NoError(t, err)
 
 		inv := repo.inventories["user1"]
-		if len(inv.Slots) != 1 || inv.Slots[0].ItemID != 1 || inv.Slots[0].Quantity != 100 {
-			t.Fatalf("Item not added correctly")
-		}
+		require.Len(t, inv.Slots, 1)
+		assert.Equal(t, 1, inv.Slots[0].ItemID)
+		assert.Equal(t, 100, inv.Slots[0].Quantity)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		err := svc.AddItemByUsername(context.Background(), "twitch", "nonexistent", "gold", 100)
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrUserNotFound)
 	})
 }
 
@@ -128,24 +116,17 @@ func TestRemoveItemByUsername(t *testing.T) {
 
 	t.Run("successful removal", func(t *testing.T) {
 		removed, err := svc.RemoveItemByUsername(context.Background(), "twitch", "charlie", "arrows", 20)
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
-		if removed != 20 {
-			t.Fatalf("Expected 20 removed, got %d", removed)
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 20, removed)
 
 		inv := repo.inventories["user1"]
-		if len(inv.Slots) != 1 || inv.Slots[0].Quantity != 30 {
-			t.Fatalf("Item quantity not updated: got %d", inv.Slots[0].Quantity)
-		}
+		require.Len(t, inv.Slots, 1)
+		assert.Equal(t, 30, inv.Slots[0].Quantity)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
 		_, err := svc.RemoveItemByUsername(context.Background(), "twitch", "nonexistent", "arrows", 10)
-		if !errors.Is(err, domain.ErrFailedToGetUser) {
-			t.Fatalf("Expected ErrFailedToGetUser, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrFailedToGetUser)
 	})
 }
 
@@ -182,39 +163,28 @@ func TestGiveItemByUsername(t *testing.T) {
 
 	t.Run("successful transfer", func(t *testing.T) {
 		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, 50)
-		if err != nil {
-			t.Fatal("Expected no error, got", err)
-		}
+		require.NoError(t, err)
 
 		senderInv := repo.inventories["user1"]
 		receiverInv := repo.inventories["user2"]
 
-		if senderInv.Slots[0].Quantity != 50 {
-			t.Fatalf("Sender should have 50, has %d", senderInv.Slots[0].Quantity)
-		}
-		if len(receiverInv.Slots) != 1 || receiverInv.Slots[0].Quantity != 50 {
-			t.Fatal("Receiver should have 50 coins")
-		}
+		assert.Equal(t, 50, senderInv.Slots[0].Quantity)
+		require.Len(t, receiverInv.Slots, 1)
+		assert.Equal(t, 50, receiverInv.Slots[0].Quantity)
 	})
 
 	t.Run("receiver not found", func(t *testing.T) {
 		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformTwitch, "NonexistentUser", domain.ItemMoney, 10)
-		if !errors.Is(err, domain.ErrUserNotFound) {
-			t.Fatalf("Expected ErrUserNotFound, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrUserNotFound)
 	})
 
 	t.Run("insufficient quantity", func(t *testing.T) {
 		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, 200)
-		if !errors.Is(err, domain.ErrInsufficientQuantity) {
-			t.Fatalf("Expected ErrInsufficientQuantity, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	})
 
 	t.Run("invalid quantity", func(t *testing.T) {
 		err := svc.GiveItem(context.Background(), domain.PlatformTwitch, sender.TwitchID, sender.Username, domain.PlatformDiscord, receiver.Username, domain.ItemMoney, -1)
-		if !errors.Is(err, domain.ErrInvalidInput) {
-			t.Fatalf("Expected ErrInvalidInput, got %v", err)
-		}
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
 	})
 }
