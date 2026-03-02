@@ -44,7 +44,7 @@ func (h *HarvestHandler) Harvest(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
 		log.Warn("Method not allowed", "method", r.Method)
-		http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+		RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 		return
 	}
 

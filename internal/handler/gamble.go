@@ -99,7 +99,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgInvalidGambleID)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgInvalidGambleID)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if gamble == nil {
-		http.Error(w, ErrMsgGambleNotFoundHTTP, http.StatusNotFound)
+		RespondError(w, http.StatusNotFound, ErrMsgGambleNotFoundHTTP)
 		return
 	}
 

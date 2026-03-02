@@ -38,7 +38,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 

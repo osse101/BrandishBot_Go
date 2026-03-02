@@ -102,7 +102,7 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Platform == "" || req.PlatformID == "" || req.JobKey == "" || req.XPAmount <= 0 {
-		http.Error(w, ErrMsgMissingRequiredFields, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgMissingRequiredFields)
 		return
 	}
 
