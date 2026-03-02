@@ -19,29 +19,27 @@ func NewFormatter() *Formatter {
 	return &Formatter{}
 }
 
-// FormatFeature formats a feature for the specified platform
-func (f *Formatter) FormatFeature(feature *Feature, platform string) string {
+// getContentByPlatform returns the platform-specific content
+func (f *Formatter) getContentByPlatform(discordContent, streamerbotContent, platform string) string {
 	switch strings.ToLower(platform) {
 	case domain.PlatformDiscord:
-		return feature.Discord.Description
+		return discordContent
 	case domain.PlatformTwitch, platformStreamerbot:
-		return feature.Streamerbot.Description
+		return streamerbotContent
 	default:
 		// Fallback to Discord format
-		return feature.Discord.Description
+		return discordContent
 	}
+}
+
+// FormatFeature formats a feature for the specified platform
+func (f *Formatter) FormatFeature(feature *Feature, platform string) string {
+	return f.getContentByPlatform(feature.Discord.Description, feature.Streamerbot.Description, platform)
 }
 
 // FormatTopic formats a topic for the specified platform
 func (f *Formatter) FormatTopic(topic *Topic, platform string) string {
-	switch strings.ToLower(platform) {
-	case domain.PlatformDiscord:
-		return topic.Discord.Description
-	case domain.PlatformTwitch, platformStreamerbot:
-		return topic.Streamerbot.Description
-	default:
-		return topic.Discord.Description
-	}
+	return f.getContentByPlatform(topic.Discord.Description, topic.Streamerbot.Description, platform)
 }
 
 // FormatFeatureList formats a list of available features for the platform
