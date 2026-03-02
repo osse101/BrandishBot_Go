@@ -12,7 +12,7 @@ import (
 )
 
 // Helper function to set up the service for testing timeouts
-func setupTimeoutService(t *testing.T) Service {
+func setupTimeoutService() Service {
 	repo := NewFakeRepository()
 	setupTestData(repo)
 	// Using NewService from the package
@@ -22,7 +22,7 @@ func setupTimeoutService(t *testing.T) Service {
 
 func TestAddTimeout(t *testing.T) {
 	t.Run("Best Case - New Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "alice", 5*time.Second, "Test reason")
@@ -35,7 +35,7 @@ func TestAddTimeout(t *testing.T) {
 	})
 
 	t.Run("Edge Case - Accumulate Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		// First timeout
@@ -56,7 +56,7 @@ func TestAddTimeout(t *testing.T) {
 	t.Run("Invalid Case - Zero Duration", func(t *testing.T) {
 		// Zero duration adds a timeout that expires immediately.
 		// Testing boundary/invalid logic.
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "charlie", 0, "Zero")
@@ -70,7 +70,7 @@ func TestAddTimeout(t *testing.T) {
 
 func TestTimeoutUser(t *testing.T) {
 	t.Run("Legacy Replace/Accumulate Behavior", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.TimeoutUser(ctx, "dave", 2*time.Second, "Legacy reason")
@@ -85,7 +85,7 @@ func TestTimeoutUser(t *testing.T) {
 
 func TestClearTimeout(t *testing.T) {
 	t.Run("Best Case - Clear Existing Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "eve", 10*time.Second, "To be cleared")
@@ -100,7 +100,7 @@ func TestClearTimeout(t *testing.T) {
 	})
 
 	t.Run("Invalid Case - Clear Non-existent Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		// Should not error, just return early
@@ -115,7 +115,7 @@ func TestClearTimeout(t *testing.T) {
 
 func TestGetTimeout(t *testing.T) {
 	t.Run("Best Case - Get Active Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformDiscord, "grace", 10*time.Second, "Discord timeout")
@@ -128,7 +128,7 @@ func TestGetTimeout(t *testing.T) {
 	})
 
 	t.Run("Edge Case - Cross Platform Isolation", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "heidi", 10*time.Second, "Twitch timeout")
@@ -141,7 +141,7 @@ func TestGetTimeout(t *testing.T) {
 	})
 
 	t.Run("Boundary Case - No Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "ivan")
@@ -152,7 +152,7 @@ func TestGetTimeout(t *testing.T) {
 
 func TestReduceTimeout(t *testing.T) {
 	t.Run("Best Case - Partial Reduction", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "judy", 10*time.Second, "Full")
@@ -169,7 +169,7 @@ func TestReduceTimeout(t *testing.T) {
 	})
 
 	t.Run("Boundary Case - Full Reduction", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "karl", 5*time.Second, "Short")
@@ -185,7 +185,7 @@ func TestReduceTimeout(t *testing.T) {
 	})
 
 	t.Run("Invalid Case - Reduce Non-existent", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		// Should not error
@@ -198,7 +198,7 @@ func TestReduceTimeout(t *testing.T) {
 	})
 
 	t.Run("Legacy Wrapper - ReduceTimeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 
 		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "mia", 10*time.Second, "Full")
@@ -216,7 +216,7 @@ func TestReduceTimeout(t *testing.T) {
 
 func TestHandleBlaster_Timeout(t *testing.T) {
 	t.Run("Integration Case - Blaster Applies Timeout", func(t *testing.T) {
-		svc := setupTimeoutService(t)
+		svc := setupTimeoutService()
 		ctx := context.Background()
 		item := domain.ItemBlaster
 

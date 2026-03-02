@@ -78,11 +78,16 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if uid, uname, ok := c.extractUserInfo(line); ok {
+		uid := c.extractValue(line, "user_id")
+		uname := c.extractValue(line, "username")
+		job := c.extractValue(line, "job")
+		msg := c.extractValue(line, "msg")
+
+		if uid != "" && uname != "" {
 			userNames[uid] = uname
 		}
 
-		if uid, job, ok := c.extractXPAward(line); ok {
+		if msg == "Awarded job XP" && uid != "" && job != "" {
 			if userJobs[uid] == nil {
 				userJobs[uid] = make(map[string]int)
 			}
@@ -97,44 +102,44 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	return userJobs, userNames, nil
 }
 
-func (c *AnalyzeLogsCommand) extractUserInfo(line string) (uid, uname string, ok bool) {
-	if !strings.Contains(line, "user_id=") || !strings.Contains(line, "username=") {
-		return "", "", false
-	}
-
-	parts := strings.Fields(line)
-	for _, p := range parts {
-		if strings.HasPrefix(p, "user_id=") {
-			uid = strings.TrimPrefix(p, "user_id=")
+func (c *AnalyzeLogsCommand) extractValue(line, key string) string {
+	// Try text format key=value or key="value"
+	prefix := key + "="
+	idx := strings.Index(line, prefix)
+	if idx != -1 {
+		start := idx + len(prefix)
+		if start >= len(line) {
+			return ""
 		}
-		if strings.HasPrefix(p, "username=") {
-			uname = strings.TrimPrefix(p, "username=")
+
+		if line[start] == '"' {
+			// Quoted string
+			end := strings.Index(line[start+1:], `"`)
+			if end == -1 {
+				return line[start+1:]
+			}
+			return line[start+1 : start+1+end]
 		}
-	}
 
-	if uid != "" && uname != "" {
-		return uid, uname, true
-	}
-	return "", "", false
-}
-
-func (c *AnalyzeLogsCommand) extractXPAward(line string) (uid, job string, ok bool) {
-	if !strings.Contains(line, `msg="Awarded job XP"`) {
-		return "", "", false
-	}
-
-	parts := strings.Fields(line)
-	for _, p := range parts {
-		if strings.HasPrefix(p, "user_id=") {
-			uid = strings.TrimPrefix(p, "user_id=")
+		// Unquoted string
+		end := strings.IndexByte(line[start:], ' ')
+		if end == -1 {
+			return line[start:]
 		}
-		if strings.HasPrefix(p, "job=") {
-			job = strings.TrimPrefix(p, "job=")
-		}
+		return line[start : start+end]
 	}
 
-	if uid != "" && job != "" {
-		return uid, job, true
+	// Try json format "key":"value"
+	prefix = `"` + key + `":"`
+	idx = strings.Index(line, prefix)
+	if idx != -1 {
+		start := idx + len(prefix)
+		end := strings.Index(line[start:], `"`)
+		if end == -1 {
+			return line[start:]
+		}
+		return line[start : start+end]
 	}
-	return "", "", false
+
+	return ""
 }
