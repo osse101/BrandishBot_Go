@@ -60,40 +60,6 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	return finalQty, nil
 }
 
-func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
-	log := logger.FromContext(ctx)
-	log.Info(LogMsgGetBuyablePricesCalled)
-
-	allItems, err := s.repo.GetBuyablePrices(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.progressionService == nil {
-		return allItems, nil
-	}
-
-	itemNames := make([]string, len(allItems))
-	for i, item := range allItems {
-		itemNames[i] = item.InternalName
-	}
-
-	unlockStatus, err := s.progressionService.AreItemsUnlocked(ctx, itemNames)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
-	}
-
-	filtered := make([]domain.Item, 0, len(allItems))
-	for _, item := range allItems {
-		if unlockStatus[item.InternalName] {
-			filtered = append(filtered, item)
-		}
-	}
-
-	log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
-	return filtered, nil
-}
-
 func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, moneyBalance int) (int, int) {
 	log := logger.FromContext(ctx)
 	itemCategory := getItemCategory(item)
