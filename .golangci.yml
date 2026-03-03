@@ -124,6 +124,11 @@ issues:
   new: false
 
   exclude-rules:
+    # Disable forbidigo for the devtool directory where custom wrapper commands are heavily used
+    - path: cmd/devtool/
+      linters:
+        - forbidigo
+
     # Relax linters for test files
     - path: _test\.go
       linters:

@@ -25,7 +25,7 @@ func (c *BuildCommand) Run(args []string) error {
 	}
 
 	// Gather version info
-	//nolint:forbidigo
+
 	version, _ := getCommandOutput("git", "describe", "--tags", "--always", "--dirty")
 	if version == "" {
 		version = "dev"
@@ -33,7 +33,6 @@ func (c *BuildCommand) Run(args []string) error {
 
 	buildTime := time.Now().UTC().Format("2006-01-02_15:04")
 
-	//nolint:forbidigo
 	gitCommit, _ := getCommandOutput("git", "rev-parse", "--short", "HEAD")
 	if gitCommit == "" {
 		gitCommit = "unknown"
@@ -48,7 +47,7 @@ func (c *BuildCommand) Run(args []string) error {
 
 	// Build App
 	PrintInfo("Building bin/app...")
-	//nolint:forbidigo
+
 	if err := runCommand("go", "build", "-ldflags", ldflags, "-o", "bin/app", "./cmd/app"); err != nil {
 		return fmt.Errorf("failed to build app: %w", err)
 	}
@@ -56,7 +55,7 @@ func (c *BuildCommand) Run(args []string) error {
 
 	// Build Discord Bot
 	PrintInfo("Building bin/discord_bot...")
-	//nolint:forbidigo
+
 	if err := runCommand("go", "build", "-ldflags", ldflags, "-o", "bin/discord_bot", "./cmd/discord"); err != nil {
 		return fmt.Errorf("failed to build discord_bot: %w", err)
 	}
