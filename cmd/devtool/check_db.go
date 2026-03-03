@@ -21,13 +21,13 @@ func (c *CheckDBCommand) Run(args []string) error {
 	PrintHeader("Checking Docker database status...")
 
 	// Check if docker compose is available
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "compose", "version"); err != nil {
 		return fmt.Errorf("docker compose not found. Please install Docker Compose")
 	}
 
 	// Check if db service is running
-	//nolint:forbidigo
+
 	out, err := getCommandOutput("docker", "compose", "ps", "db")
 	running := false
 	if err == nil {
@@ -41,7 +41,7 @@ func (c *CheckDBCommand) Run(args []string) error {
 		PrintSuccess("Database is already running")
 	} else {
 		PrintInfo("Starting database...")
-		//nolint:forbidigo
+
 		if err := runCommandVerbose("docker", "compose", "up", "-d", "db"); err != nil {
 			return fmt.Errorf("error starting database: %w", err)
 		}
@@ -62,7 +62,6 @@ func (c *CheckDBCommand) Run(args []string) error {
 
 		ready := false
 		for attempt := 0; attempt < maxAttempts; attempt++ {
-			//nolint:forbidigo
 			err := runCommand("docker", "compose", "exec", "-T", "db", "pg_isready", "-U", dbUser, "-d", dbName) // #nosec G204
 			if err == nil {
 				PrintSuccess("Database is ready")
@@ -72,7 +71,7 @@ func (c *CheckDBCommand) Run(args []string) error {
 
 			if attempt == maxAttempts-1 {
 				PrintError("Database failed to start after 30 seconds")
-				//nolint:forbidigo
+
 				_ = runCommandVerbose("docker", "compose", "logs", "db")
 				return fmt.Errorf("database failed to start")
 			}

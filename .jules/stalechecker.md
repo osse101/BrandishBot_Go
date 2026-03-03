@@ -5,3 +5,4 @@ benchmarks/results/baseline.txt
 .gitattributes
 .github/workflows/weekly-benchmark.yml
 .github/workflows/test.yml
+.gitignore
