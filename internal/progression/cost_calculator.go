@@ -15,10 +15,10 @@ const (
 )
 
 const (
-	TierScalingFactor = 2
-	BaseCostSmall     = 25
-	BaseCostMedium    = 50
-	BaseCostLarge     = 100
+	TierScalingFactor = 1.5
+	BaseCostSmall     = 40
+	BaseCostMedium    = 80
+	BaseCostLarge     = 160
 )
 
 // Base unlock costs by size
