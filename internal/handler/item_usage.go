@@ -107,17 +107,26 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			return
 		}
 
+		// Determine engagement points
+		engagementPoints := req.Quantity
+		switch req.ItemName {
+		case domain.ItemLootbox0, domain.ItemLootbox1, domain.ItemLootbox2, domain.ItemLootbox3:
+			engagementPoints = 0
+		}
+
 		// Attempt to resolve the correct UUID for metrics/events
 		metricUserID := req.Username
 		if userID, err := svc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
 			metricUserID = userID
 
-			middleware.TrackEngagementFromContext(
-				middleware.WithUserID(r.Context(), userID),
-				eventBus,
-				domain.MetricTypeItemUsed,
-				req.Quantity,
-			)
+			if engagementPoints > 0 {
+				middleware.TrackEngagementFromContext(
+					middleware.WithUserID(r.Context(), userID),
+					eventBus,
+					domain.MetricTypeItemUsed,
+					engagementPoints,
+				)
+			}
 		} else {
 			log.Warn("Could not resolve UUID for item usage metrics, using username", "username", req.Username, "error", err)
 		}
@@ -130,9 +139,11 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			"message", message)
 
 		// Record contribution for item usage
-		if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, domain.MetricTypeItemUsed, req.Quantity); err != nil {
-			log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
-			// Don't fail the request
+		if engagementPoints > 0 {
+			if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, domain.MetricTypeItemUsed, engagementPoints); err != nil {
+				log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
+				// Don't fail the request
+			}
 		}
 
 		// Publish item.used event
