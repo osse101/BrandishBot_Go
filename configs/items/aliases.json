@@ -77,14 +77,14 @@
         "christmas": ["Santa's ultimate gift bundle", "magical winter solstice vault"]
       }
     },
-    "weapon_blaster": {
+    "weapon_missile": {
       "default": ["shiny ray gun", "crackling energy weapon", "humming blaster"],
       "themes": {
         "halloween": ["ghostly plasma gun", "spectral beam cannon"],
         "christmas": ["candy cane cannon", "snowball launcher"]
       }
     },
-    "weapon_hugeblaster": {
+    "weapon_hugemissile": {
       "default": [
         "devastating orbital cannon",
         "massive energy projector",

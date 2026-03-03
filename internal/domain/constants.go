@@ -9,14 +9,13 @@ const (
 	ItemLootbox1 = "lootbox_tier1"  // was lootbox1
 	ItemLootbox2 = "lootbox_tier2"  // was lootbox2
 	ItemLootbox3 = "lootbox_tier3"  // diamondbox
-	ItemBlaster  = "weapon_blaster" // was blaster
+	ItemMissile  = "weapon_missile" // was blaster
 
 	// Weapon items
-	ItemBigBlaster  = "weapon_bigblaster"  // bigmissile - 10 min timeout
-	ItemHugeBlaster = "weapon_hugeblaster" // hugemissile - 100 min timeout
+	ItemBigMissile  = "weapon_bigmissile"  // bigmissile - 10 min timeout
+	ItemHugeMissile = "weapon_hugemissile" // hugemissile - 100 min timeout
 	ItemThis        = "weapon_this"        // meme weapon - 101s timeout
 	ItemDeez        = "weapon_deez"        // meme weapon - 202s timeout
-	ItemMissile     = "weapon_missile"     // missile - 60s timeout (Tier 1 progression)
 	ItemGrenade     = "item_grenade"       // grenade - 60s random timeout (Tier 2 progression)
 
 	// Revive items

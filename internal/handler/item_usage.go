@@ -29,7 +29,7 @@ var itemToProgressionNodeMap = map[string]string{
 	domain.ItemMissile:     progression.ItemWeaponMissile,
 	domain.ItemGrenade:     progression.ItemGrenade,
 	domain.ItemTNT:         progression.ItemTnt,
-	domain.ItemHugeBlaster: progression.ItemHugemissile,
+	domain.ItemHugeMissile: progression.ItemHugemissile,
 
 	// Defense
 	domain.ItemShield:       progression.ItemShield,

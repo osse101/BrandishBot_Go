@@ -31,11 +31,11 @@ func TestHandleAddItem(t *testing.T) {
 			requestBody: AddItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(nil)
+				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemMissile, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item added successfully"}`,
@@ -43,7 +43,7 @@ func TestHandleAddItem(t *testing.T) {
 		{
 			name: "Invalid Request - Missing Username",
 			requestBody: AddItemByUsernameRequest{
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
@@ -55,11 +55,11 @@ func TestHandleAddItem(t *testing.T) {
 			requestBody: AddItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
+				m.On("AddItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemMissile, 1).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -69,7 +69,7 @@ func TestHandleAddItem(t *testing.T) {
 			requestBody: AddItemByUsernameRequest{
 				Platform: "invalid_platform",
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
@@ -81,7 +81,7 @@ func TestHandleAddItem(t *testing.T) {
 			requestBody: AddItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: -1,
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
@@ -150,11 +150,11 @@ func TestHandleRemoveItem(t *testing.T) {
 			requestBody: RemoveItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(1, nil)
+				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemMissile, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"removed":1`,
@@ -164,11 +164,11 @@ func TestHandleRemoveItem(t *testing.T) {
 			requestBody: RemoveItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemBlaster, 1).Return(0, errors.New(ErrMsgGenericServerError))
+				m.On("RemoveItemByUsername", mock.Anything, domain.PlatformTwitch, "testuser", domain.ItemMissile, 1).Return(0, errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -178,7 +178,7 @@ func TestHandleRemoveItem(t *testing.T) {
 			requestBody: RemoveItemByUsernameRequest{
 				Platform: "invalid_platform",
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: 1,
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
@@ -190,7 +190,7 @@ func TestHandleRemoveItem(t *testing.T) {
 			requestBody: RemoveItemByUsernameRequest{
 				Platform: domain.PlatformTwitch,
 				Username: "testuser",
-				ItemName: domain.ItemBlaster,
+				ItemName: domain.ItemMissile,
 				Quantity: -1,
 			},
 			setupMock:      func(m *mocks.MockUserService) {},
@@ -253,14 +253,14 @@ func TestHandleGetInventory(t *testing.T) {
 			filter:     "",
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+					{InternalName: domain.ItemMissile, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				}
 				m.On("GetInventory", mock.Anything, domain.PlatformDiscord, "test-platformid", "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedResponse: &GetInventoryResponse{
 				Items: []user.InventoryItem{
-					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+					{InternalName: domain.ItemMissile, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				},
 			},
 		},
@@ -492,14 +492,14 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 			filter:   "",
 			setupMock: func(m *mocks.MockUserService, p *mocks.MockProgressionService) {
 				items := []user.InventoryItem{
-					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+					{InternalName: domain.ItemMissile, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				}
 				m.On("GetInventoryByUsername", mock.Anything, domain.PlatformDiscord, "testuser", "").Return(items, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedResponse: &GetInventoryResponse{
 				Items: []user.InventoryItem{
-					{InternalName: domain.ItemBlaster, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
+					{InternalName: domain.ItemMissile, PublicName: "missile", Quantity: 1, QualityLevel: "COMMON"},
 				},
 			},
 		},

@@ -218,7 +218,7 @@ func TestHandleBlaster_Timeout(t *testing.T) {
 	t.Run("Integration Case - Blaster Applies Timeout", func(t *testing.T) {
 		svc := setupTimeoutService()
 		ctx := context.Background()
-		item := domain.ItemBlaster
+		item := domain.ItemMissile
 
 		// Setup: Give alice a blaster
 		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "alice", item, 1)

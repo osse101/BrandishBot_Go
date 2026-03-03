@@ -174,12 +174,10 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 
 // weaponTimeouts maps weapon internal names to their timeout durations
 var weaponTimeouts = map[string]time.Duration{
-	domain.ItemBlaster:     60 * time.Second,
-	domain.ItemBigBlaster:  600 * time.Second,
-	domain.ItemHugeBlaster: 6000 * time.Second,
+	domain.ItemMissile:     60 * time.Second,
+	domain.ItemHugeMissile: 6000 * time.Second,
 	domain.ItemThis:        101 * time.Second,
 	domain.ItemDeez:        202 * time.Second,
-	domain.ItemMissile:     60 * time.Second,
 	domain.ItemGrenade:     60 * time.Second,
 	domain.ItemTNT:         60 * time.Second,
 }

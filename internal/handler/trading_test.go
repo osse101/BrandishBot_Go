@@ -33,11 +33,11 @@ func TestHandleGiveItem(t *testing.T) {
 				Owner:            "owner",
 				ReceiverPlatform: domain.PlatformTwitch,
 				Receiver:         "receiver",
-				ItemName:         domain.ItemBlaster,
+				ItemName:         domain.ItemMissile,
 				Quantity:         1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(nil)
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemMissile, 1).Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"message":"Item transferred successfully"}`,
@@ -50,11 +50,11 @@ func TestHandleGiveItem(t *testing.T) {
 				Owner:            "owner",
 				ReceiverPlatform: domain.PlatformTwitch,
 				Receiver:         "receiver",
-				ItemName:         domain.ItemBlaster,
+				ItemName:         domain.ItemMissile,
 				Quantity:         1,
 			},
 			setupMock: func(m *mocks.MockUserService) {
-				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemBlaster, 1).Return(errors.New(ErrMsgGenericServerError))
+				m.On("GiveItem", mock.Anything, domain.PlatformTwitch, "owner-id", "owner", domain.PlatformTwitch, "receiver", domain.ItemMissile, 1).Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,

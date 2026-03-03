@@ -102,12 +102,12 @@
       "default_display": "A radiant diamond chest"
     },
     {
-      "internal_name": "weapon_blaster",
+      "internal_name": "weapon_missile",
       "public_name": "missile",
       "description": "A powerful weapon - times out target for 60s",
       "max_stack": 1000,
       "base_value": 1000,
-      "tags": ["upgradeable", "consumable", "compostable"],
+      "tags": ["upgradeable", "consumable", "compostable", "buyable", "sellable"],
       "type": ["weapon"],
       "handler": "weapon",
       "handler_config": {
@@ -116,7 +116,7 @@
       "default_display": "A shiny ray gun"
     },
     {
-      "internal_name": "weapon_hugeblaster",
+      "internal_name": "weapon_hugemissile",
       "public_name": "hugemissile",
       "description": "The ultimate weapon - times out target for 100 minutes",
       "max_stack": 10,

@@ -13,11 +13,11 @@ import (
 func TestResolvePublicName(t *testing.T) {
 	r := &resolver{
 		publicToInternal: map[string]string{
-			"missile": "weapon_blaster",
+			"missile": "weapon_missile",
 			"junkbox": "lootbox_tier0",
 		},
 		internalToPublic: map[string]string{
-			"weapon_blaster": "missile",
+			"weapon_missile": "missile",
 			"lootbox_tier0":  "junkbox",
 		},
 		aliases: make(map[string]AliasPool),
@@ -30,9 +30,9 @@ func TestResolvePublicName(t *testing.T) {
 		wantName   string
 		wantOk     bool
 	}{
-		{"valid missile", "missile", "weapon_blaster", true},
+		{"valid missile", "missile", "weapon_missile", true},
 		{"valid junkbox", "junkbox", "lootbox_tier0", true},
-		{"case insensitive", "MISSILE", "weapon_blaster", true},
+		{"case insensitive", "MISSILE", "weapon_missile", true},
 		{"unknown item", "unknown", "", false},
 	}
 
@@ -136,13 +136,13 @@ func TestRegisterItem(t *testing.T) {
 		themes:           make(map[string]ThemePeriod),
 	}
 
-	r.RegisterItem("weapon_blaster", "missile")
+	r.RegisterItem("weapon_missile", "missile")
 
 	internal, ok := r.ResolvePublicName("missile")
 	if !ok {
 		t.Error("RegisterItem() failed to register item")
 	}
-	if internal != "weapon_blaster" {
+	if internal != "weapon_missile" {
 		t.Errorf("RegisterItem() internal = %v, want weapon_blaster", internal)
 	}
 }

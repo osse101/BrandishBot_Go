@@ -94,10 +94,10 @@ func setupTestData(repo *FakeRepository) {
 		Description:  "Empty Lootbox",
 		BaseValue:    10,
 	}
-	repo.items[domain.ItemBlaster] = &domain.Item{
+	repo.items[domain.ItemMissile] = &domain.Item{
 		ID:           5,
-		InternalName: domain.ItemBlaster,
-		PublicName:   domain.ItemBlaster,
+		InternalName: domain.ItemMissile,
+		PublicName:   domain.ItemMissile,
 		Description:  "So anyway, I started blasting",
 		BaseValue:    10,
 	}
@@ -633,15 +633,15 @@ func TestUseItem_Blaster(t *testing.T) {
 
 	// Setup: Give alice some blasters
 	svc.RegisterUser(ctx, alice)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemBlaster, 5)
+	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMissile, 5)
 
 	// Test using blaster on bob
-	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemBlaster, 2, bob.Username)
+	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 2, bob.Username)
 	if err != nil {
 		t.Fatalf("UseItem failed: %v", err)
 	}
 
-	expectedMsg := "alice used weapon_blaster on bob! 2 weapon_blaster(s) fired. Timed out for 2m0s."
+	expectedMsg := "alice used weapon_missile on bob! 2 weapon_missile(s) fired. Timed out for 2m0s."
 	if message != expectedMsg {
 		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
 	}
@@ -653,7 +653,7 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 
 	// Test using blaster without target
-	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemBlaster, 1, "")
+	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 1, "")
 	if err == nil {
 		t.Error("Expected error when using blaster without target")
 	}

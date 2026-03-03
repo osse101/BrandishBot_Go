@@ -77,12 +77,10 @@ type WeaponHandler struct{}
 
 // CanHandle returns true for weapon items
 func (h *WeaponHandler) CanHandle(itemName string) bool {
-	return itemName == domain.ItemBlaster ||
-		itemName == domain.ItemBigBlaster ||
-		itemName == domain.ItemHugeBlaster ||
+	return itemName == domain.ItemMissile ||
+		itemName == domain.ItemHugeMissile ||
 		itemName == domain.ItemThis ||
 		itemName == domain.ItemDeez ||
-		itemName == domain.ItemMissile ||
 		itemName == domain.ItemGrenade ||
 		itemName == domain.ItemTNT ||
 		strings.HasPrefix(itemName, "weapon_") ||
