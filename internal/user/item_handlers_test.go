@@ -378,3 +378,107 @@ func TestFormatTargetList(t *testing.T) {
 		})
 	}
 }
+
+// TestVideoFilterHandler tests the video filter item handler
+func TestVideoFilterHandler(t *testing.T) {
+	tests := []struct {
+		name          string
+		itemInSlot    int
+		quantity      int
+		filterTarget  string
+		wantError     bool
+		errorContains string
+	}{
+		{
+			name:         "Valid filter",
+			itemInSlot:   1,
+			quantity:     1,
+			filterTarget: "bloom",
+			wantError:    false,
+		},
+		{
+			name:         "Valid filter uppercase with spaces",
+			itemInSlot:   1,
+			quantity:     1,
+			filterTarget: "  VHS  ",
+			wantError:    false,
+		},
+		{
+			name:          "Invalid filter",
+			itemInSlot:    1,
+			quantity:      1,
+			filterTarget:  "invalid_filter_name",
+			wantError:     true,
+			errorContains: "invalid video filter",
+		},
+		{
+			name:          "Empty filter",
+			itemInSlot:    1,
+			quantity:      1,
+			filterTarget:  "",
+			wantError:     true,
+			errorContains: "must specify a video filter to use",
+		},
+		{
+			name:          "Insufficient items",
+			itemInSlot:    1,
+			quantity:      2,
+			filterTarget:  "matrix",
+			wantError:     true,
+			errorContains: ErrMsgNotEnoughItemsInInventory,
+		},
+		{
+			name:          "Item not in inventory",
+			itemInSlot:    0,
+			quantity:      1,
+			filterTarget:  "gameboy",
+			wantError:     true,
+			errorContains: ErrMsgItemNotFoundInInventory,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := logger.WithRequestID(context.Background(), "test")
+
+			mockResolver := NewMockNamingResolver()
+			svc := &service{
+				namingResolver: mockResolver,
+				rnd:            func() float64 { return 0.0 },
+			}
+
+			filterItem := &domain.Item{ID: 10, InternalName: domain.ItemVideoFilter}
+			inventory := &domain.Inventory{
+				Slots: []domain.InventorySlot{},
+			}
+			if tt.itemInSlot > 0 {
+				inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+					ItemID:   filterItem.ID,
+					Quantity: tt.itemInSlot,
+				})
+			}
+
+			args := ItemHandlerArgs{
+				Username:       "testuser",
+				TargetUsername: tt.filterTarget,
+			}
+
+			handler := &VideoFilterHandler{}
+			result, err := handler.Handle(ctx, svc, &domain.User{ID: "user1", Username: "testuser"}, inventory, filterItem, tt.quantity, args)
+
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+			} else {
+				assert.NoError(t, err)
+				assert.Contains(t, result, "testuser applied the")
+
+				// Verify item was consumed
+				slot, _ := utils.FindSlot(inventory, filterItem.ID)
+				if tt.itemInSlot == tt.quantity {
+					assert.Equal(t, -1, slot, "Item should be removed from inventory")
+				}
+			}
+		})
+	}
+}

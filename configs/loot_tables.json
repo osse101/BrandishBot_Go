@@ -13,11 +13,11 @@
       "items": [
         {
           "item_name": "item_shovel",
-          "weight": 40
+          "weight": 25
         },
         {
           "item_name": "item_video_filter",
-          "weight": 30
+          "weight": 20
         },
         {
           "item_name": "item_stick",
@@ -25,7 +25,7 @@
         },
         {
           "item_name": "item_scrap",
-          "weight": 10
+          "weight": 35
         }
       ]
     },

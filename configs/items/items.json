@@ -298,7 +298,7 @@
       "description": "Apply a webcam filter",
       "max_stack": 100,
       "base_value": 200,
-      "tags": ["consumable", "tradeable", "compostable"],
+      "tags": ["consumable", "tradeable", "compostable", "buyable", "sellable"],
       "type": ["utility"],
       "default_display": "A video filter"
     },

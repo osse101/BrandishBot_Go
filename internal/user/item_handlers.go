@@ -847,3 +847,34 @@ func getIndefiniteArticle(word string) string {
 	}
 	return "a"
 }
+
+const validVideoFiltersList = "bloom, bw, frameskip, gameboy, glitch, matrix, outline, page, perspective, pixelate, polar, rainbow, sick, thermal, undertale, vhs, zoom"
+
+func (s *service) handleVideoFilter(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("handleVideoFilter called", "item", item.InternalName, "quantity", quantity)
+
+	filterKey := strings.ToLower(strings.TrimSpace(args.TargetUsername))
+	if filterKey == "" {
+		return "", errors.New("must specify a video filter to use! Valid filters: " + validVideoFiltersList)
+	}
+
+	if !strings.Contains(validVideoFiltersList, filterKey) {
+		return "", fmt.Errorf("invalid video filter '%s'. Valid filters: %s", filterKey, validVideoFiltersList)
+	}
+
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
+		return "", errors.New(ErrMsgItemNotFoundInInventory)
+	}
+	if totalAvailable < quantity {
+		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+		return "", err
+	}
+
+	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	return fmt.Sprintf("%s applied the %s %s!", user.Username, filterKey, displayName), nil
+}

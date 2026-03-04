@@ -55,6 +55,9 @@ func (s *Subscriber) Subscribe() {
 	s.bus.Subscribe(event.SubscriptionExpired, s.handleSubscriptionUpdate)
 	s.bus.Subscribe(event.SubscriptionCancelled, s.handleSubscriptionUpdate)
 
+	// Subscribe to item used events
+	s.bus.Subscribe(event.Type(domain.EventTypeItemUsed), s.handleItemUsed)
+
 	slog.Info("Streamer.bot subscriber registered for event types",
 		"types", []string{
 			string(domain.EventTypeJobLevelUp),
@@ -69,6 +72,7 @@ func (s *Subscriber) Subscribe() {
 			string(event.SubscriptionRenewed),
 			string(event.SubscriptionExpired),
 			string(event.SubscriptionCancelled),
+			string(domain.EventTypeItemUsed),
 		})
 }
 
@@ -361,6 +365,51 @@ func (s *Subscriber) handleSubscriptionUpdate(_ context.Context, evt event.Event
 	if err := s.client.DoAction(ActionSubscriptionUpdate, args); err != nil {
 		// Streamer.bot being offline is expected, use debug level
 		slog.Debug("Failed to send subscription update to Streamer.bot", "error", err)
+	}
+
+	return nil
+}
+
+// handleItemUsed sends a DoAction when an item is used
+func (s *Subscriber) handleItemUsed(_ context.Context, evt event.Event) error {
+	// Try typed payload first
+	var payload domain.ItemUsedPayload
+	if p, ok := evt.Payload.(domain.ItemUsedPayload); ok {
+		payload = p
+	} else {
+		// Fall back to map parsing
+		pMap, ok := evt.Payload.(map[string]interface{})
+		if !ok {
+			slog.Warn("Invalid item used event payload type")
+			return nil
+		}
+		payload = domain.ItemUsedPayload{
+			UserID:    getStringFromMap(pMap, "user_id"),
+			ItemName:  getStringFromMap(pMap, "item_name"),
+			Quantity:  getIntFromMap(pMap, "quantity"),
+			Timestamp: int64(getIntFromMap(pMap, "timestamp")),
+			Metadata:  pMap["metadata"],
+		}
+	}
+
+	args := map[string]string{
+		"user_id":   payload.UserID,
+		"item_name": payload.ItemName,
+		"quantity":  fmt.Sprintf("%d", payload.Quantity),
+	}
+
+	// Try extracting the "target" from the generic metadata field
+	if mapMeta, ok := payload.Metadata.(map[string]interface{}); ok {
+		if t, tgOk := mapMeta["target"].(string); tgOk && t != "" {
+			args["target"] = t
+		}
+	}
+
+	slog.Debug(LogMsgEventReceived, "event_type", evt.Type, "args", args)
+
+	if err := s.client.DoAction(ActionItemUsed, args); err != nil {
+		// Streamer.bot being offline is expected, use debug level
+		slog.Debug("Failed to send item used to Streamer.bot", "error", err)
 	}
 
 	return nil
