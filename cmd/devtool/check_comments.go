@@ -7,11 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
-)
-
-var (
-	pathMu sync.Mutex // For printing to stdout
 )
 
 type CheckCommentsCommand struct{}
@@ -28,7 +23,6 @@ func (c *CheckCommentsCommand) Run(args []string) error {
 	fs := flag.NewFlagSet("check-comments", flag.ContinueOnError)
 	maxLen := fs.Int("max-len", 1000, "Maximum allowed length for a comment line")
 	excludeDir := fs.String("exclude", "vendor,node_modules,.git,mocks,internal/database/generated", "Directories to exclude")
-	concurrency := fs.Int("j", 8, "Number of parallel workers")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -43,30 +37,10 @@ func (c *CheckCommentsCommand) Run(args []string) error {
 	PrintInfo("Max comment length: %d", *maxLen)
 
 	var violations int
-	var mu sync.Mutex
-	pathChan := make(chan string, 100)
-	errChan := make(chan error, *concurrency)
-
-	// Start workers
-	var wg sync.WaitGroup
-	for i := 0; i < *concurrency; i++ {
-		wg.Add(1)
-		go c.worker(&wg, pathChan, errChan, &mu, &violations, *maxLen)
-	}
-
-	// Walk and feed
-	walkErr := c.walkTargets(targets, strings.Split(*excludeDir, ","), pathChan)
-	close(pathChan)
-	wg.Wait()
+	walkErr := c.walkTargets(targets, strings.Split(*excludeDir, ","), &violations, *maxLen)
 
 	if walkErr != nil {
 		return walkErr
-	}
-
-	select {
-	case workerErr := <-errChan:
-		return workerErr
-	default:
 	}
 
 	if violations > 0 {
@@ -78,28 +52,7 @@ func (c *CheckCommentsCommand) Run(args []string) error {
 	return nil
 }
 
-func (c *CheckCommentsCommand) worker(wg *sync.WaitGroup, paths <-chan string, errs chan<- error, mu *sync.Mutex, total *int, maxLen int) {
-	defer wg.Done()
-	for path := range paths {
-		v, err := c.checkFile(path, maxLen)
-		if err != nil {
-			// Do not return early. Report the error and keep draining the paths
-			// channel so the walker doesn't deadlock.
-			select {
-			case errs <- err:
-			default:
-			}
-			continue
-		}
-		if v > 0 {
-			mu.Lock()
-			*total += v
-			mu.Unlock()
-		}
-	}
-}
-
-func (c *CheckCommentsCommand) walkTargets(targets []string, excludes []string, paths chan<- string) error {
+func (c *CheckCommentsCommand) walkTargets(targets []string, excludes []string, total *int, maxLen int) error {
 	for _, target := range targets {
 		err := filepath.Walk(target, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -114,7 +67,13 @@ func (c *CheckCommentsCommand) walkTargets(targets []string, excludes []string, 
 				return nil
 			}
 			if c.isCheckable(path) {
-				paths <- path
+				v, err := c.checkFile(path, maxLen)
+				if err != nil {
+					return err
+				}
+				if v > 0 {
+					*total += v
+				}
 			}
 			return nil
 		})
@@ -200,8 +159,6 @@ func (c *CheckCommentsCommand) checkFile(path string, maxLen int) (int, error) {
 }
 
 func (c *CheckCommentsCommand) report(path string, line int, format string, args ...interface{}) {
-	pathMu.Lock()
-	defer pathMu.Unlock()
 	fmt.Printf("%s:%d: %s\n", path, line, fmt.Sprintf(format, args...))
 }
 
