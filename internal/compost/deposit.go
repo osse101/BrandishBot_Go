@@ -25,7 +25,7 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
-	capacityFloat, _ := s.progressionSvc.GetModifiedValue(ctx, user.ID, featureCompostCapacity, 3.0)
+	capacityFloat, _ := s.progressionSvc.GetModifiedValue(ctx, user.ID, FeatureCompostCapacity, 3.0)
 	bin.Capacity = int(capacityFloat)
 
 	resolved, err := s.resolveDepositItems(ctx, items)

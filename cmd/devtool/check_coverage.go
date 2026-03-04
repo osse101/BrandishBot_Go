@@ -346,7 +346,7 @@ func (c *CheckCoverageCommand) ensureCoverage(file string, runTests bool, packag
 
 func (c *CheckCoverageCommand) getCoveragePercent(file string) (float64, error) {
 	// Run go tool cover -func=file
-	//nolint:forbidigo // file is validated in parseConfig
+	// file is validated in parseConfig
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file)) // #nosec G204
 	if err != nil {
 		return 0, fmt.Errorf("error running go tool cover: %w", err)
@@ -480,7 +480,7 @@ type funcCoverage struct {
 }
 
 func (c *CheckCoverageCommand) printTopMissingFunctions(file string) error {
-	//nolint:forbidigo // file is validated
+	// file is validated
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file)) // #nosec G204
 	if err != nil {
 		return err

@@ -27,11 +27,3 @@ const (
 	FeatureSludgeExtension = "sludge_extension"
 	FeatureCompostCapacity = "compost_capacity"
 )
-
-// Deprecated: use exported versions
-const (
-	featureCompostYield    = FeatureCompostYield
-	featureCompostSpeed    = FeatureCompostSpeed
-	featureSludgeExtension = FeatureSludgeExtension
-	featureCompostCapacity = FeatureCompostCapacity
-)
