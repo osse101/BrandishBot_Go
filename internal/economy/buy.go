@@ -10,11 +10,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, error) {
+func (s *service) BuyItem(ctx context.Context, platform, platformID, username, itemName string, qty int) (int, error) {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgBuyItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	log.Info(LogMsgBuyItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", qty)
 
-	if err := validateQuantity(quantity); err != nil {
+	if err := validateQuantity(qty); err != nil {
 		return 0, err
 	}
 
@@ -33,20 +33,20 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, err
 	}
 
-	moneySlotIndex, moneyBalance, err := s.getMoneyBalance(ctx, tx, user.ID)
+	moneySlotIdx, moneyBalance, err := s.getMoneyBalance(ctx, tx, user.ID)
 	if err != nil {
 		return 0, err
 	}
 
-	finalQty, cost := s.calculatePurchaseDetails(ctx, item, quantity, moneyBalance)
+	finalQty, cost := s.calculatePurchaseDetails(ctx, item, qty, moneyBalance)
 	if finalQty == 0 {
 		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, item.InternalName, item.BaseValue, moneyBalance, domain.ErrInsufficientFunds)
 	}
 
-	inventory, _ := tx.GetInventory(ctx, user.ID)
-	processBuyTransaction(inventory, item.ID, moneySlotIndex, finalQty, cost)
+	inv, _ := tx.GetInventory(ctx, user.ID)
+	processBuyTransaction(inv, item.ID, moneySlotIdx, finalQty, cost)
 
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inv); err != nil {
 		return 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
 
@@ -60,25 +60,25 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 	return finalQty, nil
 }
 
-func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, moneyBalance int) (int, int) {
+func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQty, moneyBalance int) (int, int) {
 	log := logger.FromContext(ctx)
-	itemCategory := getItemCategory(item)
-	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, itemCategory)
+	category := getItemCategory(item)
+	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, category)
 
 	if discountedPrice < item.BaseValue {
-		log.Info("Weekly sale discount applied", "item", item.InternalName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
+		log.Info("Weekly sale discount applied", "item", item.InternalName, "category", category, "original_price", item.BaseValue, "discounted_price", discountedPrice)
 	}
 
-	finalQty, cost := calculateAffordableQuantity(requestedQuantity, discountedPrice, moneyBalance)
+	finalQty, cost := calculateAffordableQuantity(requestedQty, discountedPrice, moneyBalance)
 
-	if requestedQuantity > finalQty && finalQty > 0 {
-		log.Info(LogMsgAdjustedPurchaseQty, "requested", requestedQuantity, "actual", finalQty)
+	if requestedQty > finalQty && finalQty > 0 {
+		log.Info(LogMsgAdjustedPurchaseQty, "requested", requestedQty, "actual", finalQty)
 	}
 
 	return finalQty, cost
 }
 
-func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, cost int) {
+func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, qty, cost int) {
 	if s.publisher != nil {
 		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
@@ -87,7 +87,7 @@ func (s *service) finalizePurchase(ctx context.Context, userID string, item *dom
 				UserID:       userID,
 				ItemName:     item.InternalName,
 				ItemCategory: getItemCategory(item),
-				Quantity:     quantity,
+				Quantity:     qty,
 				TotalValue:   cost,
 				Timestamp:    s.now().Unix(),
 			},

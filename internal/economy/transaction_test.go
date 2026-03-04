@@ -25,24 +25,24 @@ func TestProcessBuyTransaction(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		initialInv    []domain.InventorySlot
-		moneySlotIdx  int
-		itemToBuyID   int
-		quantityToBuy int
-		cost          int
-		expectedInv   []domain.InventorySlot
-		desc          string
+		name         string
+		initialInv   []domain.InventorySlot
+		moneySlotIdx int
+		itemToBuyID  int
+		qtyToBuy     int
+		cost         int
+		expectedInv  []domain.InventorySlot
+		desc         string
 	}{
 		{
 			name: "Buy new item with exact money",
 			initialInv: []domain.InventorySlot{
-				createSlot(1, 100), // Money
+				createSlot(1, 100),
 			},
-			moneySlotIdx:  0,
-			itemToBuyID:   10,
-			quantityToBuy: 5,
-			cost:          100,
+			moneySlotIdx: 0,
+			itemToBuyID:  10,
+			qtyToBuy:     5,
+			cost:         100,
 			expectedInv: []domain.InventorySlot{
 				createSlot(10, 5),
 			},
@@ -51,65 +51,65 @@ func TestProcessBuyTransaction(t *testing.T) {
 		{
 			name: "Buy new item with leftover money",
 			initialInv: []domain.InventorySlot{
-				createSlot(1, 200), // Money
+				createSlot(1, 200),
 			},
-			moneySlotIdx:  0,
-			itemToBuyID:   10,
-			quantityToBuy: 5,
-			cost:          100,
+			moneySlotIdx: 0,
+			itemToBuyID:  10,
+			qtyToBuy:     5,
+			cost:         100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(1, 100), // Remaining money
-				createSlot(10, 5),  // New item
+				createSlot(1, 100),
+				createSlot(10, 5),
 			},
 			desc: "Should reduce money and add new item slot",
 		},
 		{
 			name: "Buy existing item (stacking)",
 			initialInv: []domain.InventorySlot{
-				createSlot(1, 200), // Money
-				createSlot(10, 2),  // Existing item
+				createSlot(1, 200),
+				createSlot(10, 2),
 			},
-			moneySlotIdx:  0,
-			itemToBuyID:   10,
-			quantityToBuy: 5,
-			cost:          100,
+			moneySlotIdx: 0,
+			itemToBuyID:  10,
+			qtyToBuy:     5,
+			cost:         100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(1, 100), // Remaining money
-				createSlot(10, 7),  // Stacked item (2 + 5)
+				createSlot(1, 100),
+				createSlot(10, 7),
 			},
 			desc: "Should stack with existing item slot",
 		},
 		{
 			name: "Buy multiple distinct items",
 			initialInv: []domain.InventorySlot{
-				createSlot(1, 300), // Money
-				createSlot(20, 1),  // Other item
+				createSlot(1, 300),
+				createSlot(20, 1),
 			},
-			moneySlotIdx:  0,
-			itemToBuyID:   10,
-			quantityToBuy: 5,
-			cost:          100,
+			moneySlotIdx: 0,
+			itemToBuyID:  10,
+			qtyToBuy:     5,
+			cost:         100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(1, 200), // Remaining money
-				createSlot(20, 1),  // Other item untouched
-				createSlot(10, 5),  // New item
+				createSlot(1, 200),
+				createSlot(20, 1),
+				createSlot(10, 5),
 			},
 			desc: "Should add new item without disturbing others",
 		},
 		{
 			name: "Buy existing item (different quality)",
 			initialInv: []domain.InventorySlot{
-				createSlot(1, 200),                    // Money
-				createSlot(10, 2, domain.QualityRare), // Existing rare item
+				createSlot(1, 200),
+				createSlot(10, 2, domain.QualityRare),
 			},
-			moneySlotIdx:  0,
-			itemToBuyID:   10,
-			quantityToBuy: 5,
-			cost:          100,
+			moneySlotIdx: 0,
+			itemToBuyID:  10,
+			qtyToBuy:     5,
+			cost:         100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(1, 100),                      // Remaining money
-				createSlot(10, 2, domain.QualityRare),   // Rare item unaltered
-				createSlot(10, 5, domain.QualityCommon), // New common item stack
+				createSlot(1, 100),
+				createSlot(10, 2, domain.QualityRare),
+				createSlot(10, 5, domain.QualityCommon),
 			},
 			desc: "Should add new common stack when only different quality exists",
 		},
@@ -121,7 +121,7 @@ func TestProcessBuyTransaction(t *testing.T) {
 			t.Parallel()
 			inv := &domain.Inventory{Slots: append([]domain.InventorySlot{}, tt.initialInv...)}
 
-			processBuyTransaction(inv, tt.itemToBuyID, tt.moneySlotIdx, tt.quantityToBuy, tt.cost)
+			processBuyTransaction(inv, tt.itemToBuyID, tt.moneySlotIdx, tt.qtyToBuy, tt.cost)
 
 			// Helper to check if inventory matches expected (order-independent for added items usually, but slice order matters here)
 			assert.ElementsMatch(t, tt.expectedInv, inv.Slots, tt.desc)
@@ -135,67 +135,67 @@ func TestProcessSellTransaction(t *testing.T) {
 	moneyItemID := 1
 
 	tests := []struct {
-		name         string
-		initialInv   []domain.InventorySlot
-		itemSlotIdx  int
-		sellQuantity int
-		moneyGained  int
-		expectedInv  []domain.InventorySlot
-		desc         string
+		name        string
+		initialInv  []domain.InventorySlot
+		itemSlotIdx int
+		sellQty     int
+		moneyGained int
+		expectedInv []domain.InventorySlot
+		desc        string
 	}{
 		{
 			name: "Sell entire stack",
 			initialInv: []domain.InventorySlot{
-				createSlot(10, 5), // Item to sell
+				createSlot(10, 5),
 			},
-			itemSlotIdx:  0,
-			sellQuantity: 5,
-			moneyGained:  100,
+			itemSlotIdx: 0,
+			sellQty:     5,
+			moneyGained: 100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(moneyItemID, 100), // Money gained
+				createSlot(moneyItemID, 100),
 			},
 			desc: "Should remove item slot and add money slot",
 		},
 		{
 			name: "Sell partial stack",
 			initialInv: []domain.InventorySlot{
-				createSlot(10, 10), // Item to sell
+				createSlot(10, 10),
 			},
-			itemSlotIdx:  0,
-			sellQuantity: 5,
-			moneyGained:  100,
+			itemSlotIdx: 0,
+			sellQty:     5,
+			moneyGained: 100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(10, 5),            // Remaining item
-				createSlot(moneyItemID, 100), // Money gained
+				createSlot(10, 5),
+				createSlot(moneyItemID, 100),
 			},
 			desc: "Should reduce item quantity and add money slot",
 		},
 		{
 			name: "Sell with existing money",
 			initialInv: []domain.InventorySlot{
-				createSlot(10, 5),           // Item to sell
-				createSlot(moneyItemID, 50), // Existing money
+				createSlot(10, 5),
+				createSlot(moneyItemID, 50),
 			},
-			itemSlotIdx:  0,
-			sellQuantity: 5,
-			moneyGained:  100,
+			itemSlotIdx: 0,
+			sellQty:     5,
+			moneyGained: 100,
 			expectedInv: []domain.InventorySlot{
-				createSlot(moneyItemID, 150), // Stacked money (50 + 100)
+				createSlot(moneyItemID, 150),
 			},
 			desc: "Should remove item and stack money",
 		},
 		{
 			name: "Sell specific quality slot",
 			initialInv: []domain.InventorySlot{
-				createSlot(10, 5, domain.QualityCommon), // Common
-				createSlot(10, 1, domain.QualityRare),   // Rare (index 1)
+				createSlot(10, 5, domain.QualityCommon),
+				createSlot(10, 1, domain.QualityRare),
 			},
-			itemSlotIdx:  1, // Selling Rare item
-			sellQuantity: 1,
-			moneyGained:  500,
+			itemSlotIdx: 1,
+			sellQty:     1,
+			moneyGained: 500,
 			expectedInv: []domain.InventorySlot{
-				createSlot(10, 5, domain.QualityCommon), // Common remains
-				createSlot(moneyItemID, 500),            // Money added
+				createSlot(10, 5, domain.QualityCommon),
+				createSlot(moneyItemID, 500),
 			},
 			desc: "Should remove correct slot based on index",
 		},
@@ -207,7 +207,7 @@ func TestProcessSellTransaction(t *testing.T) {
 			t.Parallel()
 			inv := &domain.Inventory{Slots: append([]domain.InventorySlot{}, tt.initialInv...)}
 
-			processSellTransaction(inv, moneyItemID, tt.itemSlotIdx, tt.sellQuantity, tt.moneyGained)
+			processSellTransaction(inv, moneyItemID, tt.itemSlotIdx, tt.sellQty, tt.moneyGained)
 
 			assert.ElementsMatch(t, tt.expectedInv, inv.Slots, tt.desc)
 		})

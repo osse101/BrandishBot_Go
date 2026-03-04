@@ -11,11 +11,11 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, quantity int) (int, int, error) {
+func (s *service) SellItem(ctx context.Context, platform, platformID, username, itemName string, qty int) (int, int, error) {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgSellItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
+	log.Info(LogMsgSellItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", qty)
 
-	if err := validateQuantity(quantity); err != nil {
+	if err := validateQuantity(qty); err != nil {
 		return 0, 0, err
 	}
 
@@ -30,27 +30,27 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	inventory, err := tx.GetInventory(ctx, user.ID)
+	inv, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
-	if itemSlotIndex == -1 {
+	itemSlotIdx, slotQty := utils.FindRandomSlot(inv, item.ID, s.rnd)
+	if itemSlotIdx == -1 {
 		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName, domain.ErrNotInInventory)
 	}
 
-	finalQty := quantity
-	if slotQuantity < quantity {
-		finalQty = slotQuantity
+	finalQty := qty
+	if slotQty < qty {
+		finalQty = slotQty
 	}
 
 	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
 	moneyGained := finalQty * sellPrice
 
-	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, finalQty, moneyGained)
+	processSellTransaction(inv, moneyItem.ID, itemSlotIdx, finalQty, moneyGained)
 
-	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, user.ID, *inv); err != nil {
 		return 0, 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
 

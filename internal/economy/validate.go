@@ -7,12 +7,12 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-func validateQuantity(quantity int) error {
-	if quantity <= 0 {
-		return fmt.Errorf(ErrMsgInvalidQuantityFmt, quantity, domain.ErrInvalidInput)
+func validateQuantity(qty int) error {
+	if qty <= 0 {
+		return fmt.Errorf(ErrMsgInvalidQuantityFmt, qty, domain.ErrInvalidInput)
 	}
-	if quantity > domain.MaxTransactionQuantity {
-		return fmt.Errorf(ErrMsgQuantityExceedsMaxFmt, quantity, domain.MaxTransactionQuantity, domain.ErrInvalidInput)
+	if qty > domain.MaxTransactionQuantity {
+		return fmt.Errorf(ErrMsgQuantityExceedsMaxFmt, qty, domain.MaxTransactionQuantity, domain.ErrInvalidInput)
 	}
 	return nil
 }
