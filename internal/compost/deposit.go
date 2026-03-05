@@ -10,7 +10,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Deposit adds items to the user's compost bin, auto-starting if first deposit
 func (s *service) Deposit(ctx context.Context, platform, platformID string, items []DepositItem) (*domain.CompostBin, error) {
 	user, bin, err := s.getUserAndBin(ctx, platform, platformID, true)
 	if err != nil {
@@ -41,7 +40,6 @@ func (s *service) Deposit(ctx context.Context, platform, platformID string, item
 		return nil, err
 	}
 
-	// Make sure capacity is intact for the returned structure
 	return bin, nil
 }
 
@@ -57,50 +55,47 @@ func (s *service) checkBinCapacity(bin *domain.CompostBin, resolved []resolvedDe
 }
 
 func (s *service) executeDepositTransaction(ctx context.Context, userID string, bin *domain.CompostBin, resolved []resolvedDeposit) error {
-	tx, err := s.repo.BeginTx(ctx)
+	transaction, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer repository.SafeRollback(ctx, tx)
+	defer repository.SafeRollback(ctx, transaction)
 
-	binLocked, err := tx.GetBinForUpdate(ctx, userID)
+	binLocked, err := transaction.GetBinForUpdate(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to lock bin: %w", err)
 	}
 
-	// Preserve dynamic capacity which is not stored in DB
 	currentCapacity := bin.Capacity
 
-	// Copy data to the original bin pointer to maintain state for the caller
 	*bin = *binLocked
 
-	// Restore dynamic capacity
 	bin.Capacity = currentCapacity
 
-	inv, err := tx.GetInventory(ctx, userID)
+	inventory, err := transaction.GetInventory(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	for _, r := range resolved {
-		slotIdx, qty := utils.FindSlot(inv, r.item.ID)
+		slotIdx, qty := utils.FindSlot(inventory, r.item.ID)
 		if slotIdx < 0 || qty < r.quantity {
 			return fmt.Errorf("%w: %s", domain.ErrInsufficientQuantity, r.item.PublicName)
 		}
-		utils.RemoveFromSlot(inv, slotIdx, r.quantity)
+		utils.RemoveFromSlot(inventory, slotIdx, r.quantity)
 	}
 
-	if err := tx.UpdateInventory(ctx, userID, *inv); err != nil {
+	if err := transaction.UpdateInventory(ctx, userID, *inventory); err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	s.updateBinWithDeposits(ctx, bin, resolved)
 
-	if err := tx.UpdateBin(ctx, bin); err != nil {
+	if err := transaction.UpdateBin(ctx, bin); err != nil {
 		return fmt.Errorf("failed to update bin: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := transaction.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
@@ -129,25 +124,25 @@ func (s *service) resolveDepositItems(ctx context.Context, items []DepositItem) 
 
 	var resolved = make([]resolvedDeposit, 0, len(items))
 	for _, di := range items {
-		domItem := itemsByName[di.ItemName]
-		if domItem == nil {
+		domainItem := itemsByName[di.ItemName]
+		if domainItem == nil {
 			for i := range allRepoItems {
 				if allRepoItems[i].PublicName == di.ItemName {
-					domItem = &allRepoItems[i]
+					domainItem = &allRepoItems[i]
 					break
 				}
 			}
 		}
-		if domItem == nil {
+		if domainItem == nil {
 			return nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, di.ItemName)
 		}
-		if !domain.HasTag(domItem.Types, domain.CompostableTag) {
+		if !domain.HasTag(domainItem.Types, domain.CompostableTag) {
 			return nil, fmt.Errorf("%w: %s", domain.ErrCompostNotCompostable, di.ItemName)
 		}
 		if di.Quantity <= 0 {
 			return nil, fmt.Errorf("%w: quantity must be positive", domain.ErrInvalidQuantity)
 		}
-		resolved = append(resolved, resolvedDeposit{item: domItem, quantity: di.Quantity})
+		resolved = append(resolved, resolvedDeposit{item: domainItem, quantity: di.Quantity})
 	}
 	return resolved, nil
 }

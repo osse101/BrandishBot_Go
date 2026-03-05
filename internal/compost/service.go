@@ -13,14 +13,12 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
-// Service defines the compost feature interface
 type Service interface {
 	Deposit(ctx context.Context, platform, platformID string, items []DepositItem) (*domain.CompostBin, error)
 	Harvest(ctx context.Context, platform, platformID, username string) (*domain.HarvestResult, error)
 	Shutdown(ctx context.Context) error
 }
 
-// DepositItem represents a single item deposit request
 type DepositItem struct {
 	ItemName string `json:"item_name"`
 	Quantity int    `json:"quantity"`
@@ -41,7 +39,6 @@ type service struct {
 	wg             sync.WaitGroup
 }
 
-// NewService creates a new compost service
 func NewService(
 	repo repository.CompostRepository,
 	userRepo repository.User,
@@ -59,7 +56,6 @@ func NewService(
 	}
 }
 
-// Shutdown waits for async goroutines to complete
 func (s *service) Shutdown(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
@@ -82,11 +78,10 @@ func (s *service) validateFeature(ctx context.Context, userID string) error {
 	if !unlocked {
 		return fmt.Errorf("compost requires feature unlock: %w", domain.ErrFeatureLocked)
 	}
-	// Optional: Check job feature
+
 	if userID != "" {
 		jobUnlocked, err := s.jobSvc.IsJobFeatureUnlocked(ctx, userID, progression.FeatureCompost)
 		if err == nil && !jobUnlocked {
-			// If we successfully checked the job config and it is locked, block the user
 			return fmt.Errorf("compost requires job progression: %w", domain.ErrFeatureLocked)
 		}
 	}
@@ -99,20 +94,19 @@ func (s *service) getUserAndBin(ctx context.Context, platform, platformID string
 		return nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	bin, err := s.repo.GetBin(ctx, user.ID)
+	compostBin, err := s.repo.GetBin(ctx, user.ID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get bin: %w", err)
 	}
-	if bin == nil && createIfMissing {
-		bin, err = s.repo.CreateBin(ctx, user.ID)
+	if compostBin == nil && createIfMissing {
+		compostBin, err = s.repo.CreateBin(ctx, user.ID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create bin: %w", err)
 		}
 	}
-	return user, bin, nil
+	return user, compostBin, nil
 }
 
-// formatDuration formats a duration into a human-readable string
 func formatDuration(d time.Duration) string {
 	if d <= 0 {
 		return MsgReadyNow

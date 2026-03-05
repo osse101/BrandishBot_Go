@@ -13,7 +13,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Harvest collects compost output, or returns status if not ready
 func (s *service) Harvest(ctx context.Context, platform, platformID, username string) (*domain.HarvestResult, error) {
 	user, bin, err := s.getUserAndBin(ctx, platform, platformID, false)
 	if err != nil {
@@ -24,29 +23,23 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 		return nil, err
 	}
 
-	// Handle idle/empty bin
 	if bin == nil || bin.Status == domain.CompostBinStatusIdle {
 		return s.idleHarvestResult(), nil
 	}
 
-	// Lazy status resolution
 	s.resolveLazyBinStatus(bin)
 
-	// If still composting, return status
 	if bin.Status == domain.CompostBinStatusComposting {
 		return s.compostingHarvestResult(bin), nil
 	}
 
-	// Ready or sludge - harvest!
 	isSludge := bin.Status == domain.CompostBinStatusSludge
 
-	// Get all items for output calculation
 	allItems, err := s.userRepo.GetAllItems(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get items: %w", err)
 	}
 
-	// Calculate multiplier (base * progression bonuses)
 	multiplier := DefaultMultiplier
 	if bonus, err := s.progressionSvc.GetModifiedValue(ctx, "", progression.FeatureCompost, 1.0); err == nil {
 		multiplier *= bonus
@@ -54,21 +47,21 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 
 	output := s.engine.CalculateOutput(bin.InputValue, bin.DominantType, isSludge, allItems, multiplier)
 
-	tx, err := s.repo.BeginTx(ctx)
+	transaction, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin harvest transaction: %w", err)
 	}
-	defer repository.SafeRollback(ctx, tx)
+	defer repository.SafeRollback(ctx, transaction)
 
-	if err := s.processHarvestItems(ctx, tx, user.ID, output); err != nil {
+	if err := s.processHarvestItems(ctx, transaction, user.ID, output); err != nil {
 		return nil, err
 	}
 
-	if err := tx.ResetBin(ctx, user.ID); err != nil {
+	if err := transaction.ResetBin(ctx, user.ID); err != nil {
 		return nil, fmt.Errorf("failed to reset bin: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	if err := transaction.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit harvest: %w", err)
 	}
 
@@ -129,8 +122,8 @@ func (s *service) compostingHarvestResult(bin *domain.CompostBin) *domain.Harves
 	}
 }
 
-func (s *service) processHarvestItems(ctx context.Context, tx repository.CompostTx, userID string, output *domain.CompostOutput) error {
-	inv, err := tx.GetInventory(ctx, userID)
+func (s *service) processHarvestItems(ctx context.Context, transaction repository.CompostTx, userID string, output *domain.CompostOutput) error {
+	inventory, err := transaction.GetInventory(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
@@ -156,11 +149,11 @@ func (s *service) processHarvestItems(ctx context.Context, tx repository.Compost
 			log.Warn("Output item not found, skipping", "item", name)
 			continue
 		}
-		slotIdx, _ := utils.FindSlot(inv, item.ID)
+		slotIdx, _ := utils.FindSlot(inventory, item.ID)
 		if slotIdx >= 0 {
-			inv.Slots[slotIdx].Quantity += qty
+			inventory.Slots[slotIdx].Quantity += qty
 		} else {
-			inv.Slots = append(inv.Slots, domain.InventorySlot{
+			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
 				ItemID:       item.ID,
 				Quantity:     qty,
 				QualityLevel: domain.QualityCommon,
@@ -168,16 +161,16 @@ func (s *service) processHarvestItems(ctx context.Context, tx repository.Compost
 		}
 	}
 
-	if err := tx.UpdateInventory(ctx, userID, *inv); err != nil {
+	if err := transaction.UpdateInventory(ctx, userID, *inventory); err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 	return nil
 }
 
 func (s *service) awardHarvestXP(ctx context.Context, userID string, itemCount int, inputValue int, isSludge bool) {
-	xpAmount := itemCount * 12
-	if xpAmount < 1 {
-		xpAmount = 1
+	experienceAmount := itemCount * 12
+	if experienceAmount < 1 {
+		experienceAmount = 1
 	}
 
 	if s.publisher != nil {
@@ -187,7 +180,7 @@ func (s *service) awardHarvestXP(ctx context.Context, userID string, itemCount i
 			Payload: domain.CompostHarvestedPayload{
 				UserID:     userID,
 				InputValue: inputValue,
-				XPAmount:   xpAmount,
+				XPAmount:   experienceAmount,
 				IsSludge:   isSludge,
 				Timestamp:  time.Now().Unix(),
 			},
