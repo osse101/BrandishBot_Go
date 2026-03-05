@@ -36,6 +36,8 @@ func main() {
 	registry.Register(&DebugDBSessionsCommand{})
 	registry.Register(&AnalyzeLogsCommand{})
 	registry.Register(&ScenarioCommand{})
+	registry.Register(&TestLogsCommand{})
+	registry.Register(&TestLootboxCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
