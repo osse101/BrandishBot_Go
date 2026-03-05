@@ -197,3 +197,9 @@ packages:
       mockname: 'MockHarvest{{.InterfaceName}}'
     interfaces:
       Service:
+  github.com/osse101/BrandishBot_Go/internal/slots:
+    config:
+      filename: 'mock_slots_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockSlots{{.InterfaceName}}'
+    interfaces:
+      Service:
