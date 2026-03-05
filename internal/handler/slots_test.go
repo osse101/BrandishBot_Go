@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
+	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,42 +21,64 @@ import (
 func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 	t.Parallel()
 
+	const betAmount = 100
+	const payoutMultiplier = 2.0
+	const expectedPayout = int(float64(betAmount) * payoutMultiplier)
+	const expectedMessage = "You won!"
+
 	tests := []struct {
 		name           string
 		reqBody        interface{}
 		setupMocks     func(*mocks.MockProgressionService, *mocks.MockSlotsService)
 		expectedStatus int
 		expectedError  string
-		expectedBody   string
+		expectedBody   func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
 			name: "Best Case - Successful Spin",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
-				BetAmount:  100,
+				BetAmount:  betAmount,
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 100).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", betAmount).
 					Return(&domain.SlotsResult{
 						UserID:           "uuid-123",
 						Username:         "testuser",
-						Reel1:            "cherry",
-						Reel2:            "cherry",
-						Reel3:            "cherry",
-						BetAmount:        100,
-						PayoutAmount:     200,
-						PayoutMultiplier: 2.0,
+						Reel1:            slots.SymbolCherry,
+						Reel2:            slots.SymbolCherry,
+						Reel3:            slots.SymbolCherry,
+						BetAmount:        betAmount,
+						PayoutAmount:     expectedPayout,
+						PayoutMultiplier: payoutMultiplier,
 						IsWin:            true,
 						IsNearMiss:       false,
-						TriggerType:      "normal",
-						Message:          "You won!",
+						TriggerType:      slots.TriggerNormal,
+						Message:          expectedMessage,
 					}, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `{"user_id":"uuid-123","username":"testuser","reel1":"cherry","reel2":"cherry","reel3":"cherry","bet_amount":100,"payout_amount":200,"payout_multiplier":2,"is_win":true,"is_near_miss":false,"trigger_type":"normal","message":"You won!"}`,
+			expectedBody: func(t *testing.T, w *httptest.ResponseRecorder) {
+				var resp handler.SlotsResult
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				require.NoError(t, err)
+
+				assert.Equal(t, "uuid-123", resp.UserID)
+				assert.Equal(t, "testuser", resp.Username)
+				assert.Equal(t, slots.SymbolCherry, resp.Reel1)
+				assert.Equal(t, slots.SymbolCherry, resp.Reel2)
+				assert.Equal(t, slots.SymbolCherry, resp.Reel3)
+				assert.Equal(t, betAmount, resp.BetAmount)
+				assert.Equal(t, expectedPayout, resp.PayoutAmount)
+				assert.Equal(t, payoutMultiplier, resp.PayoutMultiplier)
+				assert.True(t, resp.IsWin)
+				assert.False(t, resp.IsNearMiss)
+				assert.Equal(t, slots.TriggerNormal, resp.TriggerType)
+				assert.Equal(t, expectedMessage, resp.Message)
+			},
 		},
 		{
 			name: "Error Case - Feature Locked",
@@ -257,8 +280,8 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 
 			if tt.expectedError != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedError)
-			} else if tt.expectedBody != "" {
-				assert.JSONEq(t, tt.expectedBody, w.Body.String())
+			} else if tt.expectedBody != nil {
+				tt.expectedBody(t, w)
 			}
 
 			// Verify mock expectations
