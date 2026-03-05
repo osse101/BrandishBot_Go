@@ -38,9 +38,23 @@ func (c *TestLogsCommand) Run(args []string) error {
 	}
 
 	// Build the app
+	appPath, err := c.buildApp()
+	if err != nil {
+		return err
+	}
+
+	if err := c.runAppLoop(appPath); err != nil {
+		return err
+	}
+
+	return c.verifyLogs(logDir)
+}
+
+func (c *TestLogsCommand) buildApp() (string, error) {
 	PrintInfo("Building the application...")
+	//nolint:forbidigo // Safe usage of wrapper
 	if err := runCommandVerbose("make", "build"); err != nil {
-		return fmt.Errorf("failed to build app: %w", err)
+		return "", fmt.Errorf("failed to build app: %w", err)
 	}
 
 	appName := "app"
@@ -49,9 +63,12 @@ func (c *TestLogsCommand) Run(args []string) error {
 	}
 	appPath := filepath.Join("bin", appName)
 	if _, err := os.Stat(appPath); os.IsNotExist(err) {
-		return fmt.Errorf("app binary not found at %s", appPath)
+		return "", fmt.Errorf("app binary not found at %s", appPath)
 	}
+	return appPath, nil
+}
 
+func (c *TestLogsCommand) runAppLoop(appPath string) error {
 	for i := 1; i <= 12; i++ {
 		fmt.Printf("Run #%d\n", i)
 
@@ -62,9 +79,12 @@ func (c *TestLogsCommand) Run(args []string) error {
 
 		time.Sleep(1 * time.Second)
 	}
+	return nil
+}
 
+func (c *TestLogsCommand) verifyLogs(logDir string) error {
 	// Check logs
-	files, err = os.ReadDir(logDir)
+	files, err := os.ReadDir(logDir)
 	if err != nil {
 		return fmt.Errorf("failed to read log directory: %w", err)
 	}
@@ -94,7 +114,8 @@ func (c *TestLogsCommand) Run(args []string) error {
 
 // runCommandAsyncAndKill starts a process and kills it after a timeout
 func runCommandAsyncAndKill(path string, timeout time.Duration) error {
-	cmd := exec.Command(path)
+	//nolint:gosec // Path is hardcoded inside Run to be bin/app, so it is safe.
+	cmd := exec.Command(filepath.Clean(path))
 	if err := cmd.Start(); err != nil {
 		return err
 	}

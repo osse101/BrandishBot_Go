@@ -24,7 +24,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 
 	baseURL := os.Getenv("API_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+		baseURL = defaultAPIURL
 	}
 
 	username := "debug_user"
