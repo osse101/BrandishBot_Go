@@ -80,8 +80,19 @@ func (s *service) calculateSearchQuality(ctx context.Context, userID string, isC
 		}
 	}
 
-	// 4. Calculate final index and clamp
+	// 4. Calculate final index
 	finalIndex := baseIndex + points
+
+	// 5. Apply progression modifier
+	if s.progressionSvc != nil {
+		if modifiedIndex, err := s.progressionSvc.GetModifiedValue(ctx, userID, "search_quality", float64(finalIndex)); err == nil {
+			finalIndex = int(modifiedIndex)
+		} else {
+			log.Warn("Failed to apply search_quality modifier", "error", err)
+		}
+	}
+
+	// 6. Clamp final index
 	if finalIndex >= len(searchQualityLevels) {
 		finalIndex = len(searchQualityLevels) - 1
 	}

@@ -34,7 +34,7 @@ func TestInventoryEvents(t *testing.T) {
 	}
 	repo.items[domain.ItemStick] = stickItem
 
-	svc := NewService(repo, repo, nil, publisher, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, publisher, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
 	ctx := context.Background()
 
 	t.Run("ItemAdded Event", func(t *testing.T) {

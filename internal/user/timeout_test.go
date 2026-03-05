@@ -16,7 +16,7 @@ func setupTimeoutService() Service {
 	repo := NewFakeRepository()
 	setupTestData(repo)
 	// Using NewService from the package
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false)
 	return svc
 }
 
