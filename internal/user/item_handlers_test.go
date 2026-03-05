@@ -220,7 +220,7 @@ func TestHandler_Mine(t *testing.T) {
 	}
 
 	// Create service
-	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
 	ctx := context.Background()
 
 	// Setup users
@@ -280,7 +280,7 @@ func TestHandler_Mine(t *testing.T) {
 		// Setup Mine item
 		localRepo.items[domain.ItemMine] = repo.items[domain.ItemMine]
 
-		localSvc := NewService(localRepo, localRepo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+		localSvc := NewService(localRepo, localRepo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
 
 		// Setup Alice with mines
 		aliceID := uuid.New().String()
@@ -325,7 +325,7 @@ func TestHandler_Mine(t *testing.T) {
 		}
 		repo.UpdateInventory(ctx, alice.ID, *inv)
 
-		svcLocal := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, false).(*service)
+		svcLocal := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
 		svcLocal.activeChatterTracker.Track(domain.PlatformTwitch, alice.ID, alice.Username)
 
 		msg, err := svcLocal.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMine, 3, "")

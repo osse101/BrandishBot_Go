@@ -370,7 +370,7 @@ func createSearchTestService(opts ...func(*searchTestServiceOpts)) (*service, *m
 		opt(config)
 	}
 
-	svc := NewService(repo, repo, statsSvc, config.publisher, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, config.jobService, nil, false).(*service)
+	svc := NewService(repo, repo, statsSvc, config.publisher, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, config.jobService, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{

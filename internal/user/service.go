@@ -45,6 +45,7 @@ type service struct {
 	stringFinder    *StringFinder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
+	progressionSvc  ProgressionService
 	jobService      job.Service // Job service for retrieving job levels
 	eventBus        event.Bus   // Event bus for publishing timeout events
 	devMode         bool        // When true, bypasses cooldowns
@@ -106,8 +107,13 @@ func loadCacheConfig() CacheConfig {
 	return config
 }
 
+// ProgressionService defines the interface for progression operations
+type ProgressionService interface {
+	GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
+}
+
 // NewService creates a new user service
-func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, jobService job.Service, eventBus event.Bus, devMode bool) Service {
+func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, progressionSvc ProgressionService, jobService job.Service, eventBus event.Bus, devMode bool) Service {
 	return &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
@@ -119,6 +125,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		stringFinder:         NewStringFinder("configs/string_finder_rules.json"),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
+		progressionSvc:       progressionSvc,
 		jobService:           jobService,
 		eventBus:             eventBus,
 		devMode:              devMode,
