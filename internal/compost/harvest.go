@@ -47,21 +47,21 @@ func (s *service) Harvest(ctx context.Context, platform, platformID, username st
 
 	output := s.engine.CalculateOutput(bin.InputValue, bin.DominantType, isSludge, allItems, multiplier)
 
-	transaction, err := s.repo.BeginTx(ctx)
+	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin harvest transaction: %w", err)
 	}
-	defer repository.SafeRollback(ctx, transaction)
+	defer repository.SafeRollback(ctx, tx)
 
-	if err := s.processHarvestItems(ctx, transaction, user.ID, output); err != nil {
+	if err := s.processHarvestItems(ctx, tx, user.ID, output); err != nil {
 		return nil, err
 	}
 
-	if err := transaction.ResetBin(ctx, user.ID); err != nil {
+	if err := tx.ResetBin(ctx, user.ID); err != nil {
 		return nil, fmt.Errorf("failed to reset bin: %w", err)
 	}
 
-	if err := transaction.Commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("failed to commit harvest: %w", err)
 	}
 
@@ -122,8 +122,8 @@ func (s *service) compostingHarvestResult(bin *domain.CompostBin) *domain.Harves
 	}
 }
 
-func (s *service) processHarvestItems(ctx context.Context, transaction repository.CompostTx, userID string, output *domain.CompostOutput) error {
-	inventory, err := transaction.GetInventory(ctx, userID)
+func (s *service) processHarvestItems(ctx context.Context, tx repository.CompostTx, userID string, output *domain.CompostOutput) error {
+	inv, err := tx.GetInventory(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
@@ -149,11 +149,11 @@ func (s *service) processHarvestItems(ctx context.Context, transaction repositor
 			log.Warn("Output item not found, skipping", "item", name)
 			continue
 		}
-		slotIdx, _ := utils.FindSlot(inventory, item.ID)
+		slotIdx, _ := utils.FindSlot(inv, item.ID)
 		if slotIdx >= 0 {
-			inventory.Slots[slotIdx].Quantity += qty
+			inv.Slots[slotIdx].Quantity += qty
 		} else {
-			inventory.Slots = append(inventory.Slots, domain.InventorySlot{
+			inv.Slots = append(inv.Slots, domain.InventorySlot{
 				ItemID:       item.ID,
 				Quantity:     qty,
 				QualityLevel: domain.QualityCommon,
@@ -161,7 +161,7 @@ func (s *service) processHarvestItems(ctx context.Context, transaction repositor
 		}
 	}
 
-	if err := transaction.UpdateInventory(ctx, userID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, userID, *inv); err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 	return nil

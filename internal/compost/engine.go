@@ -29,8 +29,8 @@ func (e *Engine) CalculateSludgeAt(readyAt time.Time, sludgeExtHours float64) ti
 func (e *Engine) CalculateInputValue(items []domain.CompostBinItem) int {
 	total := 0
 	for _, item := range items {
-		qualityMultiplier := utils.GetQualityMultiplier(item.QualityLevel)
-		total += int(math.Round(float64(item.BaseValue) * qualityMultiplier * float64(item.Quantity)))
+		mult := utils.GetQualityMultiplier(item.QualityLevel)
+		total += int(math.Round(float64(item.BaseValue) * mult * float64(item.Quantity)))
 	}
 	return total
 }
@@ -38,8 +38,8 @@ func (e *Engine) CalculateInputValue(items []domain.CompostBinItem) int {
 func (e *Engine) DetermineDominantType(items []domain.CompostBinItem) string {
 	typeValues := make(map[string]int)
 	for _, item := range items {
-		qualityMultiplier := utils.GetQualityMultiplier(item.QualityLevel)
-		itemValue := int(math.Round(float64(item.BaseValue) * qualityMultiplier * float64(item.Quantity)))
+		mult := utils.GetQualityMultiplier(item.QualityLevel)
+		itemValue := int(math.Round(float64(item.BaseValue) * mult * float64(item.Quantity)))
 		for _, ct := range item.ContentTypes {
 			typeValues[ct] += itemValue
 		}

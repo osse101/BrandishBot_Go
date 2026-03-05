@@ -55,13 +55,13 @@ func (s *service) checkBinCapacity(bin *domain.CompostBin, resolved []resolvedDe
 }
 
 func (s *service) executeDepositTransaction(ctx context.Context, userID string, bin *domain.CompostBin, resolved []resolvedDeposit) error {
-	transaction, err := s.repo.BeginTx(ctx)
+	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer repository.SafeRollback(ctx, transaction)
+	defer repository.SafeRollback(ctx, tx)
 
-	binLocked, err := transaction.GetBinForUpdate(ctx, userID)
+	binLocked, err := tx.GetBinForUpdate(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to lock bin: %w", err)
 	}
@@ -72,30 +72,30 @@ func (s *service) executeDepositTransaction(ctx context.Context, userID string, 
 
 	bin.Capacity = currentCapacity
 
-	inventory, err := transaction.GetInventory(ctx, userID)
+	inv, err := tx.GetInventory(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get inventory: %w", err)
 	}
 
 	for _, r := range resolved {
-		slotIdx, qty := utils.FindSlot(inventory, r.item.ID)
+		slotIdx, qty := utils.FindSlot(inv, r.item.ID)
 		if slotIdx < 0 || qty < r.quantity {
 			return fmt.Errorf("%w: %s", domain.ErrInsufficientQuantity, r.item.PublicName)
 		}
-		utils.RemoveFromSlot(inventory, slotIdx, r.quantity)
+		utils.RemoveFromSlot(inv, slotIdx, r.quantity)
 	}
 
-	if err := transaction.UpdateInventory(ctx, userID, *inventory); err != nil {
+	if err := tx.UpdateInventory(ctx, userID, *inv); err != nil {
 		return fmt.Errorf("failed to update inventory: %w", err)
 	}
 
 	s.updateBinWithDeposits(ctx, bin, resolved)
 
-	if err := transaction.UpdateBin(ctx, bin); err != nil {
+	if err := tx.UpdateBin(ctx, bin); err != nil {
 		return fmt.Errorf("failed to update bin: %w", err)
 	}
 
-	if err := transaction.Commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
