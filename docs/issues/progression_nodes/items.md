@@ -41,12 +41,12 @@
 
 **Implementation Checklist**:
 
-- [ ] Add feature gate check in item handler
-- [ ] Update item service to check unlock status
-- [ ] Add tests for locked/unlocked states
-- [ ] Verify with admin unlock
-- [ ] Test locked behavior (should return 403)
-- [ ] Test unlocked behavior (filter works)
+- [x] Add feature gate check in item handler
+- [x] Update item service to check unlock status
+- [x] Add tests for locked/unlocked states
+- [x] Verify with admin unlock
+- [x] Test locked behavior (should return 403)
+- [x] Test unlocked behavior (filter works)
 
 **Files to Modify**:
 
