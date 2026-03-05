@@ -10,16 +10,61 @@ import (
 )
 
 func TestCalculateReadyAt(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	// Warmup (1h) + 3 items * 30m = 2h 30m
-	readyAt := engine.CalculateReadyAt(start, 3, 0.0)
-	expected := start.Add(1*time.Hour + 3*30*time.Minute)
-	assert.Equal(t, expected, readyAt)
+	tests := []struct {
+		name            string
+		totalItemCount  int
+		speedMultiplier float64
+		expectedOffset  time.Duration
+	}{
+		{
+			name:            "Normal calculation (3 items)",
+			totalItemCount:  3,
+			speedMultiplier: 0.0,
+			expectedOffset:  1*time.Hour + 3*30*time.Minute,
+		},
+		{
+			name:            "Zero items",
+			totalItemCount:  0,
+			speedMultiplier: 0.0,
+			expectedOffset:  1 * time.Hour, // Only Warmup duration
+		},
+		{
+			name:            "Speed multiplier 0.5 (50% faster)",
+			totalItemCount:  2,
+			speedMultiplier: 0.5,
+			expectedOffset:  time.Duration(float64(1*time.Hour+2*30*time.Minute) * 0.5),
+		},
+		{
+			name:            "Speed multiplier 1.0 (Instant)",
+			totalItemCount:  10,
+			speedMultiplier: 1.0,
+			expectedOffset:  0,
+		},
+		{
+			name:            "Negative speed multiplier (Slower)",
+			totalItemCount:  2,
+			speedMultiplier: -0.5, // 150% duration
+			expectedOffset:  time.Duration(float64(1*time.Hour+2*30*time.Minute) * 1.5),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			readyAt := engine.CalculateReadyAt(start, tt.totalItemCount, tt.speedMultiplier)
+			expected := start.Add(tt.expectedOffset)
+			assert.Equal(t, expected, readyAt)
+		})
+	}
 }
 
 func TestCalculateReadyAt_ExtendExisting(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 
@@ -36,14 +81,50 @@ func TestCalculateReadyAt_ExtendExisting(t *testing.T) {
 }
 
 func TestCalculateSludgeAt(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	readyAt := time.Date(2026, 1, 2, 14, 30, 0, 0, time.UTC)
 
-	sludgeAt := engine.CalculateSludgeAt(readyAt, 0.0)
-	assert.Equal(t, readyAt.Add(168*time.Hour), sludgeAt)
+	tests := []struct {
+		name           string
+		sludgeExtHours float64
+		expectedOffset time.Duration
+	}{
+		{
+			name:           "No extension",
+			sludgeExtHours: 0.0,
+			expectedOffset: 168 * time.Hour,
+		},
+		{
+			name:           "Positive extension (24h)",
+			sludgeExtHours: 24.0,
+			expectedOffset: 168*time.Hour + 24*time.Hour,
+		},
+		{
+			name:           "Fractional extension (1.5h)",
+			sludgeExtHours: 1.5,
+			expectedOffset: 168*time.Hour + 90*time.Minute,
+		},
+		{
+			name:           "Negative extension (decreases sludge time)",
+			sludgeExtHours: -12.0,
+			expectedOffset: 168*time.Hour - 12*time.Hour,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			sludgeAt := engine.CalculateSludgeAt(readyAt, tt.sludgeExtHours)
+			expected := readyAt.Add(tt.expectedOffset)
+			assert.Equal(t, expected, sludgeAt)
+		})
+	}
 }
 
 func TestCalculateInputValue(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -68,7 +149,9 @@ func TestCalculateInputValue(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			value := engine.CalculateInputValue(tt.items)
 			assert.Equal(t, tt.expected, value)
 		})
@@ -76,6 +159,7 @@ func TestCalculateInputValue(t *testing.T) {
 }
 
 func TestDetermineDominantType(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 
 	tests := []struct {
@@ -114,7 +198,9 @@ func TestDetermineDominantType(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dominant := engine.DetermineDominantType(tt.items)
 			assert.Equal(t, tt.expected, dominant)
 		})
@@ -122,6 +208,7 @@ func TestDetermineDominantType(t *testing.T) {
 }
 
 func TestCalculateOutput(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
 	allItems := []domain.Item{
 		{InternalName: "weapon_big", BaseValue: 200, ContentType: []string{"weapon"}},
@@ -236,7 +323,9 @@ func TestCalculateOutput(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			output := engine.CalculateOutput(tt.inputValue, tt.dominantType, tt.isSludge, tt.items, tt.multiplier)
 			tt.check(t, output)
 		})
@@ -244,17 +333,56 @@ func TestCalculateOutput(t *testing.T) {
 }
 
 func TestTotalItemCount(t *testing.T) {
+	t.Parallel()
 	engine := NewEngine()
-	items := []domain.CompostBinItem{
-		{Quantity: 2},
-		{Quantity: 3},
-		{Quantity: 1},
+
+	tests := []struct {
+		name     string
+		items    []domain.CompostBinItem
+		expected int
+	}{
+		{
+			name: "Multiple items with positive quantity",
+			items: []domain.CompostBinItem{
+				{Quantity: 2},
+				{Quantity: 3},
+				{Quantity: 1},
+			},
+			expected: 6,
+		},
+		{
+			name: "Single item",
+			items: []domain.CompostBinItem{
+				{Quantity: 5},
+			},
+			expected: 5,
+		},
+		{
+			name:     "Empty item list",
+			items:    []domain.CompostBinItem{},
+			expected: 0,
+		},
+		{
+			name:     "Nil item list",
+			items:    nil,
+			expected: 0,
+		},
+		{
+			name: "Items with zero quantity",
+			items: []domain.CompostBinItem{
+				{Quantity: 0},
+				{Quantity: 2},
+				{Quantity: 0},
+			},
+			expected: 2,
+		},
 	}
 
-	assert.Equal(t, 6, engine.TotalItemCount(items))
-}
-
-func TestTotalItemCount_Empty(t *testing.T) {
-	engine := NewEngine()
-	assert.Equal(t, 0, engine.TotalItemCount(nil))
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, engine.TotalItemCount(tt.items))
+		})
+	}
 }
