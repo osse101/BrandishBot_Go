@@ -83,7 +83,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Feature Locked",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  100,
@@ -98,7 +98,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Progression check failed",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  100,
@@ -135,7 +135,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Validation Error (Bet Amount Too Low)",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  5,
@@ -149,7 +149,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Validation Error (Bet Amount Too High)",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  15000,
@@ -163,14 +163,14 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Insufficient Funds",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  100,
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 100).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", 100).
 					Return(nil, errors.New("insufficient funds. You have 50 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -179,14 +179,14 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Slots feature not yet unlocked from service layer",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  100,
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 100).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", 100).
 					Return(nil, errors.New("slots feature is not yet unlocked"))
 			},
 			expectedStatus: http.StatusForbidden,
@@ -195,14 +195,14 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Minimum bet error from service layer",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  10, // Validation passes, but service layer logic kicks in
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 10).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", 10).
 					Return(nil, errors.New("minimum bet is 20 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -211,14 +211,14 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Maximum bet error from service layer",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  10000,
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 10000).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", 10000).
 					Return(nil, errors.New("maximum bet is 5000 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -227,14 +227,14 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		{
 			name: "Error Case - Generic Internal Error",
 			reqBody: handler.SpinSlotsRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user123",
 				Username:   "testuser",
 				BetAmount:  100,
 			},
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
-				slotsMock.On("SpinSlots", mock.Anything, "discord", "user123", "testuser", 100).
+				slotsMock.On("SpinSlots", mock.Anything, domain.PlatformDiscord, "user123", "testuser", 100).
 					Return(nil, errors.New("database connection failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
