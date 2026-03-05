@@ -2,10 +2,11 @@ package user
 
 import (
 	"context"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
@@ -114,52 +115,48 @@ func TestAddItem(t *testing.T) {
 		TwitchID: "alice123",
 	}
 
-	// Test adding item to empty inventory
-	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 5)
-	if err != nil {
-		t.Fatalf("Failed to setup test: %v", err)
-	}
+	t.Run("add item to empty inventory", func(t *testing.T) {
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 5)
+		require.NoError(t, err, "Failed to setup test")
 
-	// One slot should have 5 lootbox1
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	var found bool
-	for _, slot := range inv.Slots {
-		if slot.ItemID == 1 { // lootbox1 has ID 1
-			found = true
-			if slot.Quantity != 5 {
-				t.Fatalf("Expected 5, got %d", slot.Quantity)
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+
+		var found bool
+		for _, slot := range inv.Slots {
+			if slot.ItemID == 1 { // lootbox1 has ID 1
+				found = true
+				assert.Equal(t, 5, slot.Quantity, "Expected 5 items")
 			}
 		}
-	}
-	if !found {
-		t.Fatal("Item not found in inventory")
-	}
+		assert.True(t, found, "Item not found in inventory")
+	})
 
-	// Adding more should increment
-	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 3)
-	if err != nil {
-		t.Fatalf("AddItem failed: %v", err)
-	}
+	t.Run("adding more increments quantity", func(t *testing.T) {
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 3)
+		require.NoError(t, err, "AddItem failed")
 
-	inv, _ = repo.GetInventory(ctx, alice.ID)
-	for _, slot := range inv.Slots {
-		if slot.ItemID == 1 {
-			if slot.Quantity != 8 {
-				t.Errorf("Expected 8 after adding 3 more, got %d", slot.Quantity)
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+
+		var found bool
+		for _, slot := range inv.Slots {
+			if slot.ItemID == 1 {
+				found = true
+				assert.Equal(t, 8, slot.Quantity, "Expected 8 after adding 3 more")
 			}
 		}
-	}
+		assert.True(t, found, "Item not found in inventory")
+	})
 
-	// Adding a different item should create a new slot
-	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox2, 2)
-	if err != nil {
-		t.Fatalf("AddItem failed: %v", err)
-	}
+	t.Run("adding a different item creates new slot", func(t *testing.T) {
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox2, 2)
+		require.NoError(t, err, "AddItem failed")
 
-	inv, _ = repo.GetInventory(ctx, alice.ID)
-	if len(inv.Slots) != 2 {
-		t.Errorf("Expected 2 slots, got %d", len(inv.Slots))
-	}
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Len(t, inv.Slots, 2, "Expected 2 slots")
+	})
 }
 
 func TestRemoveItem(t *testing.T) {
@@ -174,41 +171,33 @@ func TestRemoveItem(t *testing.T) {
 	}
 
 	// Add 10 lootbox1 items
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 10)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 10)
+	require.NoError(t, err)
 
-	// Remove 3
-	removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 3)
-	if err != nil {
-		t.Fatalf("RemoveItem failed: %v", err)
-	}
-	if removed != 3 {
-		t.Errorf("Expected 3 removed, got %d", removed)
-	}
+	t.Run("remove partial quantity", func(t *testing.T) {
+		removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 3)
+		require.NoError(t, err, "RemoveItem failed")
+		assert.Equal(t, 3, removed, "Expected 3 removed")
 
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	if inv.Slots[0].Quantity != 7 {
-		t.Errorf("Expected quantity 7, got %d", inv.Slots[0].Quantity)
-	}
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 7, inv.Slots[0].Quantity, "Expected quantity 7")
+	})
 
-	// Test removing more than available (should remove all)
-	removed, err = svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 100)
-	if err != nil {
-		t.Fatalf("RemoveItem failed: %v", err)
-	}
-	if removed != 7 {
-		t.Errorf("Expected 7 removed, got %d", removed)
-	}
+	t.Run("remove more than available", func(t *testing.T) {
+		removed, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 100)
+		require.NoError(t, err, "RemoveItem failed")
+		assert.Equal(t, 7, removed, "Expected 7 removed")
 
-	inv, _ = repo.GetInventory(ctx, alice.ID)
-	if len(inv.Slots) != 0 {
-		t.Errorf("Expected empty inventory, got %d slots", len(inv.Slots))
-	}
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Empty(t, inv.Slots, "Expected empty inventory")
+	})
 
-	// Test removing from empty inventory
-	_, err = svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 1)
-	if err == nil {
-		t.Error("Expected error when removing from empty inventory")
-	}
+	t.Run("remove from empty inventory", func(t *testing.T) {
+		_, err := svc.RemoveItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 1)
+		require.Error(t, err, "Expected error when removing from empty inventory")
+	})
 }
 
 func TestGiveItem(t *testing.T) {
@@ -228,37 +217,34 @@ func TestGiveItem(t *testing.T) {
 	}
 
 	// Setup: Give alice some items
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 10)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 10)
+	require.NoError(t, err)
 
-	// Test giving items
-	err := svc.GiveItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.PlatformTwitch, bob.Username, domain.ItemLootbox1, 3)
-	if err != nil {
-		t.Fatalf("GiveItem failed: %v", err)
-	}
+	t.Run("give items successfully", func(t *testing.T) {
+		err := svc.GiveItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.PlatformTwitch, bob.Username, domain.ItemLootbox1, 3)
+		require.NoError(t, err, "GiveItem failed")
 
-	// Verify alice has 7 left
-	aliceInv, _ := repo.GetInventory(ctx, alice.ID)
-	if aliceInv.Slots[0].Quantity != 7 {
-		t.Errorf("Alice should have 7, got %d", aliceInv.Slots[0].Quantity)
-	}
+		// Verify alice has 7 left
+		aliceInv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 7, aliceInv.Slots[0].Quantity, "Alice should have 7")
 
-	// Verify bob has 3
-	bobInv, _ := repo.GetInventory(ctx, bob.ID)
-	if len(bobInv.Slots) != 1 || bobInv.Slots[0].Quantity != 3 {
-		t.Errorf("Bob should have 3, got %+v", bobInv.Slots)
-	}
+		// Verify bob has 3
+		bobInv, err := repo.GetInventory(ctx, bob.ID)
+		require.NoError(t, err)
+		require.Len(t, bobInv.Slots, 1)
+		assert.Equal(t, 3, bobInv.Slots[0].Quantity, "Bob should have 3")
+	})
 
-	// Test giving more than owned (should error)
-	err = svc.GiveItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.PlatformTwitch, bob.Username, domain.ItemLootbox1, 100)
-	if err == nil {
-		t.Error("Expected error when giving more than owned")
-	}
+	t.Run("giving more than owned returns error", func(t *testing.T) {
+		err := svc.GiveItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.PlatformTwitch, bob.Username, domain.ItemLootbox1, 100)
+		require.Error(t, err, "Expected error when giving more than owned")
 
-	// Verify no changes after failed give
-	aliceInv, _ = repo.GetInventory(ctx, alice.ID)
-	if aliceInv.Slots[0].Quantity != 7 {
-		t.Error("Alice's inventory should be unchanged after failed give")
-	}
+		// Verify no changes after failed give
+		aliceInv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 7, aliceInv.Slots[0].Quantity, "Alice's inventory should be unchanged after failed give")
+	})
 }
 
 func TestGiveItem_Comprehensive(t *testing.T) {
@@ -344,76 +330,61 @@ func TestGiveItem_Comprehensive(t *testing.T) {
 
 			// Setup owner with items
 			if tt.ownerItems > 0 {
-				svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, tt.ownerItems)
+				err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, tt.ownerItems)
+				require.NoError(t, err)
 			}
 
 			// Attempt to give items
 			err := svc.GiveItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.PlatformTwitch, bob.Username, domain.ItemLootbox1, tt.giveQty)
 
 			if tt.expectError {
-				if err == nil {
-					t.Error("expected error, got nil")
-					return
-				}
-				if tt.errorMessage != "" && !strings.Contains(err.Error(), tt.errorMessage) {
-					t.Errorf("expected error to contain %q, got %q", tt.errorMessage, err.Error())
+				require.Error(t, err, "expected error, got nil")
+				if tt.errorMessage != "" {
+					assert.Contains(t, err.Error(), tt.errorMessage)
 				}
 			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+				require.NoError(t, err, "unexpected error")
 			}
 
 			// Verify owner's inventory
-			aliceInv, _ := repo.GetInventory(ctx, alice.ID)
+			aliceInv, err := repo.GetInventory(ctx, alice.ID)
+			require.NoError(t, err)
+
 			if tt.expectedOwner == 0 {
 				// Owner should have no slots if all given away
-				hasItem := false
 				for _, slot := range aliceInv.Slots {
-					if slot.ItemID == 1 {
-						hasItem = true
-						t.Errorf("Alice should have no %s, but has %d", domain.ItemLootbox1, slot.Quantity)
-					}
+					assert.NotEqual(t, 1, slot.ItemID, "Alice should have no %s", domain.ItemLootbox1)
 				}
-				_ = hasItem
 			} else {
 				found := false
 				for _, slot := range aliceInv.Slots {
 					if slot.ItemID == 1 {
-						if slot.Quantity != tt.expectedOwner {
-							t.Errorf("Alice should have %d, got %d", tt.expectedOwner, slot.Quantity)
-						}
+						assert.Equal(t, tt.expectedOwner, slot.Quantity, "Alice should have %d", tt.expectedOwner)
 						found = true
 						break
 					}
 				}
-				if !found && tt.expectedOwner > 0 {
-					t.Error("Alice should have items but inventory is empty")
-				}
+				assert.True(t, found, "Alice should have items but they are missing")
 			}
 
 			// Verify receiver's inventory
-			bobInv, _ := repo.GetInventory(ctx, bob.ID)
+			bobInv, err := repo.GetInventory(ctx, bob.ID)
+			require.NoError(t, err)
+
 			if tt.expectedRecv == 0 {
 				for _, slot := range bobInv.Slots {
-					if slot.ItemID == 1 {
-						t.Errorf("Bob should have no items, but has %d", slot.Quantity)
-					}
+					assert.NotEqual(t, 1, slot.ItemID, "Bob should have no items")
 				}
 			} else {
 				found := false
 				for _, slot := range bobInv.Slots {
 					if slot.ItemID == 1 {
-						if slot.Quantity != tt.expectedRecv {
-							t.Errorf("Bob should have %d, got %d", tt.expectedRecv, slot.Quantity)
-						}
+						assert.Equal(t, tt.expectedRecv, slot.Quantity, "Bob should have %d", tt.expectedRecv)
 						found = true
 						break
 					}
 				}
-				if !found {
-					t.Errorf("Bob should have %d items but has none", tt.expectedRecv)
-				}
+				assert.True(t, found, "Bob should have %d items but has none", tt.expectedRecv)
 			}
 		})
 	}
@@ -450,24 +421,22 @@ func TestGiveItem_CrossPlatform(t *testing.T) {
 	}
 
 	// Add items to alice via Twitch
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, "alice", domain.ItemLootbox1, 10)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, "alice", domain.ItemLootbox1, 10)
+	require.NoError(t, err)
 
 	// Give from alice (Twitch) to bob (Discord)
-	err := svc.GiveItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.PlatformDiscord, "bob", domain.ItemLootbox1, 5)
-	if err != nil {
-		t.Fatalf("cross-platform give failed: %v", err)
-	}
+	err = svc.GiveItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", domain.PlatformDiscord, "bob", domain.ItemLootbox1, 5)
+	require.NoError(t, err, "cross-platform give failed")
 
 	// Verify both inventories
-	aliceInv, _ := repo.GetInventory(ctx, "user-alice")
-	if aliceInv.Slots[0].Quantity != 5 {
-		t.Errorf("Alice should have 5, got %d", aliceInv.Slots[0].Quantity)
-	}
+	aliceInv, err := repo.GetInventory(ctx, "user-alice")
+	require.NoError(t, err)
+	assert.Equal(t, 5, aliceInv.Slots[0].Quantity, "Alice should have 5")
 
-	bobInv, _ := repo.GetInventory(ctx, "user-bob")
-	if len(bobInv.Slots) != 1 || bobInv.Slots[0].Quantity != 5 {
-		t.Errorf("Bob should have 5, got %+v", bobInv.Slots)
-	}
+	bobInv, err := repo.GetInventory(ctx, "user-bob")
+	require.NoError(t, err)
+	require.Len(t, bobInv.Slots, 1)
+	assert.Equal(t, 5, bobInv.Slots[0].Quantity, "Bob should have 5")
 }
 
 func TestRegisterUser(t *testing.T) {
@@ -481,22 +450,15 @@ func TestRegisterUser(t *testing.T) {
 	}
 
 	registered, err := svc.RegisterUser(ctx, user)
-	if err != nil {
-		t.Fatalf("RegisterUser failed: %v", err)
-	}
+	require.NoError(t, err, "RegisterUser failed")
 
-	if registered.ID == "" {
-		t.Error("Expected user ID to be set")
-	}
-	if registered.Username != "charlie" {
-		t.Errorf("Expected username charlie, got %s", registered.Username)
-	}
+	assert.NotEmpty(t, registered.ID, "Expected user ID to be set")
+	assert.Equal(t, "charlie", registered.Username, "Expected username charlie")
 
 	// Verify user in repo
-	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "charlie789")
-	if found == nil {
-		t.Error("User not found in repository")
-	}
+	found, err := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "charlie789")
+	require.NoError(t, err)
+	assert.NotNil(t, found, "User not found in repository")
 }
 
 func TestHandleIncomingMessage_NewUser(t *testing.T) {
@@ -505,19 +467,15 @@ func TestHandleIncomingMessage_NewUser(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "newuser123", "newuser", "hello")
-	if err != nil {
-		t.Fatalf("HandleIncomingMessage failed: %v", err)
-	}
+	require.NoError(t, err, "HandleIncomingMessage failed")
 
-	if result.User.Username != "newuser" || result.User.TwitchID != "newuser123" {
-		t.Errorf("Unexpected user: %+v", result.User)
-	}
+	assert.Equal(t, "newuser", result.User.Username, "Unexpected user")
+	assert.Equal(t, "newuser123", result.User.TwitchID, "Unexpected user")
 
 	// Verify user was created
-	found, _ := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "newuser123")
-	if found == nil {
-		t.Error("User should have been created")
-	}
+	found, err := repo.GetUserByPlatformID(ctx, domain.PlatformTwitch, "newuser123")
+	require.NoError(t, err)
+	assert.NotNil(t, found, "User should have been created")
 }
 
 func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
@@ -527,13 +485,9 @@ func TestHandleIncomingMessage_ExistingUser(t *testing.T) {
 	ctx := context.Background()
 
 	result, err := svc.HandleIncomingMessage(ctx, domain.PlatformTwitch, "alice123", "alice", "hello")
-	if err != nil {
-		t.Fatalf("HandleIncomingMessage failed: %v", err)
-	}
+	require.NoError(t, err, "HandleIncomingMessage failed")
 
-	if result.User.ID != "user-alice" {
-		t.Error("Should have returned existing user")
-	}
+	assert.Equal(t, "user-alice", result.User.ID, "Should have returned existing user")
 }
 
 func TestUseItem(t *testing.T) {
@@ -559,58 +513,54 @@ func TestUseItem(t *testing.T) {
 
 	// Setup: Give alice some lootbox1
 	svc.getUserOrRegister(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 5)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 5)
+	require.NoError(t, err)
 
-	// Test using lootbox1 (consumes 1 lootbox1, gives 1 lootbox0)
-	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox1, 1, "")
-	if err != nil {
-		t.Fatalf("UseItem failed: %v", err)
-	}
+	t.Run("use valid item", func(t *testing.T) {
+		message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox1, 1, "")
+		require.NoError(t, err, "UseItem failed")
 
-	// The message format changed in the new implementation
-	if !strings.Contains(message, "Opened") || !strings.Contains(message, "junkbox") {
-		t.Errorf("Expected message to contain 'Opened' and 'junkbox', got '%s'", message)
-	}
+		assert.Contains(t, message, "Opened")
+		assert.Contains(t, message, "junkbox")
 
-	// Verify inventory
-	inv, _ := repo.GetInventory(ctx, alice.ID)
+		// Verify inventory
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
 
-	// Should have 2 slots: lootbox1 (4 left) and lootbox0 (1)
-	var lootbox1Slot, lootbox0Slot *domain.InventorySlot
-	for i := range inv.Slots {
-		if inv.Slots[i].ItemID == 1 {
-			lootbox1Slot = &inv.Slots[i]
+		var lootbox1Slot, lootbox0Slot *domain.InventorySlot
+		for i := range inv.Slots {
+			if inv.Slots[i].ItemID == 1 {
+				lootbox1Slot = &inv.Slots[i]
+			}
+			if inv.Slots[i].ItemID == 4 {
+				lootbox0Slot = &inv.Slots[i]
+			}
 		}
-		if inv.Slots[i].ItemID == 4 {
-			lootbox0Slot = &inv.Slots[i]
-		}
-	}
 
-	if lootbox1Slot == nil || lootbox1Slot.Quantity != 4 {
-		t.Errorf("Expected 4 lootbox1, got %+v", lootbox1Slot)
-	}
-	if lootbox0Slot == nil || lootbox0Slot.Quantity != 1 {
-		t.Errorf("Expected 1 lootbox0, got %+v", lootbox0Slot)
-	}
+		require.NotNil(t, lootbox1Slot, "lootbox1 slot should not be nil")
+		assert.Equal(t, 4, lootbox1Slot.Quantity, "Expected 4 lootbox1")
 
-	// Test using more than available
-	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox1, 10, "")
-	if err == nil {
-		t.Error("Expected error when using more than available")
-	}
+		require.NotNil(t, lootbox0Slot, "lootbox0 slot should not be nil")
+		assert.Equal(t, 1, lootbox0Slot.Quantity, "Expected 1 lootbox0")
+	})
 
-	// Test using unknown item
-	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, "unknown_item", 1, "")
-	if err == nil {
-		t.Error("Expected error when using unknown item")
-	}
+	t.Run("use more than available", func(t *testing.T) {
+		_, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox1, 10, "")
+		require.Error(t, err, "Expected error when using more than available")
+	})
 
-	// Test using item with no effect (money)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMoney, 1)
-	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMoney, 1, "")
-	if err == nil {
-		t.Error("Expected error when using item with no effect")
-	}
+	t.Run("use unknown item", func(t *testing.T) {
+		_, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, "unknown_item", 1, "")
+		require.Error(t, err, "Expected error when using unknown item")
+	})
+
+	t.Run("use item with no effect", func(t *testing.T) {
+		err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMoney, 1)
+		require.NoError(t, err)
+
+		_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMoney, 1, "")
+		require.Error(t, err, "Expected error when using item with no effect")
+	})
 }
 
 func TestUseItem_Blaster(t *testing.T) {
@@ -632,31 +582,29 @@ func TestUseItem_Blaster(t *testing.T) {
 	}
 
 	// Setup: Give alice some blasters
-	svc.RegisterUser(ctx, alice)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMissile, 5)
+	_, err := svc.RegisterUser(ctx, alice)
+	require.NoError(t, err)
 
-	// Test using blaster on bob
-	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 2, bob.Username)
-	if err != nil {
-		t.Fatalf("UseItem failed: %v", err)
-	}
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMissile, 5)
+	require.NoError(t, err)
 
-	expectedMsg := "alice used weapon_missile on bob! 2 weapon_missile(s) fired. Timed out for 2m0s."
-	if message != expectedMsg {
-		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
-	}
+	t.Run("use blaster on target", func(t *testing.T) {
+		message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 2, bob.Username)
+		require.NoError(t, err, "UseItem failed")
 
-	// Verify inventory
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	if inv.Slots[0].Quantity != 3 {
-		t.Errorf("Expected 3 blasters left, got %d", inv.Slots[0].Quantity)
-	}
+		expectedMsg := "alice used weapon_missile on bob! 2 weapon_missile(s) fired. Timed out for 2m0s."
+		assert.Equal(t, expectedMsg, message)
 
-	// Test using blaster without target
-	_, err = svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 1, "")
-	if err == nil {
-		t.Error("Expected error when using blaster without target")
-	}
+		// Verify inventory
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 3, inv.Slots[0].Quantity, "Expected 3 blasters left")
+	})
+
+	t.Run("use blaster without target", func(t *testing.T) {
+		_, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemMissile, 1, "")
+		require.Error(t, err, "Expected error when using blaster without target")
+	})
 }
 
 func TestUseItem_RareCandy(t *testing.T) {
@@ -681,26 +629,24 @@ func TestUseItem_RareCandy(t *testing.T) {
 	}
 
 	// Setup: Give alice some Rare Candy
-	svc.RegisterUser(ctx, alice)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemRareCandy, 5)
+	_, err := svc.RegisterUser(ctx, alice)
+	require.NoError(t, err)
+
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemRareCandy, 5)
+	require.NoError(t, err)
 
 	// Test using Rare Candy on a job name (which is NOT a user)
 	// This should work now because we don't resolve the target as a user anymore
 	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemRareCandy, 1, job.JobKeyBlacksmith)
-	if err != nil {
-		t.Fatalf("UseItem failed: %v", err)
-	}
+	require.NoError(t, err, "UseItem failed")
 
 	expectedMsg := "Used 1 rare candy! Granted"
-	if !strings.Contains(message, expectedMsg) {
-		t.Errorf("Expected message '%s', got '%s'", expectedMsg, message)
-	}
+	assert.Contains(t, message, expectedMsg)
 
 	// Verify inventory
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	if inv.Slots[0].Quantity != 4 {
-		t.Errorf("Expected 4 Rare Candy left, got %d", inv.Slots[0].Quantity)
-	}
+	inv, err := repo.GetInventory(ctx, alice.ID)
+	require.NoError(t, err)
+	assert.Equal(t, 4, inv.Slots[0].Quantity, "Expected 4 Rare Candy left")
 }
 
 func TestGetInventory(t *testing.T) {
@@ -716,20 +662,18 @@ func TestGetInventory(t *testing.T) {
 	}
 
 	// Setup: Give alice some items with various types
-	svc.RegisterUser(ctx, alice)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 2)
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMoney, 100)
+	_, err := svc.RegisterUser(ctx, alice)
+	require.NoError(t, err)
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox1, 2)
+	require.NoError(t, err)
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemMoney, 100)
+	require.NoError(t, err)
 
 	t.Run("No Filter - Returns All Items", func(t *testing.T) {
 		// Test GetInventory without filter
 		items, err := svc.GetInventory(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, "")
-		if err != nil {
-			t.Fatalf("GetInventory failed: %v", err)
-		}
-
-		if len(items) != 2 {
-			t.Errorf("Expected 2 items, got %d", len(items))
-		}
+		require.NoError(t, err, "GetInventory failed")
+		assert.Len(t, items, 2, "Expected 2 items")
 
 		// Verify item details
 		foundLootbox := false
@@ -737,78 +681,56 @@ func TestGetInventory(t *testing.T) {
 		for _, item := range items {
 			if item.PublicName == domain.ItemLootbox1 {
 				foundLootbox = true
-				if item.Quantity != 2 {
-					t.Errorf("Expected 2 lootbox1, got %d", item.Quantity)
-				}
+				assert.Equal(t, 2, item.Quantity, "Expected 2 lootbox1")
 			}
 			if item.PublicName == domain.ItemMoney {
 				foundMoney = true
-				if item.Quantity != 100 {
-					t.Errorf("Expected 100 money, got %d", item.Quantity)
-				}
+				assert.Equal(t, 100, item.Quantity, "Expected 100 money")
 			}
 		}
 
-		if !foundLootbox {
-			t.Error("Expected lootbox1 in inventory")
-		}
-		if !foundMoney {
-			t.Error("Expected money in inventory")
-		}
+		assert.True(t, foundLootbox, "Expected lootbox1 in inventory")
+		assert.True(t, foundMoney, "Expected money in inventory")
 	})
 
 	t.Run("Upgrade Filter - Returns Only Upgradable Items", func(t *testing.T) {
 		// Note: This test assumes items have "upgradable" type in their Types field
 		// In a real scenario, mock items would have Types populated
 		items, err := svc.GetInventory(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.FilterTypeUpgrade)
-		if err != nil {
-			t.Fatalf("GetInventory with upgrade filter failed: %v", err)
-		}
+		require.NoError(t, err, "GetInventory with upgrade filter failed")
 
 		// All returned items should have "upgradable" type
 		for _, item := range items {
 			// In real implementation, check item.Types contains "upgrade"
 			// For now, just verify it doesn't error
-			if item.PublicName == "" {
-				t.Error("Item should have a name")
-			}
+			assert.NotEmpty(t, item.PublicName, "Item should have a name")
 		}
 	})
 
 	t.Run("Sellable Filter - Returns Only Sellable Items", func(t *testing.T) {
 		items, err := svc.GetInventory(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.FilterTypeSellable)
-		if err != nil {
-			t.Fatalf("GetInventory with sellable filter failed: %v", err)
-		}
+		require.NoError(t, err, "GetInventory with sellable filter failed")
 
 		// All returned items should have "sellable" type
 		for _, item := range items {
-			if item.PublicName == "" {
-				t.Error("Item should have a name")
-			}
+			assert.NotEmpty(t, item.PublicName, "Item should have a name")
 		}
 	})
 
 	t.Run("Consumable Filter - Returns Only Consumable Items", func(t *testing.T) {
 		items, err := svc.GetInventory(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.FilterTypeConsumable)
-		if err != nil {
-			t.Fatalf("GetInventory with consumable filter failed: %v", err)
-		}
+		require.NoError(t, err, "GetInventory with consumable filter failed")
 
 		// All returned items should have "consumable" type
 		for _, item := range items {
-			if item.PublicName == "" {
-				t.Error("Item should have a name")
-			}
+			assert.NotEmpty(t, item.PublicName, "Item should have a name")
 		}
 	})
 
 	t.Run("Unknown Filter - Returns Empty Result", func(t *testing.T) {
 		// Unknown filter should return no items (nothing matches)
 		items, err := svc.GetInventory(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, "nonexistent")
-		if err != nil {
-			t.Fatalf("GetInventory with unknown filter failed: %v", err)
-		}
+		require.NoError(t, err, "GetInventory with unknown filter failed")
 
 		// Unknown filter likely returns empty or all items depending on implementation
 		// The test documents the expected behavior
@@ -838,31 +760,24 @@ func TestUseItem_Lootbox0(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox0
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox0, 1)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox0, 1)
+	require.NoError(t, err)
 
-	// Test using lootbox0
-	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox0, 1, "")
-	if err != nil {
-		t.Fatalf("UseItem failed: %v", err)
-	}
+	t.Run("use lootbox0", func(t *testing.T) {
+		msg, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox0, 1, "")
+		require.NoError(t, err, "UseItem failed")
 
-	// Verify message parts after format change (e.g., "Opened a junkbox and received: 5 Shiny credits").
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "junkbox") {
-		t.Errorf("Expected message to contain 'Opened' and 'junkbox', got '%s'", msg)
-	}
+		assert.Contains(t, msg, "Opened")
+		assert.Contains(t, msg, "junkbox")
+		assert.Contains(t, msg, "Shiny credits")
 
-	if !strings.Contains(msg, "Shiny credits") {
-		t.Errorf("Expected message to contain 'Shiny credits', got '%s'", msg)
-	}
+		// Verify inventory (should have money now)
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		require.Len(t, inv.Slots, 1, "Expected 1 slot (money)")
 
-	// Verify inventory (should have money now)
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	if len(inv.Slots) != 1 {
-		t.Errorf("Expected 1 slot (money), got %d slots", len(inv.Slots))
-	}
-	if inv.Slots[0].ItemID != 3 { // Money ID is 3
-		t.Errorf("Expected money (ID 3), got ID %d", inv.Slots[0].ItemID)
-	}
+		assert.Equal(t, 3, inv.Slots[0].ItemID, "Expected money (ID 3)")
+	})
 }
 
 func TestUseItem_Lootbox2(t *testing.T) {
@@ -887,29 +802,22 @@ func TestUseItem_Lootbox2(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup: Give alice lootbox2
-	svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox2, 1)
+	err := svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemLootbox2, 1)
+	require.NoError(t, err)
 
-	// Test using lootbox2
-	msg, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox2, 1, "")
-	if err != nil {
-		t.Fatalf("UseItem failed: %v", err)
-	}
+	t.Run("use lootbox2", func(t *testing.T) {
+		msg, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemLootbox2, 1, "")
+		require.NoError(t, err, "UseItem failed")
 
-	// Message format changed
-	if !strings.Contains(msg, "Opened") || !strings.Contains(msg, "basic lootbox") {
-		t.Errorf("Expected message to contain 'Opened' and 'basic lootbox', got '%s'", msg)
-	}
+		assert.Contains(t, msg, "Opened")
+		assert.Contains(t, msg, "basic lootbox")
 
-	// Verify inventory: should have 1 lootbox1
-	inv, _ := repo.GetInventory(ctx, alice.ID)
-	if len(inv.Slots) != 1 {
-		t.Errorf("Expected 1 slot, got %d", len(inv.Slots))
-	}
+		// Verify inventory: should have 1 lootbox1
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		require.Len(t, inv.Slots, 1, "Expected 1 slot")
 
-	if inv.Slots[0].ItemID != 1 { // lootbox1 ID is 1
-		t.Errorf("Expected lootbox1 (ID 1), got ID %d", inv.Slots[0].ItemID)
-	}
-	if inv.Slots[0].Quantity != 1 {
-		t.Errorf("Expected quantity 1, got %d", inv.Slots[0].Quantity)
-	}
+		assert.Equal(t, 1, inv.Slots[0].ItemID, "Expected lootbox1 (ID 1)")
+		assert.Equal(t, 1, inv.Slots[0].Quantity, "Expected quantity 1")
+	})
 }
