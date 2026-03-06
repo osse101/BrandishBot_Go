@@ -8,14 +8,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
@@ -110,8 +111,8 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 			expectedError:  "db error",
 		},
 		{
-			name:       "Error Case - Invalid Request Body",
-			reqBody:    "invalid-json",
+			name:    "Error Case - Invalid Request Body",
+			reqBody: "invalid-json",
 			setupMocks: func(progMock *mocks.MockProgressionService, slotsMock *mocks.MockSlotsService) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
 			},
