@@ -2,17 +2,16 @@ package crafting
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"time"
+	"path/filepath"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/syncutil"
 )
 
 // Sentinel errors for recipe loader
@@ -158,15 +157,25 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 	log := logger.FromContext(ctx)
 
 	// Check if files have changed since last sync
-	craftingPath := configDir + "crafting.json"
-	disassemblePath := configDir + "disassemble.json"
+	craftingPath := filepath.Join(configDir, ConfigFileCrafting)
+	disassemblePath := filepath.Join(configDir, ConfigFileDisassemble)
 
-	craftingChanged, err := hasFileChanged(ctx, itemRepo, craftingPath, "recipes_crafting.json")
+	craftingFileState, err := syncutil.GetFileState(craftingPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get crafting file state: %w", err)
+	}
+
+	craftingChanged, err := syncutil.HasChanged(ctx, itemRepo, MetadataNameCrafting, craftingFileState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check crafting file change: %w", err)
 	}
 
-	disassembleChanged, err := hasFileChanged(ctx, itemRepo, disassemblePath, "recipes_disassemble.json")
+	disassembleFileState, err := syncutil.GetFileState(disassemblePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get disassemble file state: %w", err)
+	}
+
+	disassembleChanged, err := syncutil.HasChanged(ctx, itemRepo, MetadataNameDisassemble, disassembleFileState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check disassemble file change: %w", err)
 	}
@@ -203,7 +212,7 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		result.OrphanedRecipes = append(result.OrphanedRecipes, craftingResult.Orphaned...)
 
 		// Update sync metadata for crafting
-		if err := updateSyncMetadata(ctx, itemRepo, craftingPath, "recipes_crafting.json"); err != nil {
+		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameCrafting, craftingFileState); err != nil {
 			log.Warn("Failed to update crafting sync metadata", "error", err)
 		}
 	}
@@ -220,7 +229,7 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		result.OrphanedRecipes = append(result.OrphanedRecipes, disassembleResult.Orphaned...)
 
 		// Update sync metadata for disassemble
-		if err := updateSyncMetadata(ctx, itemRepo, disassemblePath, "recipes_disassemble.json"); err != nil {
+		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameDisassemble, disassembleFileState); err != nil {
 			log.Warn("Failed to update disassemble sync metadata", "error", err)
 		}
 	}
@@ -486,61 +495,6 @@ func (l *recipeLoader) findOrphanedDisassembleRecipes(existingByKey map[string]*
 			result.Orphaned = append(result.Orphaned, "disassemble:"+key)
 		}
 	}
-}
-
-// Helper functions
-
-func hasFileChanged(ctx context.Context, repo repository.Item, configPath, metadataName string) (bool, error) {
-	// Get file info
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to stat config file: %w", err)
-	}
-
-	// Calculate file hash
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	// Get last sync metadata
-	syncMeta, err := repo.GetSyncMetadata(ctx, metadataName)
-	if err != nil {
-		// First sync - no metadata exists
-		return true, nil
-	}
-
-	// Compare hash and mod time
-	if syncMeta.FileHash != fileHash || !syncMeta.FileModTime.Equal(fileInfo.ModTime()) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func updateSyncMetadata(ctx context.Context, repo repository.Item, configPath, metadataName string) error {
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to stat config file: %w", err)
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	return repo.UpsertSyncMetadata(ctx, &domain.SyncMetadata{
-		ConfigName:   metadataName,
-		LastSyncTime: time.Now(),
-		FileHash:     fileHash,
-		FileModTime:  fileInfo.ModTime(),
-	})
 }
 
 func costsEqual(a, b []domain.RecipeCost) bool {

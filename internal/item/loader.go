@@ -2,17 +2,15 @@ package item
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/syncutil"
 	"github.com/osse101/BrandishBot_Go/internal/validation"
 )
 
@@ -155,8 +153,13 @@ func (l *itemLoader) validateItemDef(index int, item *Def, internalNames map[str
 func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo repository.Item, configPath string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
+	fileState, err := syncutil.GetFileState(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file state for %s: %w", configPath, err)
+	}
+
 	// Check if file has changed since last sync
-	hasChanged, err := hasFileChanged(ctx, repo, configPath)
+	hasChanged, err := syncutil.HasChanged(ctx, repo, ConfigFileName, fileState)
 	if err != nil {
 		return nil, fmt.Errorf(ErrMsgCheckFileChangeFailed, err)
 	}
@@ -180,7 +183,7 @@ func (l *itemLoader) SyncToDatabase(ctx context.Context, config *Config, repo re
 	}
 
 	// Update sync metadata
-	if err := updateSyncMetadata(ctx, repo, configPath); err != nil {
+	if err := syncutil.UpdateMetadata(ctx, repo, ConfigFileName, fileState); err != nil {
 		log.Warn(LogMsgUpdateMetadataFailed, "error", err)
 	}
 
@@ -279,61 +282,6 @@ func (l *itemLoader) syncOneItem(ctx context.Context, repo repository.Item, item
 		}
 	}
 	return nil
-}
-
-// hasFileChanged checks if the config file has changed since last sync
-func hasFileChanged(ctx context.Context, repo repository.Item, configPath string) (bool, error) {
-	// Get file info
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return false, fmt.Errorf(ErrMsgStatConfigFileFailed, err)
-	}
-
-	// Calculate file hash
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false, fmt.Errorf(ErrMsgReadForHashFailed, err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	// Get last sync metadata
-	syncMeta, err := repo.GetSyncMetadata(ctx, ConfigFileName)
-	if err != nil {
-		// First sync - no metadata exists
-		return true, nil
-	}
-
-	// Compare hash and mod time
-	if syncMeta.FileHash != fileHash || !syncMeta.FileModTime.Equal(fileInfo.ModTime()) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// updateSyncMetadata updates the sync metadata after a successful sync
-func updateSyncMetadata(ctx context.Context, repo repository.Item, configPath string) error {
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return fmt.Errorf(ErrMsgStatConfigFileFailed, err)
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf(ErrMsgReadForHashFailed, err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	return repo.UpsertSyncMetadata(ctx, &domain.SyncMetadata{
-		ConfigName:   ConfigFileName,
-		LastSyncTime: time.Now(),
-		FileHash:     fileHash,
-		FileModTime:  fileInfo.ModTime(),
-	})
 }
 
 // syncItemTags syncs the tags (item types) for an item
