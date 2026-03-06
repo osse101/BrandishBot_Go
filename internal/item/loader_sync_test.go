@@ -179,8 +179,8 @@ func TestLoader_SyncToDatabase_UpdateExistingItem(t *testing.T) {
 	// Expect update of existing item
 	mockRepo.On("UpdateItem", mock.Anything, 50, mock.MatchedBy(func(item *domain.Item) bool {
 		return item.InternalName == "existing_item" &&
-		       item.PublicName == "updated_name" &&
-		       item.BaseValue == 200
+			item.PublicName == "updated_name" &&
+			item.BaseValue == 200
 	})).Return(nil)
 
 	// Expect tag assignments (clear old, assign both new)

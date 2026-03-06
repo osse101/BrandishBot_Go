@@ -84,7 +84,7 @@ func TestInventoryEvents_ItemAdded(t *testing.T) {
 				repo.UpsertUser(ctx, user)
 				return user
 			},
-			expectEvent:   true,
+			expectEvent: true,
 		},
 		{
 			name:     "Boundary Case - Negative quantity",
@@ -95,7 +95,7 @@ func TestInventoryEvents_ItemAdded(t *testing.T) {
 				repo.UpsertUser(ctx, user)
 				return user
 			},
-			expectEvent:   true,
+			expectEvent: true,
 		},
 		{
 			name:     "Invalid Case - Unknown item",
