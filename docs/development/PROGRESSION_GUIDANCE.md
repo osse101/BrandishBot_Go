@@ -82,7 +82,18 @@ if unlocked, _ := progressionService.IsFeatureUnlocked(ctx, "feature_economy"); 
 }
 ```
 
-### 3. Modifiers (Upgrades)
+### 3. Gating Items
+
+Code checks the tree to see if an item is allowed.
+
+```go
+// Check if "Money" item is unlocked
+if unlocked, _ := progressionService.IsItemUnlocked(ctx, "money"); !unlocked {
+    return errors.New("item locked")
+}
+```
+
+### 4. Modifiers (Upgrades)
 
 Upgrades allow dynamic scaling of game values without code deployment.
 
