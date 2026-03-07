@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -29,9 +32,8 @@ func TestUserRegistration(t *testing.T) {
 	resp, body := makeRequest(t, "POST", "/api/v1/user/register", request)
 
 	// 200 for success, 400 if already exists
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Unexpected status: %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusBadRequest,
+		"Unexpected status: %d. Body: %s", resp.StatusCode, string(body))
 }
 
 // TestInventoryEndpoint tests getting user inventory
@@ -50,40 +52,29 @@ func TestInventoryEndpoint(t *testing.T) {
 		"new_platform_id":   platformID,
 	}
 	regResp, _ := makeRequest(t, "POST", "/api/v1/user/register", regReq)
-	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
-		t.Fatalf("Failed to register inventory user")
-	}
+	require.True(t, regResp.StatusCode == http.StatusCreated || regResp.StatusCode == http.StatusOK,
+		"Failed to register inventory user")
 
 	path := fmt.Sprintf("/api/v1/user/inventory?platform=%s&platform_id=%s&username=%s", platform, platformID, username)
 	resp, body := makeRequest(t, "GET", path, nil)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
 	// Should have inventory-related fields
-	if _, ok := result["items"]; !ok {
-		t.Error("Expected 'items' field in inventory response")
-	}
+	assert.Contains(t, result, "items", "Expected 'items' field in inventory response")
 }
 
 // TestPricesEndpoint tests the prices endpoint
 func TestPricesEndpoint(t *testing.T) {
 	resp, body := makeRequest(t, "GET", "/api/v1/prices", nil)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 	var result []interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
 	// Should return pricing information
 	if len(result) == 0 {
@@ -108,24 +99,17 @@ func TestRecipesEndpoint(t *testing.T) {
 		"new_platform_id":   platformID,
 	}
 	regResp, _ := makeRequest(t, "POST", "/api/v1/user/register", regReq)
-	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
-		t.Fatalf("Failed to register recipe user")
-	}
+	require.True(t, regResp.StatusCode == http.StatusCreated || regResp.StatusCode == http.StatusOK,
+		"Failed to register recipe user")
 
 	path := fmt.Sprintf("/api/v1/recipes?username=%s&platform=%s&platform_id=%s", username, platform, platformID)
 	resp, body := makeRequest(t, "GET", path, nil)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
 	// Should have recipes field
-	if _, ok := result["recipes"]; !ok {
-		t.Error("Expected 'recipes' field in response")
-	}
+	assert.Contains(t, result, "recipes", "Expected 'recipes' field in response")
 }

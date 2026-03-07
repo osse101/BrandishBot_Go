@@ -5,12 +5,12 @@ package staging
 import (
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestHealthCheck(t *testing.T) {
 	resp, _ := makeRequest(t, "GET", "/healthz", nil)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
