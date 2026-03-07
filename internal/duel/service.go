@@ -2,7 +2,9 @@ package duel
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +13,20 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
+
+// UserService defines the interface for interacting with users and their inventory/timeouts
+type UserService interface {
+	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
+	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
+	AddTimeout(ctx context.Context, platform, username string, duration time.Duration, reason string) error
+	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
+	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
+}
+
+// UserRepo interface strictly for extracting username from ID easily
+type UserRepo interface {
+	GetUserByID(ctx context.Context, userID string) (*domain.User, error)
+}
 
 // Service defines the interface for duel operations
 type Service interface {
@@ -28,17 +44,21 @@ type ProgressionService interface {
 
 type service struct {
 	repo           repository.Duel
+	userRepo       repository.User
 	eventBus       event.Bus
 	progressionSvc ProgressionService
+	userSvc        UserService
 	expireDuration time.Duration
 }
 
 // NewService creates a new duel service
-func NewService(repo repository.Duel, eventBus event.Bus, progressionSvc ProgressionService, expireDuration time.Duration) Service {
+func NewService(repo repository.Duel, userRepo repository.User, eventBus event.Bus, progressionSvc ProgressionService, userSvc UserService, expireDuration time.Duration) Service {
 	return &service{
 		repo:           repo,
+		userRepo:       userRepo,
 		eventBus:       eventBus,
 		progressionSvc: progressionSvc,
+		userSvc:        userSvc,
 		expireDuration: expireDuration,
 	}
 }
@@ -46,13 +66,13 @@ func NewService(repo repository.Duel, eventBus event.Bus, progressionSvc Progres
 // Challenge creates a new duel challenge
 func (s *service) Challenge(ctx context.Context, platform, platformID, opponentUsername string, stakes domain.DuelStakes) (*domain.Duel, error) {
 	// Get challenger
-	challenger, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	challenger, err := s.userSvc.FindUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get challenger: %w", err)
 	}
 
 	// Get opponent
-	opponent, err := s.repo.GetUserByPlatformID(ctx, "twitch", opponentUsername) // TODO: Make platform configurable
+	opponent, err := s.userSvc.GetUserByPlatformUsername(ctx, "twitch", opponentUsername) // TODO: Make platform configurable
 	if err != nil {
 		return nil, fmt.Errorf("failed to get opponent: %w", err)
 	}
@@ -67,6 +87,14 @@ func (s *service) Challenge(ctx context.Context, platform, platformID, opponentU
 		return nil, fmt.Errorf("invalid opponent ID: %w", err)
 	}
 
+	// Validate challenger has stakes if it's an item wager
+	if stakes.WagerItemKey != "" && stakes.WagerAmount > 0 {
+		_, err := s.userSvc.RemoveItemByUsername(ctx, platform, challenger.Username, stakes.WagerItemKey, stakes.WagerAmount)
+		if err != nil {
+			return nil, fmt.Errorf("challenger lacks required wager items: %w", err)
+		}
+	}
+
 	// Create duel
 	duel := &domain.Duel{
 		ID:           uuid.New(),
@@ -79,27 +107,144 @@ func (s *service) Challenge(ctx context.Context, platform, platformID, opponentU
 	}
 
 	if err := s.repo.CreateDuel(ctx, duel); err != nil {
+		// Restore item wager on failure
+		if stakes.WagerItemKey != "" && stakes.WagerAmount > 0 {
+			_ = s.userSvc.AddItemByUsername(ctx, platform, challenger.Username, stakes.WagerItemKey, stakes.WagerAmount)
+		}
 		return nil, fmt.Errorf("failed to create duel: %w", err)
 	}
 
 	return duel, nil
 }
 
+func (s *service) processDuelStakes(ctx context.Context, duel *domain.Duel, winnerUsername, loserUsername string) error {
+	if duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
+		wagerPool := duel.Stakes.WagerAmount * 2
+		err := s.userSvc.AddItemByUsername(ctx, "twitch", winnerUsername, duel.Stakes.WagerItemKey, wagerPool)
+		if err != nil {
+			return fmt.Errorf("failed to reward winner: %w", err)
+		}
+	}
+
+	if duel.Stakes.TimeoutDuration > 0 {
+		err := s.userSvc.AddTimeout(ctx, "twitch", loserUsername, time.Duration(duel.Stakes.TimeoutDuration)*time.Second, "Lost duel against "+winnerUsername)
+		if err != nil {
+			return fmt.Errorf("failed to timeout loser: %w", err)
+		}
+	}
+	return nil
+}
+
 // Accept accepts a duel challenge and executes it
 func (s *service) Accept(ctx context.Context, platform, platformID string, duelID uuid.UUID) (*domain.DuelResult, error) {
-	// TODO: Implement duel execution logic (coin flip, dice roll, etc.)
-	// This is a placeholder - actual implementation will be done later
-	return nil, fmt.Errorf("not implemented")
+	tx, err := s.repo.BeginDuelTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	duel, err := tx.GetDuel(ctx, duelID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	if duel.State != domain.DuelStatePending {
+		return nil, fmt.Errorf("duel is not pending")
+	}
+
+	if duel.ExpiresAt.Before(time.Now()) {
+		_ = tx.UpdateDuelState(ctx, duelID, domain.DuelStateExpired)
+		_ = tx.Commit(ctx)
+		return nil, fmt.Errorf("duel has expired")
+	}
+
+	// Verify accept caller is the opponent
+	opponent, err := s.userSvc.FindUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get opponent: %w", err)
+	}
+
+	if duel.OpponentID == nil || opponent.ID != duel.OpponentID.String() {
+		return nil, fmt.Errorf("unauthorized to accept this duel")
+	}
+
+	challenger, err := s.userRepo.GetUserByID(ctx, duel.ChallengerID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get challenger: %w", err)
+	}
+
+	// Ensure opponent has stakes if item wager
+	if duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
+		_, err := s.userSvc.RemoveItemByUsername(ctx, platform, opponent.Username, duel.Stakes.WagerItemKey, duel.Stakes.WagerAmount)
+		if err != nil {
+			return nil, fmt.Errorf("opponent lacks required wager items: %w", err)
+		}
+	}
+
+	var winnerID, loserID uuid.UUID
+	var winnerUsername, loserUsername string
+
+	n, _ := rand.Int(rand.Reader, big.NewInt(2))
+	if n.Int64() == 0 {
+		winnerID = duel.ChallengerID
+		loserID = *duel.OpponentID
+		winnerUsername = challenger.Username
+		loserUsername = opponent.Username
+	} else {
+		winnerID = *duel.OpponentID
+		loserID = duel.ChallengerID
+		winnerUsername = opponent.Username
+		loserUsername = challenger.Username
+	}
+
+	result := &domain.DuelResult{
+		WinnerID: winnerID,
+		LoserID:  loserID,
+		Method:   "coin_flip",
+		Details:  "50/50 random selection",
+	}
+
+	if err := s.processDuelStakes(ctx, duel, winnerUsername, loserUsername); err != nil {
+		return nil, err
+	}
+
+	if err := tx.AcceptDuel(ctx, duelID, result); err != nil {
+		return nil, fmt.Errorf("failed to accept duel: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return result, nil
 }
 
 // Decline declines a duel challenge
 func (s *service) Decline(ctx context.Context, platform, platformID string, duelID uuid.UUID) error {
-	return s.repo.DeclineDuel(ctx, duelID)
+	tx, err := s.repo.BeginDuelTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	duel, err := tx.GetDuel(ctx, duelID)
+	if err == nil && duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
+		challenger, errChallenger := s.userRepo.GetUserByID(ctx, duel.ChallengerID.String())
+		if errChallenger == nil {
+			_ = s.userSvc.AddItemByUsername(ctx, "twitch", challenger.Username, duel.Stakes.WagerItemKey, duel.Stakes.WagerAmount)
+		}
+	}
+
+	err = tx.UpdateDuelState(ctx, duelID, domain.DuelStateDeclined)
+	if err == nil {
+		_ = tx.Commit(ctx)
+	}
+	return err
 }
 
 // GetPendingDuels retrieves all pending duels for a user
 func (s *service) GetPendingDuels(ctx context.Context, platform, platformID string) ([]domain.Duel, error) {
-	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
+	user, err := s.userSvc.FindUserByPlatformID(ctx, platform, platformID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
