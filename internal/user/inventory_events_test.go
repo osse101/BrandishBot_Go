@@ -70,11 +70,7 @@ func TestInventoryEvents_ItemAdded(t *testing.T) {
 			},
 			expectEvent: true,
 		},
-		// Since AddItemByUsername doesn't explicitly validate quantity at the service level,
-		// zero and negative quantity behaviors aren't directly tested here for errors unless
-		// the repository enforces it. If it doesn't error but just adds negative values,
-		// we should test for the expected successful addition with no error.
-		// For the sake of this test, we expect the event to be published with those values.
+		// AddItemByUsername doesn't explicitly validate quantity at the service level,
 		{
 			name:     "Boundary Case - Zero quantity",
 			itemName: domain.ItemStick,

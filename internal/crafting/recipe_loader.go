@@ -156,28 +156,14 @@ func (l *recipeLoader) Validate(config *Config, itemRepo repository.Item) error 
 func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craftingRepo repository.Crafting, itemRepo repository.Item, configDir string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
-	// Check if files have changed since last sync
-	craftingPath := filepath.Join(configDir, ConfigFileCrafting)
-	disassemblePath := filepath.Join(configDir, ConfigFileDisassemble)
-
-	craftingFileState, err := syncutil.GetFileState(craftingPath)
+	craftingChanged, craftingState, err := l.checkFileChanged(ctx, itemRepo, filepath.Join(configDir, ConfigFileCrafting), MetadataNameCrafting)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get crafting file state: %w", err)
+		return nil, fmt.Errorf("crafting check failed: %w", err)
 	}
 
-	craftingChanged, err := syncutil.HasChanged(ctx, itemRepo, MetadataNameCrafting, craftingFileState)
+	disassembleChanged, disassembleState, err := l.checkFileChanged(ctx, itemRepo, filepath.Join(configDir, ConfigFileDisassemble), MetadataNameDisassemble)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check crafting file change: %w", err)
-	}
-
-	disassembleFileState, err := syncutil.GetFileState(disassemblePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get disassemble file state: %w", err)
-	}
-
-	disassembleChanged, err := syncutil.HasChanged(ctx, itemRepo, MetadataNameDisassemble, disassembleFileState)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check disassemble file change: %w", err)
+		return nil, fmt.Errorf("disassemble check failed: %w", err)
 	}
 
 	if !craftingChanged && !disassembleChanged {
@@ -189,18 +175,11 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		OrphanedRecipes: make([]string, 0),
 	}
 
-	// Get all items for ID lookup
-	items, err := itemRepo.GetAllItems(ctx)
+	itemIDsByInternalName, err := l.getItemIDsByInternalName(ctx, itemRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get items: %w", err)
+		return nil, err
 	}
 
-	itemIDsByInternalName := make(map[string]int, len(items))
-	for _, item := range items {
-		itemIDsByInternalName[item.InternalName] = item.ID
-	}
-
-	// Sync crafting recipes first
 	if craftingChanged {
 		craftingResult, err := l.syncCraftingRecipes(ctx, config.UpgradeConfig, craftingRepo, itemIDsByInternalName)
 		if err != nil {
@@ -211,13 +190,11 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		result.CraftingSkipped = craftingResult.Skipped
 		result.OrphanedRecipes = append(result.OrphanedRecipes, craftingResult.Orphaned...)
 
-		// Update sync metadata for crafting
-		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameCrafting, craftingFileState); err != nil {
+		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameCrafting, craftingState); err != nil {
 			log.Warn("Failed to update crafting sync metadata", "error", err)
 		}
 	}
 
-	// Sync disassemble recipes second
 	if disassembleChanged {
 		disassembleResult, err := l.syncDisassembleRecipes(ctx, config, craftingRepo, itemIDsByInternalName)
 		if err != nil {
@@ -228,13 +205,11 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		result.DisassembleSkipped = disassembleResult.Skipped
 		result.OrphanedRecipes = append(result.OrphanedRecipes, disassembleResult.Orphaned...)
 
-		// Update sync metadata for disassemble
-		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameDisassemble, disassembleFileState); err != nil {
+		if err := syncutil.UpdateMetadata(ctx, itemRepo, MetadataNameDisassemble, disassembleState); err != nil {
 			log.Warn("Failed to update disassemble sync metadata", "error", err)
 		}
 	}
 
-	// Log orphaned recipes
 	if len(result.OrphanedRecipes) > 0 {
 		log.Warn("Found orphaned recipes in database (in DB but not in config)", "count", len(result.OrphanedRecipes), "recipes", result.OrphanedRecipes)
 	}
@@ -248,6 +223,30 @@ func (l *recipeLoader) SyncToDatabase(ctx context.Context, config *Config, craft
 		"disassemble_skipped", result.DisassembleSkipped)
 
 	return result, nil
+}
+
+func (l *recipeLoader) checkFileChanged(ctx context.Context, itemRepo repository.Item, path string, metadataName string) (bool, *syncutil.FileState, error) {
+	state, err := syncutil.GetFileState(path)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to get file state: %w", err)
+	}
+	changed, err := syncutil.HasChanged(ctx, itemRepo, metadataName, state)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to check file change: %w", err)
+	}
+	return changed, state, nil
+}
+
+func (l *recipeLoader) getItemIDsByInternalName(ctx context.Context, itemRepo repository.Item) (map[string]int, error) {
+	items, err := itemRepo.GetAllItems(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get items: %w", err)
+	}
+	itemIDs := make(map[string]int, len(items))
+	for _, item := range items {
+		itemIDs[item.InternalName] = item.ID
+	}
+	return itemIDs, nil
 }
 
 type recipeSyncResult struct {

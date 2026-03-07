@@ -149,12 +149,12 @@ Already well-split (`engine.go`, `encounters.go`, `journal.go`, `skills.go`, `co
 
 Split completed. Core game logic, payout calculations, and metrics were separated into dedicated domain files.
 
-| File                       | Functions Moved                                                | Lines       |
-| -------------------------- | -------------------------------------------------------------- | ----------- |
-| `spin.go`                  | `Spin`, `executeSpinTx`, `executeSpinLogic`                    | ~150        |
-| `payout.go`                | `calculatePayout`, `formatResultMessage`                       | ~90         |
-| `metrics.go`               | `trackSlotsEngagementAndXP`                                    | ~40         |
-| `service.go` _(remaining)_ | Interface, struct, `NewService`                                | ~70         |
+| File                       | Functions Moved                             | Lines |
+| -------------------------- | ------------------------------------------- | ----- |
+| `spin.go`                  | `Spin`, `executeSpinTx`, `executeSpinLogic` | ~150  |
+| `payout.go`                | `calculatePayout`, `formatResultMessage`    | ~90   |
+| `metrics.go`               | `trackSlotsEngagementAndXP`                 | ~40   |
+| `service.go` _(remaining)_ | Interface, struct, `NewService`             | ~70   |
 
 ---
 
