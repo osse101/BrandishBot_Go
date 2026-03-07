@@ -158,14 +158,19 @@ func (w *DailyResetWorker) Shutdown(ctx context.Context) error {
 
 // timeUntilNextReset calculates the duration until the next 00:00 UTC+7
 func timeUntilNextReset() time.Duration {
+	return timeUntilNextResetFrom(time.Now())
+}
+
+// timeUntilNextResetFrom calculates the duration from the given time until the next 00:00 UTC+7
+func timeUntilNextResetFrom(now time.Time) time.Duration {
 	location := time.FixedZone("UTC+7", 7*60*60)
-	now := time.Now().In(location)
+	localNow := now.In(location)
 	nextReset := time.Date(
-		now.Year(), now.Month(), now.Day(),
+		localNow.Year(), localNow.Month(), localNow.Day(),
 		0, 0, 0, 0, location,
 	)
-	if !nextReset.After(now) {
+	if !nextReset.After(localNow) {
 		nextReset = nextReset.AddDate(0, 0, 1)
 	}
-	return nextReset.Sub(now)
+	return nextReset.Sub(localNow)
 }
