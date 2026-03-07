@@ -63,7 +63,10 @@ Discord / Streamer.bot
 | --------------- | ------------------------------------ | ---------------------------------------------------------------- |
 | Domain types    | `internal/domain/slots.go`           | SlotsResult, SlotsCompletedPayload structs                       |
 | Constants       | `internal/slots/constants.go`        | Symbol weights, payout multipliers, thresholds                   |
-| Service         | `internal/slots/service.go`          | Core game logic, RNG, payout calculation, transaction management |
+| Service         | `internal/slots/service.go`          | Interface definition, constructor, and component management      |
+| Core Logic      | `internal/slots/spin.go`             | Main spin transaction logic, RNG, and result resolution          |
+| Payouts         | `internal/slots/payout.go`           | Win calculation, multiplier application, and result formatting   |
+| Metrics         | `internal/slots/metrics.go`          | Engagement tracking and XP rewards for spinning                  |
 | Handler         | `internal/handler/slots.go`          | HTTP API handler with validation and feature locking             |
 | Discord command | `internal/discord/cmd_slots.go`      | `/slots` command with visual embed responses                     |
 | Streamer.bot    | `internal/streamerbot/subscriber.go` | Event subscriber for visual triggers                             |
