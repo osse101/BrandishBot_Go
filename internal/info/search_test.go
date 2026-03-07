@@ -3,8 +3,9 @@ package info_test
 import (
 	"testing"
 
-	"github.com/osse101/BrandishBot_Go/internal/info"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/osse101/BrandishBot_Go/internal/info"
 )
 
 func TestSearchTopic(t *testing.T) {

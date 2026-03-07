@@ -135,6 +135,53 @@ func (s *service) processDuelStakes(ctx context.Context, duel *domain.Duel, winn
 	return nil
 }
 
+func (s *service) validateAndGetDuel(ctx context.Context, tx repository.DuelTx, platform, platformID string, duelID uuid.UUID) (*domain.Duel, *domain.User, error) {
+	duel, err := tx.GetDuel(ctx, duelID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get duel: %w", err)
+	}
+
+	if duel.State != domain.DuelStatePending {
+		return nil, nil, fmt.Errorf("duel is not pending")
+	}
+
+	if duel.ExpiresAt.Before(time.Now()) {
+		_ = tx.UpdateDuelState(ctx, duelID, domain.DuelStateExpired)
+		_ = tx.Commit(ctx)
+		return nil, nil, fmt.Errorf("duel has expired")
+	}
+
+	// Verify accept caller is the opponent
+	opponent, err := s.userSvc.FindUserByPlatformID(ctx, platform, platformID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get opponent: %w", err)
+	}
+
+	if duel.OpponentID == nil || opponent.ID != duel.OpponentID.String() {
+		return nil, nil, fmt.Errorf("unauthorized to accept this duel")
+	}
+
+	return duel, opponent, nil
+}
+
+func (s *service) ensureOpponentHasStakes(ctx context.Context, platform, username string, stakes domain.DuelStakes) error {
+	if stakes.WagerItemKey != "" && stakes.WagerAmount > 0 {
+		_, err := s.userSvc.RemoveItemByUsername(ctx, platform, username, stakes.WagerItemKey, stakes.WagerAmount)
+		if err != nil {
+			return fmt.Errorf("opponent lacks required wager items: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *service) resolveWinner(duel *domain.Duel, challenger, opponent *domain.User) (uuid.UUID, uuid.UUID, string, string) {
+	n, _ := rand.Int(rand.Reader, big.NewInt(2))
+	if n.Int64() == 0 {
+		return duel.ChallengerID, *duel.OpponentID, challenger.Username, opponent.Username
+	}
+	return *duel.OpponentID, duel.ChallengerID, opponent.Username, challenger.Username
+}
+
 // Accept accepts a duel challenge and executes it
 func (s *service) Accept(ctx context.Context, platform, platformID string, duelID uuid.UUID) (*domain.DuelResult, error) {
 	tx, err := s.repo.BeginDuelTx(ctx)
@@ -143,29 +190,9 @@ func (s *service) Accept(ctx context.Context, platform, platformID string, duelI
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	duel, err := tx.GetDuel(ctx, duelID)
+	duel, opponent, err := s.validateAndGetDuel(ctx, tx, platform, platformID, duelID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get duel: %w", err)
-	}
-
-	if duel.State != domain.DuelStatePending {
-		return nil, fmt.Errorf("duel is not pending")
-	}
-
-	if duel.ExpiresAt.Before(time.Now()) {
-		_ = tx.UpdateDuelState(ctx, duelID, domain.DuelStateExpired)
-		_ = tx.Commit(ctx)
-		return nil, fmt.Errorf("duel has expired")
-	}
-
-	// Verify accept caller is the opponent
-	opponent, err := s.userSvc.FindUserByPlatformID(ctx, platform, platformID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get opponent: %w", err)
-	}
-
-	if duel.OpponentID == nil || opponent.ID != duel.OpponentID.String() {
-		return nil, fmt.Errorf("unauthorized to accept this duel")
+		return nil, err
 	}
 
 	challenger, err := s.userRepo.GetUserByID(ctx, duel.ChallengerID.String())
@@ -173,29 +200,11 @@ func (s *service) Accept(ctx context.Context, platform, platformID string, duelI
 		return nil, fmt.Errorf("failed to get challenger: %w", err)
 	}
 
-	// Ensure opponent has stakes if item wager
-	if duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
-		_, err := s.userSvc.RemoveItemByUsername(ctx, platform, opponent.Username, duel.Stakes.WagerItemKey, duel.Stakes.WagerAmount)
-		if err != nil {
-			return nil, fmt.Errorf("opponent lacks required wager items: %w", err)
-		}
+	if err := s.ensureOpponentHasStakes(ctx, platform, opponent.Username, duel.Stakes); err != nil {
+		return nil, err
 	}
 
-	var winnerID, loserID uuid.UUID
-	var winnerUsername, loserUsername string
-
-	n, _ := rand.Int(rand.Reader, big.NewInt(2))
-	if n.Int64() == 0 {
-		winnerID = duel.ChallengerID
-		loserID = *duel.OpponentID
-		winnerUsername = challenger.Username
-		loserUsername = opponent.Username
-	} else {
-		winnerID = *duel.OpponentID
-		loserID = duel.ChallengerID
-		winnerUsername = opponent.Username
-		loserUsername = challenger.Username
-	}
+	winnerID, loserID, winnerUsername, loserUsername := s.resolveWinner(duel, challenger, opponent)
 
 	result := &domain.DuelResult{
 		WinnerID: winnerID,
