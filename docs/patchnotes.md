@@ -2,6 +2,7 @@
 
 ## New Features
 
+- **Item Unlocking System**: We've updated the progression system to correctly handle item unlocking, making sure you don't get access to new items until the community unlocks them.
 - **Video Filters**: Added fun new video filter items to customize your experience!
 
 ## System Updates
