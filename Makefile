@@ -260,9 +260,7 @@ generate-progression:
 	@echo "✓ progression keys generated"
 
 generate-mocks:
-	@echo "Generating mocks..."
-	@$(MOCKERY)
-	@echo "✓ mocks generated"
+	@go run ./cmd/devtool mocks
 
 generate-tidy:
 	@echo "Running go mod tidy..."
@@ -451,14 +449,10 @@ admin-clean:
 # Mock generation
 .PHONY: mocks clean-mocks
 mocks:
-	@echo "Generating mocks..."
-	@$(MOCKERY)
-	@echo "Mocks generated in mocks/ directory"
+	@go run ./cmd/devtool mocks
 
 clean-mocks:
-	@echo "Removing generated mocks..."
-	@rm -rf mocks/
-	@echo "✓ Removed mocks/ directory"
+	@go run ./cmd/devtool mocks -clean
 
 # Monitoring Commands
 .PHONY: monitoring-up monitoring-down monitoring-restart monitoring-logs monitoring-status prometheus-reload

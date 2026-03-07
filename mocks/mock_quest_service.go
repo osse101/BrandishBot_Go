@@ -6,7 +6,6 @@ import (
 	context "context"
 
 	domain "github.com/osse101/BrandishBot_Go/internal/domain"
-
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -21,6 +20,112 @@ type MockQuestService_Expecter struct {
 
 func (_m *MockQuestService) EXPECT() *MockQuestService_Expecter {
 	return &MockQuestService_Expecter{mock: &_m.Mock}
+}
+
+// ClaimQuestReward provides a mock function with given fields: ctx, userID, questID
+func (_m *MockQuestService) ClaimQuestReward(ctx context.Context, userID string, questID int) (int, error) {
+	ret := _m.Called(ctx, userID, questID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ClaimQuestReward")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) (int, error)); ok {
+		return rf(ctx, userID, questID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int) int); ok {
+		r0 = rf(ctx, userID, questID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = rf(ctx, userID, questID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockQuestService_ClaimQuestReward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClaimQuestReward'
+type MockQuestService_ClaimQuestReward_Call struct {
+	*mock.Call
+}
+
+// ClaimQuestReward is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID string
+//   - questID int
+func (_e *MockQuestService_Expecter) ClaimQuestReward(ctx interface{}, userID interface{}, questID interface{}) *MockQuestService_ClaimQuestReward_Call {
+	return &MockQuestService_ClaimQuestReward_Call{Call: _e.mock.On("ClaimQuestReward", ctx, userID, questID)}
+}
+
+func (_c *MockQuestService_ClaimQuestReward_Call) Run(run func(ctx context.Context, userID string, questID int)) *MockQuestService_ClaimQuestReward_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockQuestService_ClaimQuestReward_Call) Return(money int, err error) *MockQuestService_ClaimQuestReward_Call {
+	_c.Call.Return(money, err)
+	return _c
+}
+
+func (_c *MockQuestService_ClaimQuestReward_Call) RunAndReturn(run func(context.Context, string, int) (int, error)) *MockQuestService_ClaimQuestReward_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GenerateWeeklyQuests provides a mock function with given fields: ctx, year, weekNumber
+func (_m *MockQuestService) GenerateWeeklyQuests(ctx context.Context, year int, weekNumber int) error {
+	ret := _m.Called(ctx, year, weekNumber)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GenerateWeeklyQuests")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) error); ok {
+		r0 = rf(ctx, year, weekNumber)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockQuestService_GenerateWeeklyQuests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateWeeklyQuests'
+type MockQuestService_GenerateWeeklyQuests_Call struct {
+	*mock.Call
+}
+
+// GenerateWeeklyQuests is a helper method to define mock.On call
+//   - ctx context.Context
+//   - year int
+//   - weekNumber int
+func (_e *MockQuestService_Expecter) GenerateWeeklyQuests(ctx interface{}, year interface{}, weekNumber interface{}) *MockQuestService_GenerateWeeklyQuests_Call {
+	return &MockQuestService_GenerateWeeklyQuests_Call{Call: _e.mock.On("GenerateWeeklyQuests", ctx, year, weekNumber)}
+}
+
+func (_c *MockQuestService_GenerateWeeklyQuests_Call) Run(run func(ctx context.Context, year int, weekNumber int)) *MockQuestService_GenerateWeeklyQuests_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockQuestService_GenerateWeeklyQuests_Call) Return(_a0 error) *MockQuestService_GenerateWeeklyQuests_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockQuestService_GenerateWeeklyQuests_Call) RunAndReturn(run func(context.Context, int, int) error) *MockQuestService_GenerateWeeklyQuests_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetActiveQuests provides a mock function with given fields: ctx
@@ -136,64 +241,6 @@ func (_c *MockQuestService_GetUserQuestProgress_Call) Return(_a0 []domain.QuestP
 }
 
 func (_c *MockQuestService_GetUserQuestProgress_Call) RunAndReturn(run func(context.Context, string) ([]domain.QuestProgress, error)) *MockQuestService_GetUserQuestProgress_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ClaimQuestReward provides a mock function with given fields: ctx, userID, questID
-func (_m *MockQuestService) ClaimQuestReward(ctx context.Context, userID string, questID int) (int, error) {
-	ret := _m.Called(ctx, userID, questID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ClaimQuestReward")
-	}
-
-	var r0 int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int) (int, error)); ok {
-		return rf(ctx, userID, questID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, int) int); ok {
-		r0 = rf(ctx, userID, questID)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
-		r1 = rf(ctx, userID, questID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockQuestService_ClaimQuestReward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ClaimQuestReward'
-type MockQuestService_ClaimQuestReward_Call struct {
-	*mock.Call
-}
-
-// ClaimQuestReward is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID string
-//   - questID int
-func (_e *MockQuestService_Expecter) ClaimQuestReward(ctx interface{}, userID interface{}, questID interface{}) *MockQuestService_ClaimQuestReward_Call {
-	return &MockQuestService_ClaimQuestReward_Call{Call: _e.mock.On("ClaimQuestReward", ctx, userID, questID)}
-}
-
-func (_c *MockQuestService_ClaimQuestReward_Call) Run(run func(ctx context.Context, userID string, questID int)) *MockQuestService_ClaimQuestReward_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int))
-	})
-	return _c
-}
-
-func (_c *MockQuestService_ClaimQuestReward_Call) Return(money int, err error) *MockQuestService_ClaimQuestReward_Call {
-	_c.Call.Return(money, err)
-	return _c
-}
-
-func (_c *MockQuestService_ClaimQuestReward_Call) RunAndReturn(run func(context.Context, string, int) (int, error)) *MockQuestService_ClaimQuestReward_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -435,54 +482,6 @@ func (_c *MockQuestService_ResetWeeklyQuests_Call) Return(_a0 error) *MockQuestS
 }
 
 func (_c *MockQuestService_ResetWeeklyQuests_Call) RunAndReturn(run func(context.Context) error) *MockQuestService_ResetWeeklyQuests_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GenerateWeeklyQuests provides a mock function with given fields: ctx, year, weekNumber
-func (_m *MockQuestService) GenerateWeeklyQuests(ctx context.Context, year int, weekNumber int) error {
-	ret := _m.Called(ctx, year, weekNumber)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GenerateWeeklyQuests")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) error); ok {
-		r0 = rf(ctx, year, weekNumber)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockQuestService_GenerateWeeklyQuests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GenerateWeeklyQuests'
-type MockQuestService_GenerateWeeklyQuests_Call struct {
-	*mock.Call
-}
-
-// GenerateWeeklyQuests is a helper method to define mock.On call
-//   - ctx context.Context
-//   - year int
-//   - weekNumber int
-func (_e *MockQuestService_Expecter) GenerateWeeklyQuests(ctx interface{}, year interface{}, weekNumber interface{}) *MockQuestService_GenerateWeeklyQuests_Call {
-	return &MockQuestService_GenerateWeeklyQuests_Call{Call: _e.mock.On("GenerateWeeklyQuests", ctx, year, weekNumber)}
-}
-
-func (_c *MockQuestService_GenerateWeeklyQuests_Call) Run(run func(ctx context.Context, year int, weekNumber int)) *MockQuestService_GenerateWeeklyQuests_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(int))
-	})
-	return _c
-}
-
-func (_c *MockQuestService_GenerateWeeklyQuests_Call) Return(_a0 error) *MockQuestService_GenerateWeeklyQuests_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockQuestService_GenerateWeeklyQuests_Call) RunAndReturn(run func(context.Context, int, int) error) *MockQuestService_GenerateWeeklyQuests_Call {
 	_c.Call.Return(run)
 	return _c
 }

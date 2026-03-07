@@ -204,3 +204,9 @@ packages:
       mockname: 'MockSlots{{.InterfaceName}}'
     interfaces:
       Service:
+  github.com/osse101/BrandishBot_Go/internal/quest:
+    config:
+      filename: 'mock_quest_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockQuest{{.InterfaceName}}'
+    interfaces:
+      Service:
