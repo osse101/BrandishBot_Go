@@ -30,6 +30,7 @@ type Service interface {
 // ProgressionService defines the interface for checking feature unlocks.
 type ProgressionService interface {
 	IsNodeUnlocked(ctx context.Context, nodeKey string, level int) (bool, error)
+	IsItemUnlocked(ctx context.Context, itemName string) (bool, error)
 }
 
 // ============================================================================
