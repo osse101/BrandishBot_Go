@@ -76,7 +76,7 @@
       "size": "medium",
       "category": "exploration",
       "max_level": 1,
-      "prerequisites": ["feature_search"],
+      "prerequisites": ["tier_2", "feature_search"],
       "sort_order": 24,
       "auto_unlock": false
     },
@@ -102,7 +102,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_shield"],
+      "prerequisites": ["tier_3", "item_shield"],
       "sort_order": 52,
       "auto_unlock": false
     },
@@ -115,7 +115,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_trap"],
+      "prerequisites": ["tier_3", "item_trap"],
       "sort_order": 58,
       "auto_unlock": false
     },
@@ -141,7 +141,7 @@
       "size": "large",
       "category": "crafting",
       "max_level": 1,
-      "prerequisites": ["job_blacksmith"],
+      "prerequisites": ["tier_3", "job_blacksmith"],
       "sort_order": 21,
       "auto_unlock": false
     },
@@ -167,7 +167,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 5,
-      "prerequisites": ["item_lootbox1", "job_gambler"],
+      "prerequisites": ["tier_2", "item_lootbox1", "job_gambler"],
       "sort_order": 25,
       "auto_unlock": false
     },
@@ -180,7 +180,7 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
-      "prerequisites": ["job_scholar", "-nodes_unlocked_below_tier:2:15"],
+      "prerequisites": ["tier_3", "job_scholar", "-nodes_unlocked_below_tier:2:15"],
       "sort_order": 41,
       "auto_unlock": false,
       "modifier_configs": [
@@ -201,7 +201,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["weapon_missile"],
+      "prerequisites": ["tier_2", "weapon_missile"],
       "sort_order": 51,
       "auto_unlock": false
     },
@@ -214,7 +214,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 5,
-      "prerequisites": ["item_lootbox2"],
+      "prerequisites": ["tier_3", "item_lootbox2"],
       "sort_order": 26,
       "auto_unlock": false
     },
@@ -240,7 +240,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_this", "-nodes_unlocked_below_tier:2:20"],
+      "prerequisites": ["tier_4", "item_this", "-nodes_unlocked_below_tier:2:20"],
       "sort_order": 57,
       "auto_unlock": false
     },
@@ -253,7 +253,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["weapon_missile", "-nodes_unlocked_below_tier:2:20"],
+      "prerequisites": ["tier_4", "weapon_missile", "-nodes_unlocked_below_tier:2:20"],
       "sort_order": 61,
       "auto_unlock": false
     },
@@ -266,7 +266,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["upgrade_progression_basic"],
+      "prerequisites": ["tier_2", "upgrade_progression_basic"],
       "sort_order": 62,
       "auto_unlock": false
     },
@@ -279,7 +279,7 @@
       "size": "large",
       "category": "exploration",
       "max_level": 1,
-      "prerequisites": ["job_explorer"],
+      "prerequisites": ["tier_4", "job_explorer"],
       "sort_order": 43,
       "auto_unlock": false
     },
@@ -292,7 +292,7 @@
       "size": "small",
       "category": "upgrades",
       "max_level": 5,
-      "prerequisites": ["feature_gamble"],
+      "prerequisites": ["tier_2", "feature_gamble"],
       "sort_order": 43,
       "auto_unlock": false,
       "modifier_configs": [
@@ -339,7 +339,7 @@
       "size": "medium",
       "category": "weapon",
       "max_level": 1,
-      "prerequisites": ["weapon_missile"],
+      "prerequisites": ["tier_2", "weapon_missile"],
       "sort_order": 111,
       "auto_unlock": false
     },
@@ -352,7 +352,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_mine"],
+      "prerequisites": ["tier_3", "item_mine"],
       "sort_order": 112,
       "auto_unlock": false
     },
@@ -365,7 +365,7 @@
       "size": "medium",
       "category": "items",
       "max_level": 1,
-      "prerequisites": ["item_trap"],
+      "prerequisites": ["tier_4", "item_trap"],
       "sort_order": 113,
       "auto_unlock": false
     },
@@ -378,7 +378,7 @@
       "size": "medium",
       "category": "crafting",
       "max_level": 1,
-      "prerequisites": ["feature_upgrade"],
+      "prerequisites": ["tier_2", "feature_upgrade"],
       "sort_order": 70,
       "auto_unlock": false
     },
@@ -391,7 +391,7 @@
       "size": "medium",
       "category": "exploration",
       "max_level": 1,
-      "prerequisites": ["feature_search"],
+      "prerequisites": ["tier_2", "feature_search"],
       "sort_order": 71,
       "auto_unlock": false
     },
@@ -404,7 +404,7 @@
       "size": "medium",
       "category": "gambling",
       "max_level": 1,
-      "prerequisites": ["feature_gamble"],
+      "prerequisites": ["tier_2", "feature_gamble"],
       "sort_order": 72,
       "auto_unlock": false
     },
@@ -417,7 +417,7 @@
       "size": "large",
       "category": "gambling",
       "max_level": 1,
-      "prerequisites": ["job_gambler"],
+      "prerequisites": ["tier_3", "job_gambler"],
       "sort_order": 40,
       "auto_unlock": false
     },
@@ -430,7 +430,7 @@
       "size": "medium",
       "category": "combat",
       "max_level": 1,
-      "prerequisites": ["item_shield", "item_revives"],
+      "prerequisites": ["tier_4", "item_shield", "item_revives"],
       "sort_order": 112,
       "auto_unlock": false
     },
@@ -456,7 +456,7 @@
       "size": "medium",
       "category": "farming",
       "max_level": 1,
-      "prerequisites": ["feature_farming"],
+      "prerequisites": ["tier_2", "feature_farming"],
       "sort_order": 73,
       "auto_unlock": false,
       "modifier_configs": [
@@ -507,7 +507,7 @@
       "size": "large",
       "category": "farming",
       "max_level": 1,
-      "prerequisites": ["job_farmer"],
+      "prerequisites": ["tier_3", "job_farmer"],
       "sort_order": 41,
       "auto_unlock": false
     },
@@ -541,7 +541,7 @@
       "size": "medium",
       "category": "core",
       "max_level": 1,
-      "prerequisites": ["upgrade_progression_basic"],
+      "prerequisites": ["tier_2", "upgrade_progression_basic"],
       "sort_order": 75,
       "auto_unlock": false,
       "modifier_configs": [
@@ -568,7 +568,7 @@
       "size": "small",
       "category": "core",
       "max_level": 5,
-      "prerequisites": ["job_scholar"],
+      "prerequisites": ["tier_3", "job_scholar"],
       "sort_order": 95,
       "auto_unlock": false,
       "modifier_configs": [
@@ -589,7 +589,7 @@
       "size": "small",
       "category": "core",
       "max_level": 5,
-      "prerequisites": ["upgrade_progression_two"],
+      "prerequisites": ["tier_4", "upgrade_progression_two"],
       "sort_order": 97,
       "auto_unlock": false,
       "modifier_configs": [
@@ -610,7 +610,7 @@
       "size": "large",
       "category": "core",
       "max_level": 3,
-      "prerequisites": ["job_scholar"],
+      "prerequisites": ["tier_3", "job_scholar"],
       "sort_order": 96,
       "auto_unlock": false,
       "modifier_configs": [
@@ -631,7 +631,7 @@
       "size": "small",
       "category": "exploration",
       "max_level": 5,
-      "prerequisites": ["item_shovel"],
+      "prerequisites": ["tier_2", "item_shovel"],
       "sort_order": 91,
       "auto_unlock": false,
       "modifier_configs": [
@@ -652,7 +652,7 @@
       "size": "medium",
       "category": "crafting",
       "max_level": 1,
-      "prerequisites": ["feature_upgrade"],
+      "prerequisites": ["tier_2", "feature_upgrade"],
       "sort_order": 12,
       "auto_unlock": false
     },
@@ -665,7 +665,7 @@
       "size": "small",
       "category": "crafting",
       "max_level": 5,
-      "prerequisites": ["item_scrap"],
+      "prerequisites": ["tier_2", "item_scrap"],
       "sort_order": 92,
       "auto_unlock": false,
       "modifier_configs": [
@@ -686,7 +686,7 @@
       "size": "small",
       "category": "farming",
       "max_level": 5,
-      "prerequisites": ["item_stick"],
+      "prerequisites": ["tier_2", "item_stick"],
       "sort_order": 93,
       "auto_unlock": false,
       "modifier_configs": [
@@ -737,7 +737,7 @@
       "size": "large",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["job_merchant"],
+      "prerequisites": ["tier_3", "job_merchant"],
       "sort_order": 42,
       "auto_unlock": false
     },
@@ -750,7 +750,7 @@
       "size": "large",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": ["tier_2", "feature_economy"],
       "sort_order": 74,
       "auto_unlock": false
     },
@@ -763,7 +763,7 @@
       "size": "medium",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": ["tier_2", "feature_economy"],
       "sort_order": 13,
       "auto_unlock": false
     },
@@ -776,7 +776,7 @@
       "size": "small",
       "category": "economy",
       "max_level": 5,
-      "prerequisites": ["item_script"],
+      "prerequisites": ["tier_2", "item_script"],
       "sort_order": 94,
       "auto_unlock": false,
       "modifier_configs": [
@@ -810,7 +810,7 @@
       "size": "medium",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": ["tier_2", "feature_economy"],
       "sort_order": 50,
       "auto_unlock": false
     },
@@ -823,7 +823,7 @@
       "size": "medium",
       "category": "economy",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": ["tier_2", "feature_economy"],
       "sort_order": 51,
       "auto_unlock": false
     },
@@ -831,13 +831,52 @@
       "key": "feature_slots",
       "name": "Slots Minigame",
       "type": "feature",
-      "description": "Unlock the slots machine - bet money for a chance to win big! 🎰",
+      "description": "Unlock the slots machine - bet money for a chance to win big! \ud83c\udfb0",
       "tier": 2,
       "size": "medium",
       "category": "gambling",
       "max_level": 1,
-      "prerequisites": ["feature_economy"],
+      "prerequisites": ["tier_2", "feature_economy"],
       "sort_order": 100,
+      "auto_unlock": false
+    },
+    {
+      "key": "tier_2",
+      "name": "Tier 2",
+      "type": "feature",
+      "description": "Unlock Tier 2 features and items",
+      "tier": 2,
+      "size": "large",
+      "category": "core",
+      "max_level": 1,
+      "prerequisites": ["-nodes_unlocked_below_tier:2:13"],
+      "sort_order": 0,
+      "auto_unlock": false
+    },
+    {
+      "key": "tier_3",
+      "name": "Tier 3",
+      "type": "feature",
+      "description": "Unlock Tier 3 features and items",
+      "tier": 3,
+      "size": "large",
+      "category": "core",
+      "max_level": 1,
+      "prerequisites": ["-nodes_unlocked_below_tier:3:33"],
+      "sort_order": 0,
+      "auto_unlock": false
+    },
+    {
+      "key": "tier_4",
+      "name": "Tier 4",
+      "type": "feature",
+      "description": "Unlock Tier 4 features and items",
+      "tier": 4,
+      "size": "large",
+      "category": "core",
+      "max_level": 1,
+      "prerequisites": ["-nodes_unlocked_below_tier:4:44"],
+      "sort_order": 0,
       "auto_unlock": false
     }
   ]

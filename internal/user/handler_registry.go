@@ -41,6 +41,7 @@ func NewHandlerRegistry() *HandlerRegistry {
 			&RareCandyHandler{},
 			&ResourceGeneratorHandler{},
 			&UtilityHandler{},
+			&VideoFilterHandler{},
 		},
 	}
 }
@@ -77,12 +78,10 @@ type WeaponHandler struct{}
 
 // CanHandle returns true for weapon items
 func (h *WeaponHandler) CanHandle(itemName string) bool {
-	return itemName == domain.ItemBlaster ||
-		itemName == domain.ItemBigBlaster ||
-		itemName == domain.ItemHugeBlaster ||
+	return itemName == domain.ItemMissile ||
+		itemName == domain.ItemHugeMissile ||
 		itemName == domain.ItemThis ||
 		itemName == domain.ItemDeez ||
-		itemName == domain.ItemMissile ||
 		itemName == domain.ItemGrenade ||
 		itemName == domain.ItemTNT ||
 		strings.HasPrefix(itemName, "weapon_") ||
@@ -176,4 +175,17 @@ func (h *TrapHandler) CanHandle(itemName string) bool {
 // Handle processes trap placement
 func (h *TrapHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
 	return s.handleTrap(ctx, s, user, inventory, item, quantity, args)
+}
+
+// VideoFilterHandler handles video filter items
+type VideoFilterHandler struct{}
+
+// CanHandle returns true for video filter items
+func (h *VideoFilterHandler) CanHandle(itemName string) bool {
+	return itemName == domain.ItemVideoFilter
+}
+
+// Handle processes video filter application
+func (h *VideoFilterHandler) Handle(ctx context.Context, s *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+	return s.handleVideoFilter(ctx, s, user, inventory, item, quantity, args)
 }

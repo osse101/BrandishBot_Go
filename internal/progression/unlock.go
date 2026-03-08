@@ -3,8 +3,41 @@ package progression
 import (
 	"context"
 	"fmt"
-	"strings"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
+
+// mapItemToProgressionKey correctly maps an item's internal_name to its progression node key.
+func mapItemToProgressionKey(itemName string) string {
+	switch itemName {
+	case domain.ItemMoney:
+		return ItemMoney
+	case domain.ItemLootbox0:
+		return ItemLootbox0
+	case domain.ItemLootbox1:
+		return ItemLootbox1
+	case domain.ItemLootbox2:
+		return ItemLootbox2
+	case domain.ItemLootbox3:
+		return ItemLootbox3
+	case domain.ItemReviveSmall:
+		return ItemRevives
+	case domain.ItemMine:
+		return ItemMine
+	case domain.ItemTrap:
+		return ItemTrap
+	case domain.ItemBomb:
+		return ItemBomb
+	case domain.ItemTNT:
+		return ItemTnt
+	case domain.ItemHugeMissile:
+		return ItemHugemissile
+	case domain.ItemThis:
+		return ItemThis
+	default:
+		return itemName
+	}
+}
 
 // IsFeatureUnlocked checks if a feature is available
 func (s *service) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
@@ -27,11 +60,7 @@ func (s *service) IsFeatureUnlocked(ctx context.Context, featureKey string) (boo
 
 // IsItemUnlocked checks if an item is available
 func (s *service) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
-	// Item names are prefixed with "item_"
-	nodeKey := itemName
-	if !strings.HasPrefix(nodeKey, "item_") {
-		nodeKey = "item_" + itemName
-	}
+	nodeKey := mapItemToProgressionKey(itemName)
 
 	// Check cache first
 	if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
@@ -82,10 +111,7 @@ func (s *service) AreItemsUnlocked(ctx context.Context, itemNames []string) (map
 
 	// Check cache first for all items
 	for _, itemName := range itemNames {
-		nodeKey := itemName
-		if !strings.HasPrefix(nodeKey, "item_") {
-			nodeKey = "item_" + itemName
-		}
+		nodeKey := mapItemToProgressionKey(itemName)
 
 		if unlocked, found := s.unlockCache.Get(nodeKey, 1); found {
 			result[itemName] = unlocked

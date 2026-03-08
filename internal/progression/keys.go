@@ -44,6 +44,9 @@ const (
 	FeatureUpgrade        = "feature_upgrade"
 	FeatureWeeklyDiscount = "feature_weekly_discount"
 	FeatureWeeklyQuests   = "feature_weekly_quests"
+	FeatureTier2          = "tier_2"
+	FeatureTier3          = "tier_3"
+	FeatureTier4          = "tier_4"
 
 	// Upgrades
 	UpgradeCrafting1        = "upgrade_crafting_1"

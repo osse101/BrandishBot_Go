@@ -199,7 +199,7 @@ func HandleGetLeaderboard(svc stats.Service) http.HandlerFunc {
 			limit, err = strconv.Atoi(limitStr)
 			if err != nil || limit <= 0 {
 				log.Warn("Invalid limit parameter", "limit", limitStr)
-				http.Error(w, ErrMsgInvalidLimit, http.StatusBadRequest)
+				RespondError(w, http.StatusBadRequest, ErrMsgInvalidLimit)
 				return
 			}
 		}

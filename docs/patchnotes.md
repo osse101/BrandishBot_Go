@@ -1,3 +1,15 @@
+# Patch Notes (Week of March 6, 2026)
+
+## New Features
+
+- **Item Unlocking System**: We've updated the progression system to correctly handle item unlocking, making sure you don't get access to new items until the community unlocks them.
+- **Video Filters**: Added fun new video filter items to customize your experience!
+
+## System Updates
+
+- **Developer Tools**: Improved the internal developer tools by consolidating mock generation, making it safer and faster to test the bot across different platforms.
+- **Behind the Scenes**: Refactored the internal Slots minigame code and loading utilities to keep the bot running smoothly and efficiently.
+
 # Patch Notes (Week of Feb 23, 2026)
 
 ## Developer Experience

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
@@ -37,7 +38,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 
 		if r.Method != http.MethodPost {
 			log.Warn("Method not allowed", "method", r.Method)
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -65,7 +66,7 @@ func HandleMessageHandler(userService user.Service, progressionSvc progression.S
 		middleware.TrackEngagementFromContext(
 			middleware.WithPlatform(middleware.WithUserID(ctx, result.User.ID), req.Platform),
 			eventBus,
-			"message",
+			domain.MetricTypeMessage,
 			1,
 		)
 

@@ -3,6 +3,8 @@ package info_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/osse101/BrandishBot_Go/internal/info"
 )
 
@@ -41,16 +43,14 @@ func TestSearchTopic(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			topic, featureName, found := loader.SearchTopic(tt.topicName)
 
-			if found != tt.expectFound {
-				t.Errorf("Expected found=%v, got %v", tt.expectFound, found)
+			assert.Equal(t, tt.expectFound, found, "Expected found result to match")
+
+			if found {
+				assert.Equal(t, tt.expectFeature, featureName, "Expected feature to match")
 			}
 
-			if found && featureName != tt.expectFeature {
-				t.Errorf("Expected feature=%s, got %s", tt.expectFeature, featureName)
-			}
-
-			if found && topic == nil {
-				t.Error("Expected topic data, got nil")
+			if found {
+				assert.NotNil(t, topic, "Expected topic data, got nil")
 			}
 		})
 	}

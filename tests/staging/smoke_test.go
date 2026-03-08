@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type ProgressionTreeResponse struct {
@@ -18,18 +21,12 @@ type ProgressionTreeResponse struct {
 func TestProgressionTree(t *testing.T) {
 	resp, body := makeRequest(t, "GET", "/api/v1/progression/tree", nil)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var tree ProgressionTreeResponse
-	if err := json.Unmarshal(body, &tree); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &tree), "Failed to unmarshal response")
 
-	if len(tree.Nodes) == 0 {
-		t.Error("Expected at least one node in progression tree")
-	}
+	require.NotEmpty(t, tree.Nodes, "Expected at least one node in progression tree")
 
 	// Verify root node exists (progression_system)
 	foundRoot := false
@@ -40,7 +37,5 @@ func TestProgressionTree(t *testing.T) {
 		}
 	}
 
-	if !foundRoot {
-		t.Error("Expected to find 'progression_system' node in tree")
-	}
+	assert.True(t, foundRoot, "Expected to find 'progression_system' node in tree")
 }

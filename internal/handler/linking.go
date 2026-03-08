@@ -50,7 +50,7 @@ func (h *LinkingHandlers) HandleInitiate() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -80,7 +80,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -92,7 +92,7 @@ func (h *LinkingHandlers) HandleClaim() http.HandlerFunc {
 		token, err := h.svc.ClaimLink(r.Context(), req.Token, req.Platform, req.PlatformID)
 		if err != nil {
 			log.Warn("Failed to claim link", "error", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -109,7 +109,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -121,7 +121,7 @@ func (h *LinkingHandlers) HandleConfirm() http.HandlerFunc {
 		result, err := h.svc.ConfirmLink(r.Context(), req.Platform, req.PlatformID)
 		if err != nil {
 			log.Warn("Failed to confirm link", "error", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -135,7 +135,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 		log := logger.FromContext(r.Context())
 
 		if r.Method != http.MethodPost {
-			http.Error(w, ErrMsgMethodNotAllowed, http.StatusMethodNotAllowed)
+			RespondError(w, http.StatusMethodNotAllowed, ErrMsgMethodNotAllowed)
 			return
 		}
 
@@ -163,7 +163,7 @@ func (h *LinkingHandlers) HandleUnlink() http.HandlerFunc {
 		// Step 2: Confirm unlink
 		if err := h.svc.ConfirmUnlink(r.Context(), req.Platform, req.PlatformID, req.TargetPlatform); err != nil {
 			log.Warn("Failed to confirm unlink", "error", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 

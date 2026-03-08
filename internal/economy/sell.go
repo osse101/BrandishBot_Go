@@ -15,12 +15,10 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgSellItemCalled, "platform", platform, "platformID", platformID, "username", username, "item", itemName, "quantity", quantity)
 
-	// Validate request
-	if err := validateQuantity(quantity); err != nil { // Reuse same validation
+	if err := validateQuantity(quantity); err != nil {
 		return 0, 0, err
 	}
 
-	// Get all required entities
 	user, item, moneyItem, err := s.getSellEntities(ctx, platform, platformID, itemName)
 	if err != nil {
 		return 0, 0, err
@@ -32,31 +30,26 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	// Get inventory and check if item exists
 	inventory, err := tx.GetInventory(ctx, user.ID)
 	if err != nil {
 		return 0, 0, fmt.Errorf(ErrMsgGetInventoryFailed, err)
 	}
 
-	// Use random selection in case multiple slots with different quality levels exist
 	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
 	if itemSlotIndex == -1 {
 		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName, domain.ErrNotInInventory)
 	}
 
-	// Determine actual sell quantity
-	actualSellQuantity := quantity
+	finalQty := quantity
 	if slotQuantity < quantity {
-		actualSellQuantity = slotQuantity
+		finalQty = slotQuantity
 	}
 
-	// Process the sell transaction
 	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-	moneyGained := actualSellQuantity * sellPrice
+	moneyGained := finalQty * sellPrice
 
-	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, actualSellQuantity, moneyGained)
+	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, finalQty, moneyGained)
 
-	// Save updated inventory
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		return 0, 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
 	}
@@ -65,7 +58,6 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
-	// Publish item.sold event (job handler awards Merchant XP, quest handler tracks progress)
 	if s.publisher != nil {
 		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
@@ -74,59 +66,13 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 				UserID:       user.ID,
 				ItemName:     item.InternalName,
 				ItemCategory: getItemCategory(item),
-				Quantity:     actualSellQuantity,
+				Quantity:     finalQty,
 				TotalValue:   moneyGained,
 				Timestamp:    s.now().Unix(),
 			},
 		})
 	}
 
-	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualSellQuantity, "moneyGained", moneyGained)
-	return moneyGained, actualSellQuantity, nil
-}
-
-func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
-	log := logger.FromContext(ctx)
-	log.Info(LogMsgGetSellablePricesCalled)
-
-	allItems, err := s.repo.GetSellablePrices(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Return all items if no progression service
-	if s.progressionService == nil {
-		// Populate sell prices for all items
-		for i := range allItems {
-			sellPrice := s.calculateSellPriceWithModifier(ctx, allItems[i].BaseValue)
-			allItems[i].SellPrice = &sellPrice
-		}
-		return allItems, nil
-	}
-
-	// Extract item names for batch checking
-	itemNames := make([]string, len(allItems))
-	for i, item := range allItems {
-		itemNames[i] = item.InternalName
-	}
-
-	// Batch check unlock status
-	unlockStatus, err := s.progressionService.AreItemsUnlocked(ctx, itemNames)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
-	}
-
-	// Filter to only unlocked items and populate sell prices
-	filtered := make([]domain.Item, 0, len(allItems))
-	for _, item := range allItems {
-		if unlockStatus[item.InternalName] {
-			// Calculate and set sell price
-			sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-			item.SellPrice = &sellPrice
-			filtered = append(filtered, item)
-		}
-	}
-
-	log.Info("Sellable prices filtered", "total", len(allItems), "unlocked", len(filtered))
-	return filtered, nil
+	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", finalQty, "moneyGained", moneyGained)
+	return moneyGained, finalQty, nil
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/user"
@@ -202,20 +203,14 @@ func TestCommandRegistry(t *testing.T) {
 
 	registry.Register(cmd, handler)
 
-	if registry.Commands["test"] == nil {
-		t.Error("Command not registered")
-	}
+	assert.NotNil(t, registry.Commands["test"], "Command not registered")
 
-	if registry.Handlers["test"] == nil {
-		t.Error("Handler not registered")
-	}
+	assert.NotNil(t, registry.Handlers["test"], "Handler not registered")
 
 	// Test handle
 	registry.Handle(nil, createTestInteraction("test", nil), nil)
 
-	if !handlerCalled {
-		t.Error("Handler was not called")
-	}
+	assert.True(t, handlerCalled, "Handler was not called")
 }
 
 // TestRecordCommand tests command tracking
@@ -227,7 +222,5 @@ func TestRecordCommand(t *testing.T) {
 	RecordCommand()
 	RecordCommand()
 
-	if commandCounter != 3 {
-		t.Errorf("Expected 3 commands, got %d", commandCounter)
-	}
+	assert.EqualValues(t, 3, commandCounter, "Expected 3 commands")
 }

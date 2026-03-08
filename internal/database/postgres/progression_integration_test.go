@@ -260,13 +260,13 @@ func TestProgressionRepository_Integration(t *testing.T) {
 			metricType  string
 			metricValue int
 		}{
-			{"user1", "message", 100},      // Total: 100
-			{"user1", "command", 50},       // Total: 150
-			{"user2", "message", 200},      // Total: 200
-			{"user2", "item_used", 25},     // Total: 225
-			{"user3", "message", 150},      // Total: 150 (tie with user1)
-			{"user4", "command", 10},       // Total: 10
-			{"user5", "item_crafted", 300}, // Total: 300 (highest)
+			{"user1", domain.MetricTypeMessage, 100},     // Total: 100
+			{"user1", domain.MetricTypeCommand, 50},      // Total: 150
+			{"user2", domain.MetricTypeMessage, 200},     // Total: 200
+			{"user2", domain.MetricTypeItemUsed, 25},     // Total: 225
+			{"user3", domain.MetricTypeMessage, 150},     // Total: 150 (tie with user1)
+			{"user4", domain.MetricTypeCommand, 10},      // Total: 10
+			{"user5", domain.MetricTypeItemCrafted, 300}, // Total: 300 (highest)
 		}
 
 		for _, td := range testData {
@@ -363,8 +363,8 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		_, err = testPool.Exec(ctx, `
 			INSERT INTO engagement_weights (metric_type, weight, description)
 			VALUES 
-				('vote_cast', 5.0, 'Test Vote'),
-				('message', 1.0, 'Test Message')
+				('`+domain.MetricTypeVoteCast+`', 5.0, 'Test Vote'),
+				('`+domain.MetricTypeMessage+`', 1.0, 'Test Message')
 			ON CONFLICT (metric_type) DO UPDATE SET weight = EXCLUDED.weight
 		`)
 		if err != nil {
@@ -383,7 +383,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		// vote_cast (5.0) * 20 = 100
 		metric1 := &domain.EngagementMetric{
 			UserID:      userID,
-			MetricType:  "vote_cast",
+			MetricType:  domain.MetricTypeVoteCast,
 			MetricValue: 20,
 			RecordedAt:  day2, // Newer
 		}
@@ -395,7 +395,7 @@ func TestProgressionRepository_Integration(t *testing.T) {
 		// message (1.0) * 50 = 50
 		metric2 := &domain.EngagementMetric{
 			UserID:      userID,
-			MetricType:  "message",
+			MetricType:  domain.MetricTypeMessage,
 			MetricValue: 50,
 			RecordedAt:  day1, // Older
 		}

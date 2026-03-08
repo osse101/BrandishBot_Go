@@ -57,6 +57,10 @@ func (m *mockProgression) IsNodeUnlocked(_ context.Context, _ string, _ int) (bo
 	return m.unlocked, nil
 }
 
+func (m *mockProgression) IsItemUnlocked(_ context.Context, _ string) (bool, error) {
+	return m.unlocked, nil
+}
+
 // ============================================================================
 // Helpers
 // ============================================================================

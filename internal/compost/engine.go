@@ -9,28 +9,23 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// Engine provides pure compost logic (no DB dependencies)
 type Engine struct{}
 
-// NewEngine creates a new compost engine
 func NewEngine() *Engine {
 	return &Engine{}
 }
 
-// CalculateReadyAt computes when composting will finish
 func (e *Engine) CalculateReadyAt(startedAt time.Time, totalItemCount int, speedMultiplier float64) time.Time {
 	baseDuration := float64(WarmupDuration + time.Duration(totalItemCount)*PerItemDuration)
 	reducedDuration := time.Duration(baseDuration * (1.0 - speedMultiplier))
 	return startedAt.Add(reducedDuration)
 }
 
-// CalculateSludgeAt computes when ready compost turns to sludge
 func (e *Engine) CalculateSludgeAt(readyAt time.Time, sludgeExtHours float64) time.Time {
 	extDuration := time.Duration(sludgeExtHours * float64(time.Hour))
 	return readyAt.Add(SludgeTimeout + extDuration)
 }
 
-// CalculateInputValue sums the weighted values of all bin items
 func (e *Engine) CalculateInputValue(items []domain.CompostBinItem) int {
 	total := 0
 	for _, item := range items {
@@ -40,8 +35,6 @@ func (e *Engine) CalculateInputValue(items []domain.CompostBinItem) int {
 	return total
 }
 
-// DetermineDominantType finds the content type with the highest total weighted value.
-// Falls back to "material" if items is empty or has no typed content.
 func (e *Engine) DetermineDominantType(items []domain.CompostBinItem) string {
 	typeValues := make(map[string]int)
 	for _, item := range items {
@@ -67,17 +60,16 @@ func (e *Engine) DetermineDominantType(items []domain.CompostBinItem) string {
 	return dominant
 }
 
-// CalculateOutput determines what the compost produces
 func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge bool, allItems []domain.Item, multiplier float64) *domain.CompostOutput {
 	if isSludge {
-		sludgeQty := inputValue / 10
-		if sludgeQty < 1 {
-			sludgeQty = 1
+		sludgeQuantity := inputValue / 10
+		if sludgeQuantity < 1 {
+			sludgeQuantity = 1
 		}
 		return &domain.CompostOutput{
-			Items:      map[string]int{domain.ItemSludge: sludgeQty},
+			Items:      map[string]int{domain.ItemSludge: sludgeQuantity},
 			IsSludge:   true,
-			TotalValue: sludgeQty,
+			TotalValue: sludgeQuantity,
 			Message:    MsgHarvestSludge,
 		}
 	}
@@ -87,7 +79,6 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 		outputValue = 1
 	}
 
-	// Filter items by dominant type, sort by base_value descending
 	var candidates []domain.Item
 	for _, item := range allItems {
 		if domain.HasType(item.ContentType, dominantType) {
@@ -99,15 +90,14 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 		return candidates[i].BaseValue > candidates[j].BaseValue
 	})
 
-	// Pick the highest-value item whose base_value <= outputValue
 	for _, item := range candidates {
 		if item.BaseValue <= outputValue && item.BaseValue > 0 {
-			qty := outputValue / item.BaseValue
-			if qty < 1 {
-				qty = 1
+			quantity := outputValue / item.BaseValue
+			if quantity < 1 {
+				quantity = 1
 			}
 			return &domain.CompostOutput{
-				Items:      map[string]int{item.InternalName: qty},
+				Items:      map[string]int{item.InternalName: quantity},
 				IsSludge:   false,
 				TotalValue: outputValue,
 				Message:    MsgHarvestComplete,
@@ -115,7 +105,6 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 		}
 	}
 
-	// Fallback: give money
 	return &domain.CompostOutput{
 		Items:      map[string]int{domain.ItemMoney: outputValue},
 		IsSludge:   false,
@@ -124,7 +113,6 @@ func (e *Engine) CalculateOutput(inputValue int, dominantType string, isSludge b
 	}
 }
 
-// TotalItemCount returns the sum of all item quantities in the bin
 func (e *Engine) TotalItemCount(items []domain.CompostBinItem) int {
 	total := 0
 	for _, item := range items {

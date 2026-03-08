@@ -68,13 +68,13 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), userID),
 			h.eventBus,
-			"gamble_started",
+			domain.MetricTypeGambleStarted,
 			1,
 		)
 	}
 
 	// Record contribution for gamble start (higher value)
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_started", 3); err != nil {
+	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeGambleStarted, 3); err != nil {
 		log.Error("Failed to record gamble start engagement", "error", err)
 		// Don't fail the request
 	}
@@ -99,7 +99,7 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgInvalidGambleID)
 		return
 	}
 
@@ -122,13 +122,13 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		middleware.TrackEngagementFromContext(
 			middleware.WithUserID(r.Context(), userID),
 			h.eventBus,
-			"gamble_joined",
+			domain.MetricTypeGambleJoined,
 			1,
 		)
 	}
 
 	// Record contribution for gamble join
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, "gamble_joined", 2); err != nil {
+	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeGambleJoined, 2); err != nil {
 		log.Error("Failed to record gamble join engagement", "error", err)
 		// Don't fail the request
 	}
@@ -143,7 +143,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 	}
 	gambleID, err := uuid.Parse(gambleIDStr)
 	if err != nil {
-		http.Error(w, ErrMsgInvalidGambleID, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgInvalidGambleID)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *GambleHandler) HandleGetGamble(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if gamble == nil {
-		http.Error(w, ErrMsgGambleNotFoundHTTP, http.StatusNotFound)
+		RespondError(w, http.StatusNotFound, ErrMsgGambleNotFoundHTTP)
 		return
 	}
 

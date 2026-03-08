@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,143 +11,69 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
-
-// MockJobService for testing
-type MockJobService struct {
-	mock.Mock
-}
-
-func (m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) {
-	args := m.Called(ctx)
-	return int64(args.Int(0)), args.Error(1)
-}
-
-func (m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.DailyResetStatus), args.Error(1)
-}
-
-func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
-	return false, nil
-}
-
-func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
-	return 0, nil
-}
-
-func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
-	return nil, nil
-}
-
-func (m *MockJobService) CalculateLevel(totalXP int64) int {
-	return 0
-}
-
-func (m *MockJobService) GetXPForLevel(level int) int64 {
-	return 0
-}
-
-func (m *MockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
-	return 0, 0
-}
-
-func (m *MockJobService) Shutdown(ctx context.Context) error {
-	return nil
-}
-
-// MockBus for testing
-type MockBus struct {
-	mock.Mock
-}
-
-func (m *MockBus) Publish(ctx context.Context, e event.Event) error {
-	args := m.Called(ctx, e)
-	return args.Error(0)
-}
-
-func (m *MockBus) Subscribe(eventType event.Type, handler event.Handler) {
-	m.Called(eventType, handler)
-}
 
 // TestTimeUntilNextReset tests reset time calculation
 func TestTimeUntilNextReset(t *testing.T) {
+	t.Parallel()
+
 	location := time.FixedZone("UTC+7", 7*60*60)
 	tests := []struct {
 		name string
 		now  time.Time
-		want func(d time.Duration) bool
+		want time.Duration
 	}{
 		{
-			name: "01:00 UTC+7 should be ~23 hours until next reset",
+			name: "01:00 UTC+7 should be 23 hours until next reset",
 			now:  time.Date(2026, 2, 2, 1, 0, 0, 0, location),
-			want: func(d time.Duration) bool {
-				return d > 22*time.Hour && d < 24*time.Hour
-			},
+			want: 23 * time.Hour,
 		},
 		{
-			name: "23:59 UTC+7 should be ~1 minute until next reset",
-			now:  time.Date(2026, 2, 2, 23, 59, 0, 0, location),
-			want: func(d time.Duration) bool {
-				return d > 0 && d < 2*time.Minute
-			},
+			name: "23:59:59 UTC+7 should be 1 second until next reset",
+			now:  time.Date(2026, 2, 2, 23, 59, 59, 0, location),
+			want: 1 * time.Second,
+		},
+		{
+			name: "Exactly 00:00:00 UTC+7 (on boundary) should be 24 hours",
+			now:  time.Date(2026, 2, 2, 0, 0, 0, 0, location),
+			want: 24 * time.Hour,
+		},
+		{
+			name: "00:00:01 UTC+7 (just after boundary) should be almost 24 hours",
+			now:  time.Date(2026, 2, 2, 0, 0, 1, 0, location),
+			want: 24*time.Hour - 1*time.Second,
+		},
+		{
+			name: "Different timezone input (UTC) converting to UTC+7",
+			// 17:00 UTC is 00:00 UTC+7 next day. So if it's 16:00 UTC, it's 23:00 UTC+7.
+			// Next reset is in 1 hour.
+			now:  time.Date(2026, 2, 1, 16, 0, 0, 0, time.UTC),
+			want: 1 * time.Hour,
 		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			// Since we can't easily mock time.Now() inside the function without changing it
-			// we verify the logic manually here or just ensure it's reasonable
-			nextReset := time.Date(tt.now.Year(), tt.now.Month(), tt.now.Day(), 0, 0, 0, 0, location)
-			if !nextReset.After(tt.now) {
-				nextReset = nextReset.AddDate(0, 0, 1)
-			}
-			testDuration := nextReset.Sub(tt.now)
+			t.Parallel()
 
-			assert.Greater(t, testDuration, time.Duration(0))
-			assert.Less(t, testDuration, 25*time.Hour)
-			assert.True(t, tt.want(testDuration))
+			got := timeUntilNextResetFrom(tt.now)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
 // TestDailyResetWorkerStart tests that worker schedules a reset
 func TestDailyResetWorkerStart(t *testing.T) {
-	jobSvc := new(MockJobService)
-	mockBus := new(MockBus)
+	t.Parallel()
 
-	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead.jsonl")
+	jobSvc := mocks.NewMockJobService(t)
+	mockBus := mocks.NewMockEventBus(t)
+
+	deadFile := filepath.Join(t.TempDir(), "test_dead.jsonl")
+	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, deadFile)
 	assert.NoError(t, err)
-	t.Cleanup(func() {
-		os.Remove("test_dead.jsonl")
-	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
@@ -164,14 +90,14 @@ func TestDailyResetWorkerStart(t *testing.T) {
 
 // TestDailyResetWorkerShutdown tests graceful shutdown
 func TestDailyResetWorkerShutdown(t *testing.T) {
-	jobSvc := new(MockJobService)
-	mockBus := new(MockBus)
+	t.Parallel()
 
-	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead2.jsonl")
+	jobSvc := mocks.NewMockJobService(t)
+	mockBus := mocks.NewMockEventBus(t)
+
+	deadFile := filepath.Join(t.TempDir(), "test_dead.jsonl")
+	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, deadFile)
 	assert.NoError(t, err)
-	t.Cleanup(func() {
-		os.Remove("test_dead2.jsonl")
-	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
@@ -189,14 +115,14 @@ func TestDailyResetWorkerShutdown(t *testing.T) {
 
 // TestDailyResetWorkerShutdownTimeout tests timeout during shutdown
 func TestDailyResetWorkerShutdownTimeout(t *testing.T) {
-	jobSvc := new(MockJobService)
-	mockBus := new(MockBus)
+	t.Parallel()
 
-	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, "test_dead3.jsonl")
+	jobSvc := mocks.NewMockJobService(t)
+	mockBus := mocks.NewMockEventBus(t)
+
+	deadFile := filepath.Join(t.TempDir(), "test_dead.jsonl")
+	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, deadFile)
 	assert.NoError(t, err)
-	t.Cleanup(func() {
-		os.Remove("test_dead3.jsonl")
-	})
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
@@ -214,4 +140,40 @@ func TestDailyResetWorkerShutdownTimeout(t *testing.T) {
 	defer cancel2()
 	err = worker.Shutdown(ctx2)
 	assert.NoError(t, err)
+}
+
+func TestDailyResetWorker_ExecuteReset(t *testing.T) {
+	t.Parallel()
+
+	jobSvc := mocks.NewMockJobService(t)
+	mockBus := mocks.NewMockEventBus(t)
+
+	deadFile := filepath.Join(t.TempDir(), "test_dead.jsonl")
+	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, deadFile)
+	assert.NoError(t, err)
+	defer publisher.Shutdown(context.Background())
+
+	worker := NewDailyResetWorker(jobSvc, publisher)
+
+	// Setup expectations
+	jobSvc.On("ResetDailyJobXP", mock.Anything).Return(int64(42), nil)
+
+	// ResilientPublisher uses Publish in a background goroutine, but it sends to the bus.
+	// We expect the bus to receive an event of type EventTypeDailyResetComplete.
+	mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+		return evt.Type == event.Type(domain.EventTypeDailyResetComplete)
+	})).Return(nil)
+
+	// Execute
+	worker.executeReset()
+
+	// Wait for the waitgroup to ensure the goroutine completes
+	worker.wg.Wait()
+
+	// Give the publisher time to process and publish
+	time.Sleep(50 * time.Millisecond)
+
+	// Assert expectations
+	jobSvc.AssertExpectations(t)
+	mockBus.AssertExpectations(t)
 }

@@ -230,7 +230,7 @@ func TestLoader_LoadActualConfig(t *testing.T) {
 	}
 
 	// Check for expected items
-	expectedItems := []string{"money", "lootbox_tier0", "lootbox_tier1", "lootbox_tier2", "weapon_blaster"}
+	expectedItems := []string{"money", "lootbox_tier0", "lootbox_tier1", "lootbox_tier2", "weapon_missile"}
 	for _, expectedItem := range expectedItems {
 		_, exists := itemsByName[expectedItem]
 		assert.True(t, exists, "Expected item '%s' to exist", expectedItem)

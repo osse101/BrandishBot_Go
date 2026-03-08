@@ -33,13 +33,13 @@ func TestHandleSellItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
-				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 1).Return(100, 1, nil)
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 1).Return(100, 1, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"money_gained":100,"items_sold":1`,
@@ -50,7 +50,7 @@ func TestHandleSellItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
@@ -68,7 +68,7 @@ func TestHandleSellItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
@@ -91,7 +91,7 @@ func TestHandleSellItem(t *testing.T) {
 			requestBody: SellItemRequest{
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   1,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
@@ -106,7 +106,7 @@ func TestHandleSellItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   0,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
@@ -138,12 +138,12 @@ func TestHandleSellItem(t *testing.T) {
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
 				Username:   "testuser",
-				ItemName:   domain.ItemBlaster,
+				ItemName:   domain.ItemMissile,
 				Quantity:   100,
 			},
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
-				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemBlaster, 100).
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 100).
 					Return(0, 0, errors.New(ErrMsgInsufficientItemsErr))
 			},
 			expectedStatus: http.StatusInternalServerError,

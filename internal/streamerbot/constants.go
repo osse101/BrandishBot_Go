@@ -50,6 +50,7 @@ const (
 	ActionSlotsResult        = "BrandishBot_SlotsResult"
 	ActionTimeoutUpdate      = "BrandishBot_TimeoutUpdate"
 	ActionSubscriptionUpdate = "BrandishBot_SubscriptionUpdate"
+	ActionItemUsed           = "BrandishBot_ItemUsed"
 )
 
 // Response status values

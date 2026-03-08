@@ -44,17 +44,17 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 
 	// Validate required fields
 	if req.Platform == "" || req.Username == "" || req.JobKey == "" {
-		http.Error(w, handler.ErrMsgPlatformUsernameJobRequired, http.StatusBadRequest)
+		handler.RespondError(w, http.StatusBadRequest, handler.ErrMsgPlatformUsernameJobRequired)
 		return
 	}
 
 	if req.Amount <= 0 {
-		http.Error(w, handler.ErrMsgAmountMustBePositive, http.StatusBadRequest)
+		handler.RespondError(w, http.StatusBadRequest, handler.ErrMsgAmountMustBePositive)
 		return
 	}
 
 	if req.Amount > 10000 {
-		http.Error(w, handler.ErrMsgAmountExceedsMax, http.StatusBadRequest)
+		handler.RespondError(w, http.StatusBadRequest, handler.ErrMsgAmountExceedsMax)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *JobHandler) HandleAwardXP(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 			"platform", req.Platform,
 			"username", req.Username)
-		http.Error(w, handler.ErrMsgUserNotFoundHTTP, http.StatusNotFound)
+		handler.RespondError(w, http.StatusNotFound, handler.ErrMsgUserNotFoundHTTP)
 		return
 	}
 

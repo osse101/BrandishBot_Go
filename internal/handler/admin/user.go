@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -53,11 +54,11 @@ func (h *UserHandler) HandleUserLookup(w http.ResponseWriter, r *http.Request) {
 	// Determine platform ID based on platform
 	var platformID string
 	switch platform {
-	case "twitch":
+	case domain.PlatformTwitch:
 		platformID = user.TwitchID
-	case "discord":
+	case domain.PlatformDiscord:
 		platformID = user.DiscordID
-	case "youtube":
+	case domain.PlatformYoutube:
 		platformID = user.YoutubeID
 	default:
 		platformID = ""

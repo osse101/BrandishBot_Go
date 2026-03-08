@@ -38,7 +38,7 @@ func DecodeAndValidateRequest(r *http.Request, w http.ResponseWriter, req interf
 	// Decode JSON body
 	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		log.Error(fmt.Sprintf("Failed to decode %s request", actionName), "error", err)
-		http.Error(w, ErrMsgInvalidRequest, http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, ErrMsgInvalidRequest)
 		return err
 	}
 
@@ -89,7 +89,7 @@ func GetQueryParam(r *http.Request, w http.ResponseWriter, paramName string) (st
 	value := r.URL.Query().Get(paramName)
 	if value == "" {
 		log.Warn(fmt.Sprintf("Missing %s query parameter", paramName))
-		http.Error(w, fmt.Sprintf(ErrMsgMissingQueryParam, paramName), http.StatusBadRequest)
+		RespondError(w, http.StatusBadRequest, fmt.Sprintf(ErrMsgMissingQueryParam, paramName))
 		return "", false
 	}
 	return value, true

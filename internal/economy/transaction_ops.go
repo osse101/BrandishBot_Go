@@ -9,16 +9,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// processExchangeTransaction is a helper handling the repeated pattern of removing a cost/item and adding a resulting item/money.
 func processExchangeTransaction(inventory *domain.Inventory, removeSlotIndex, removeAmount, addAmount, addItemID int) {
-	// Remove item cost/source
 	if inventory.Slots[removeSlotIndex].Quantity <= removeAmount {
 		inventory.Slots = append(inventory.Slots[:removeSlotIndex], inventory.Slots[removeSlotIndex+1:]...)
 	} else {
 		inventory.Slots[removeSlotIndex].Quantity -= removeAmount
 	}
 
-	// Add purchased/earned item
 	itemFound := false
 	for i, slot := range inventory.Slots {
 		if slot.ItemID == addItemID && slot.QualityLevel == domain.QualityCommon {
@@ -36,12 +33,10 @@ func processExchangeTransaction(inventory *domain.Inventory, removeSlotIndex, re
 	}
 }
 
-// processBuyTransaction handles the inventory updates for buying an item
 func processBuyTransaction(inventory *domain.Inventory, itemID, moneySlotIndex, actualQuantity, cost int) {
 	processExchangeTransaction(inventory, moneySlotIndex, cost, actualQuantity, itemID)
 }
 
-// processSellTransaction handles the inventory updates for selling an item
 func processSellTransaction(inventory *domain.Inventory, moneyItemID, itemSlotIndex, actualSellQuantity, moneyGained int) {
 	processExchangeTransaction(inventory, itemSlotIndex, actualSellQuantity, moneyGained, moneyItemID)
 }

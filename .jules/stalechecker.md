@@ -5,3 +5,13 @@ benchmarks/results/baseline.txt
 .gitattributes
 .github/workflows/weekly-benchmark.yml
 .github/workflows/test.yml
+internal/discord/client.go
+docs/swagger/docs.go
+internal/crafting/service_test.go
+internal/progression/service_test.go
+internal/economy/service_test.go
+internal/user/search_test.go
+internal/job/service_test.go
+internal/database/postgres/progression.go
+internal/gamble/service_test.go
+internal/progression/voting_sessions.go

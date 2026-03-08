@@ -187,6 +187,7 @@ packages:
       mockname: 'MockRepository{{.InterfaceName}}'
     interfaces:
       User:
+      Item:
       HarvestRepository:
       HarvestTx:
       CompostRepository:
@@ -195,5 +196,17 @@ packages:
     config:
       filename: 'mock_harvest_{{.InterfaceName | snakecase}}.go'
       mockname: 'MockHarvest{{.InterfaceName}}'
+    interfaces:
+      Service:
+  github.com/osse101/BrandishBot_Go/internal/slots:
+    config:
+      filename: 'mock_slots_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockSlots{{.InterfaceName}}'
+    interfaces:
+      Service:
+  github.com/osse101/BrandishBot_Go/internal/quest:
+    config:
+      filename: 'mock_quest_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockQuest{{.InterfaceName}}'
     interfaces:
       Service:

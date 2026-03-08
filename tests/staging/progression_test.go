@@ -8,60 +8,45 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestProgressionEndpoints tests all progression-related endpoints
 func TestProgressionEndpoints(t *testing.T) {
 	t.Run("GetTree", func(t *testing.T) {
 		resp, body := makeRequest(t, "GET", "/api/v1/progression/tree", nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-		}
+		require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 		var result map[string]interface{}
-		if err := json.Unmarshal(body, &result); err != nil {
-			t.Fatalf("Failed to unmarshal response: %v", err)
-		}
+		require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
-		if _, ok := result["nodes"]; !ok {
-			t.Error("Expected 'nodes' field in response")
-		}
+		assert.Contains(t, result, "nodes", "Expected 'nodes' field in response")
 	})
 
 	t.Run("GetAvailable", func(t *testing.T) {
 		resp, body := makeRequest(t, "GET", "/api/v1/progression/available", nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-		}
+		require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 		var result map[string]interface{}
-		if err := json.Unmarshal(body, &result); err != nil {
-			t.Fatalf("Failed to unmarshal response: %v", err)
-		}
+		require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
-		if _, ok := result["available"]; !ok {
-			t.Error("Expected 'available' field in response")
-		}
+		assert.Contains(t, result, "available", "Expected 'available' field in response")
 	})
 
 	t.Run("GetStatus", func(t *testing.T) {
 		resp, body := makeRequest(t, "GET", "/api/v1/progression/status", nil)
-		if resp.StatusCode != http.StatusOK {
-			t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-		}
+		require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 		var result map[string]interface{}
-		if err := json.Unmarshal(body, &result); err != nil {
-			t.Fatalf("Failed to unmarshal response: %v", err)
-		}
+		require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
 		// Check for expected fields
 		// total_nodes is not always returned, just check for total_unlocked
 		expectedFields := []string{"total_unlocked"}
 		for _, field := range expectedFields {
-			if _, ok := result[field]; !ok {
-				t.Errorf("Expected '%s' field in response", field)
-			}
+			assert.Contains(t, result, field, "Expected '%s' field in response", field)
 		}
 	})
 }
@@ -83,9 +68,7 @@ func TestVotingFlow(t *testing.T) {
 		} `json:"available"`
 	}
 
-	if err := json.Unmarshal(body, &availableResp); err != nil {
-		t.Fatalf("Failed to unmarshal available nodes: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &availableResp), "Failed to unmarshal available nodes")
 
 	if len(availableResp.Available) == 0 {
 		t.Skip("No available nodes to vote for")
@@ -101,9 +84,8 @@ func TestVotingFlow(t *testing.T) {
 	}
 
 	regResp, regBody := makeRequest(t, "POST", "/api/v1/user/register", registerRequest)
-	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
-		t.Fatalf("Failed to register voter: %d. Body: %s", regResp.StatusCode, string(regBody))
-	}
+	require.True(t, regResp.StatusCode == http.StatusCreated || regResp.StatusCode == http.StatusOK,
+		"Failed to register voter: %d. Body: %s", regResp.StatusCode, string(regBody))
 
 	// Vote for the first available node
 	voteRequest := map[string]interface{}{
@@ -115,9 +97,8 @@ func TestVotingFlow(t *testing.T) {
 	resp, body = makeRequest(t, "POST", "/api/v1/progression/vote", voteRequest)
 
 	// Should succeed (200) or indicate already voted/other business logic (400)
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Unexpected status for vote: %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.True(t, resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusBadRequest,
+		"Unexpected status for vote: %d. Body: %s", resp.StatusCode, string(body))
 }
 
 // TestEngagementTracking tests the engagement endpoint
@@ -134,21 +115,16 @@ func TestEngagementTracking(t *testing.T) {
 		"new_platform_id":   userID,
 	}
 	regResp, _ := makeRequest(t, "POST", "/api/v1/user/register", regReq)
-	if regResp.StatusCode != http.StatusCreated && regResp.StatusCode != http.StatusOK {
-		t.Fatalf("Failed to register engagement user")
-	}
+	require.True(t, regResp.StatusCode == http.StatusCreated || regResp.StatusCode == http.StatusOK,
+		"Failed to register engagement user")
 
 	resp, body := makeRequest(t, "GET", fmt.Sprintf("/api/v1/progression/engagement?platform=%s&platform_id=%s", platform, userID), nil)
 
 	// Should return 200 even if user doesn't exist (0 engagement)
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d. Body: %s", resp.StatusCode, string(body))
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "Body: %s", string(body))
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(body, &result), "Failed to unmarshal response")
 
 	// Engagement response might vary, just check it parses
 	// And has at least some score data if available (or empty if not)

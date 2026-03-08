@@ -145,6 +145,19 @@ Already well-split (`engine.go`, `encounters.go`, `journal.go`, `skills.go`, `co
 
 ---
 
+### 9. `internal/slots/service.go` — ~~356 lines~~ ✅ DONE (69 lines remaining)
+
+Split completed. Core game logic, payout calculations, and metrics were separated into dedicated domain files.
+
+| File                       | Functions Moved                             | Lines |
+| -------------------------- | ------------------------------------------- | ----- |
+| `spin.go`                  | `Spin`, `executeSpinTx`, `executeSpinLogic` | ~150  |
+| `payout.go`                | `calculatePayout`, `formatResultMessage`    | ~90   |
+| `metrics.go`               | `trackSlotsEngagementAndXP`                 | ~40   |
+| `service.go` _(remaining)_ | Interface, struct, `NewService`             | ~70   |
+
+---
+
 ## ⚪ Not Recommended for Splitting
 
 | Package            | File                          | Lines                                                                                               | Reason |
@@ -154,7 +167,6 @@ Already well-split (`engine.go`, `encounters.go`, `journal.go`, `skills.go`, `co
 | `internal/handler` | `progression.go` (759 lines)  | HTTP handlers are shallow; splitting buys little navigability                                       |
 | `internal/handler` | `inventory.go` (573 lines)    | Same — shallow handler methods                                                                      |
 | `internal/stats`   | `service.go` (366 lines)      | Manageable size                                                                                     |
-| `internal/slots`   | `service.go` (356 lines)      | Manageable size                                                                                     |
 
 ---
 

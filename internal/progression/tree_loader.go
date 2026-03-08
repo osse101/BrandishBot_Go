@@ -2,17 +2,15 @@ package progression
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/syncutil"
 	"github.com/osse101/BrandishBot_Go/internal/validation"
 )
 
@@ -27,6 +25,7 @@ var (
 // Schema paths
 const (
 	ProgressionTreeSchemaPath = "configs/schemas/progression_tree.schema.json"
+	ConfigFileName            = "progression_tree.json"
 )
 
 // TreeConfig represents the JSON configuration for the progression tree
@@ -247,7 +246,12 @@ func detectCycles(nodes []NodeConfig, nodesByKey map[string]*NodeConfig) error {
 func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, repo repository.Progression, path string) (*SyncResult, error) {
 	log := logger.FromContext(ctx)
 
-	hasChanged, err := hasFileChanged(ctx, repo, path)
+	fileState, err := syncutil.GetFileState(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file state: %w", err)
+	}
+
+	hasChanged, err := syncutil.HasChanged(ctx, repo, ConfigFileName, fileState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if file changed: %w", err)
 	}
@@ -292,7 +296,7 @@ func (t *treeLoader) SyncToDatabase(ctx context.Context, config *TreeConfig, rep
 		"skipped", result.NodesSkipped,
 		"auto_unlocked", result.AutoUnlocked)
 
-	if err := updateSyncMetadata(ctx, repo, path); err != nil {
+	if err := syncutil.UpdateMetadata(ctx, repo, ConfigFileName, fileState); err != nil {
 		log.Warn("Failed to update sync metadata", "error", err)
 	}
 
@@ -476,59 +480,4 @@ type NodeInserter interface {
 // NodeUpdater is an optional interface for updating existing nodes
 type NodeUpdater interface {
 	UpdateNode(ctx context.Context, nodeID int, node *domain.ProgressionNode) error
-}
-
-// hasFileChanged checks if the config file has changed since last sync
-func hasFileChanged(ctx context.Context, repo repository.Progression, configPath string) (bool, error) {
-	// Get file info
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to stat config file: %w", err)
-	}
-
-	// Calculate file hash
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	// Get last sync metadata
-	syncMeta, err := repo.GetSyncMetadata(ctx, "progression_tree.json")
-	if err != nil {
-		// First sync - no metadata exists
-		return true, nil
-	}
-
-	// Compare hash and mod time
-	if syncMeta.FileHash != fileHash || !syncMeta.FileModTime.Equal(fileInfo.ModTime()) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// updateSyncMetadata updates the sync metadata after a successful sync
-func updateSyncMetadata(ctx context.Context, repo repository.Progression, configPath string) error {
-	fileInfo, err := os.Stat(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to stat config file: %w", err)
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	hash := sha256.Sum256(data)
-	fileHash := hex.EncodeToString(hash[:])
-
-	return repo.UpsertSyncMetadata(ctx, &domain.SyncMetadata{
-		ConfigName:   "progression_tree.json",
-		LastSyncTime: time.Now(),
-		FileHash:     fileHash,
-		FileModTime:  fileInfo.ModTime(),
-	})
 }

@@ -41,12 +41,12 @@
 
 **Implementation Checklist**:
 
-- [ ] Add feature gate check in item handler
-- [ ] Update item service to check unlock status
-- [ ] Add tests for locked/unlocked states
-- [ ] Verify with admin unlock
-- [ ] Test locked behavior (should return 403)
-- [ ] Test unlocked behavior (filter works)
+- [x] Add feature gate check in item handler
+- [x] Update item service to check unlock status
+- [x] Add tests for locked/unlocked states
+- [x] Verify with admin unlock
+- [x] Test locked behavior (should return 403)
+- [x] Test unlocked behavior (filter works)
 
 **Files to Modify**:
 
@@ -513,8 +513,7 @@ All item implementations follow this pattern:
 // In item service or handler
 func (s *Service) UseItem(ctx context.Context, userID, itemKey string) error {
     // Check if item is unlocked
-    nodeKey := progression.ItemKeyToNodeKey(itemKey)
-    unlocked, err := s.progressionService.IsNodeUnlocked(ctx, nodeKey)
+    unlocked, err := s.progressionService.IsItemUnlocked(ctx, itemKey)
     if err != nil {
         return fmt.Errorf("failed to check unlock status: %w", err)
     }
@@ -531,13 +530,13 @@ func (s *Service) UseItem(ctx context.Context, userID, itemKey string) error {
 
 ```go
 func TestItemXXX_Locked(t *testing.T) {
-    // Setup mock progression service returning false for IsNodeUnlocked
+    // Setup mock progression service returning false for IsItemUnlocked
     // Attempt to use item
     // Assert error is ErrItemLocked
 }
 
 func TestItemXXX_Unlocked(t *testing.T) {
-    // Setup mock progression service returning true for IsNodeUnlocked
+    // Setup mock progression service returning true for IsItemUnlocked
     // Attempt to use item
     // Assert success
 }

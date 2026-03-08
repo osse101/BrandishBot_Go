@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -69,20 +70,20 @@ func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progress
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
-				"item_bought",
+				domain.MetricTypeItemBought,
 				bought,
 			)
 		}
 
 		// Record contribution for buying
-		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_bought", bought); err != nil {
+		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeItemBought, bought); err != nil {
 			log.Error("Failed to record buy engagement", "error", err)
 			// Don't fail the request
 		}
 
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
-		if err := PublishEvent(r.Context(), eventBus, "item.bought", map[string]interface{}{
+		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemBought, map[string]interface{}{
 			"user_id":   req.Username,
 			"item_name": req.ItemName,
 			"quantity":  bought,

@@ -47,10 +47,10 @@ This document tracks the minimal support implementation for progression upgrade 
 
 #### upgrade_exploration_1
 
-- **Status**: ⏸️ Blocked - User service needs logic update
-- **Location**: `internal/user/search.go`
-- **Implementation**: Search logic exists but does not currently query progression modifiers for XP or success rate.
-- **Next Steps**: Update `calculateSearchParameters` in `internal/user/search.go` to use `GetModifiedValue`.
+- **Status**: ✅ Minimal support added
+- **Location**: `internal/user/search_helpers.go`
+- **Implementation**: `calculateSearchQuality` uses `GetModifiedValue` to scale the quality index.
+- **Tests**: Stub created at `internal/user/upgrades_test.go`
 
 #### upgrade_farming_1
 
@@ -101,14 +101,14 @@ This document tracks the minimal support implementation for progression upgrade 
 ### By Status
 
 - ✅ **Already Implemented**: 2 (upgrade_gamble_win_bonus, upgrade_job_xp_multiplier)
-- ✅ **Minimal Support Added**: 6 (progression_basic, progression_two, progression_three, crafting_1, job_level_cap, farming_1)
+- ✅ **Minimal Support Added**: 7 (progression_basic, progression_two, progression_three, crafting_1, exploration_1, job_level_cap, farming_1)
 - ⚠️ **Partial (TODO only)**: 1 (economy_1 - needs refactoring)
-- ⏸️ **Blocked**: 1 (exploration_1 - user service logic update)
+- ⏸️ **Blocked**: 0
 
 ### Total: 10 Upgrade Nodes
 
-- **8 / 10** have minimal support or better
-- **2 / 10** require additional work (1 refactoring, 1 logic update)
+- **9 / 10** have minimal support or better
+- **1 / 10** require additional work (1 refactoring)
 
 ---
 
@@ -133,8 +133,6 @@ This document tracks the minimal support implementation for progression upgrade 
    - Test stacking behavior (progression upgrades)
    - Test fallback when progression service unavailable
    - Integration tests with real services
-
-4. **upgrade_exploration_1**: Update search logic in `internal/user/search.go` to support modifiers.
 
 ### Low Priority (Future)
 
@@ -187,7 +185,7 @@ All test stubs created with TODO comments and t.Skip():
 
 - [ ] Wire crafting ProgressionService dependency
 - [ ] Refactor economy calculateSellPrice for context
-- [ ] Update `internal/user/search.go` to use modifiers
+- [x] Update `internal/user/search_helpers.go` to use modifiers
 - [ ] Implement progression rate tests (basic, two, three)
 - [ ] Implement crafting success rate tests
 - [ ] Implement economy bonus tests

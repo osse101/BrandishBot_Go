@@ -85,6 +85,10 @@ func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID st
 	return baseValue, nil
 }
 
+func (m *MockProgressionService) IsItemUnlocked(ctx context.Context, itemName string) (bool, error) {
+	return true, nil
+}
+
 func (m *MockProgressionService) IsFeatureUnlocked(ctx context.Context, featureKey string) (bool, error) {
 	return true, nil
 }

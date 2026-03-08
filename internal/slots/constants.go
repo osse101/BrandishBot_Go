@@ -53,11 +53,3 @@ const (
 	TriggerJackpot     = "jackpot"
 	TriggerMegaJackpot = "mega_jackpot"
 )
-
-// Engagement metric types
-const (
-	MetricSlotsSpin    = "slots_spin"
-	MetricSlotsWin     = "slots_win"
-	MetricSlotsBigWin  = "slots_big_win"
-	MetricSlotsJackpot = "slots_jackpot"
-)

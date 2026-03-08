@@ -370,7 +370,7 @@ func createSearchTestService(opts ...func(*searchTestServiceOpts)) (*service, *m
 		opt(config)
 	}
 
-	svc := NewService(repo, repo, statsSvc, config.publisher, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, config.jobService, nil, false).(*service)
+	svc := NewService(repo, repo, statsSvc, config.publisher, nil, NewMockNamingResolver(), &mockCooldownService{repo: repo}, nil, config.jobService, nil, false).(*service)
 
 	// Add standard test items
 	repo.items[domain.ItemLootbox0] = &domain.Item{
@@ -611,11 +611,8 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
 
 		// ASSERT
-		if err != nil {
-			assert.Contains(t, err.Error(), domain.ErrMsgFailedToRegisterUser)
-		} else {
-			t.Error("Expected error for database failure, but got nil")
-		}
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), domain.ErrMsgFailedToRegisterUser)
 	})
 }
 

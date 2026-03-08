@@ -71,19 +71,28 @@ func (l *Loader) loadFeatureFile(path string) (*Feature, error) {
 	return &feature, nil
 }
 
+// ensureLoaded checks if features are loaded and loads them if not
+// It returns false if loading fails
+func (l *Loader) ensureLoaded() bool {
+	if l.loaded {
+		return true
+	}
+
+	// Upgrade to write lock to load
+	l.cacheMu.RUnlock()
+	err := l.Load()
+	l.cacheMu.RLock()
+
+	return err == nil
+}
+
 // GetFeature returns a feature by name
 func (l *Loader) GetFeature(name string) (*Feature, bool) {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
 
-	// Lazy load if not already loaded
-	if !l.loaded {
-		l.cacheMu.RUnlock()
-		if err := l.Load(); err != nil {
-			l.cacheMu.RLock()
-			return nil, false
-		}
-		l.cacheMu.RLock()
+	if !l.ensureLoaded() {
+		return nil, false
 	}
 
 	feature, ok := l.cache[name]
@@ -111,10 +120,8 @@ func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
 
-	if !l.loaded {
-		l.cacheMu.RUnlock()
-		_ = l.Load()
-		l.cacheMu.RLock()
+	if !l.ensureLoaded() {
+		return nil, "", false
 	}
 
 	for featureName, feature := range l.cache {
@@ -131,10 +138,8 @@ func (l *Loader) GetAllFeatures() map[string]*Feature {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
 
-	if !l.loaded {
-		l.cacheMu.RUnlock()
-		_ = l.Load()
-		l.cacheMu.RLock()
+	if !l.ensureLoaded() {
+		return make(map[string]*Feature)
 	}
 
 	// Return a copy to prevent modification

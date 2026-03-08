@@ -13,6 +13,7 @@ import (
 )
 
 type Querier interface {
+	AcceptDuel(ctx context.Context, arg AcceptDuelParams) error
 	AddContribution(ctx context.Context, arg AddContributionParams) error
 	AddExpeditionParticipant(ctx context.Context, arg AddExpeditionParticipantParams) error
 	AddVotingOption(ctx context.Context, arg AddVotingOptionParams) error
@@ -40,6 +41,7 @@ type Querier interface {
 	CountUnlockedNodesBelowTier(ctx context.Context, tier int32) (int32, error)
 	CountUnlocks(ctx context.Context) (int64, error)
 	CreateCompostBin(ctx context.Context, userID uuid.UUID) (CompostBin, error)
+	CreateDuel(ctx context.Context, arg CreateDuelParams) error
 	CreateExpedition(ctx context.Context, arg CreateExpeditionParams) error
 	CreateGamble(ctx context.Context, arg CreateGambleParams) error
 	CreateHarvestState(ctx context.Context, dollar_1 uuid.UUID) (HarvestState, error)
@@ -51,6 +53,7 @@ type Querier interface {
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
+	DeclineDuel(ctx context.Context, id uuid.UUID) error
 	DeleteAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
 	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
@@ -59,6 +62,7 @@ type Querier interface {
 	EndVoting(ctx context.Context, arg EndVotingParams) error
 	EndVotingSession(ctx context.Context, arg EndVotingSessionParams) error
 	EnsureInventoryRow(ctx context.Context, arg EnsureInventoryRowParams) error
+	ExpireDuels(ctx context.Context) error
 	FreezeVotingSession(ctx context.Context, id int32) error
 	GetActiveExpedition(ctx context.Context) (Expedition, error)
 	GetActiveGamble(ctx context.Context) (Gamble, error)
@@ -96,6 +100,8 @@ type Querier interface {
 	GetDisassembleOutputs(ctx context.Context, recipeID int32) ([]GetDisassembleOutputsRow, error)
 	GetDisassembleRecipeByKey(ctx context.Context, recipeKey string) (GetDisassembleRecipeByKeyRow, error)
 	GetDisassembleRecipeBySourceItemID(ctx context.Context, sourceItemID int32) (GetDisassembleRecipeBySourceItemIDRow, error)
+	GetDuel(ctx context.Context, id uuid.UUID) (Duel, error)
+	GetDuelForUpdate(ctx context.Context, id uuid.UUID) (Duel, error)
 	GetEngagementMetricsAggregated(ctx context.Context) ([]GetEngagementMetricsAggregatedRow, error)
 	GetEngagementMetricsAggregatedSince(ctx context.Context, recordedAt pgtype.Timestamp) ([]GetEngagementMetricsAggregatedSinceRow, error)
 	GetEngagementWeights(ctx context.Context) ([]GetEngagementWeightsRow, error)
@@ -136,6 +142,7 @@ type Querier interface {
 	GetNodeDependents(ctx context.Context, prerequisiteNodeID int32) ([]GetNodeDependentsRow, error)
 	GetNodeDynamicPrerequisites(ctx context.Context, id int32) ([]byte, error)
 	GetNodePrerequisites(ctx context.Context, nodeID int32) ([]GetNodePrerequisitesRow, error)
+	GetPendingDuelsForUser(ctx context.Context, opponentID pgtype.UUID) ([]Duel, error)
 	GetPlatformID(ctx context.Context, name string) (int32, error)
 	GetRecentlyActiveUsers(ctx context.Context, limit int32) ([]GetRecentlyActiveUsersRow, error)
 	GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error)
@@ -235,6 +242,7 @@ type Querier interface {
 	UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRecipeParams) error
 	UpdateDailyResetTime(ctx context.Context, arg UpdateDailyResetTimeParams) error
 	UpdateDisassembleRecipe(ctx context.Context, arg UpdateDisassembleRecipeParams) error
+	UpdateDuelState(ctx context.Context, arg UpdateDuelStateParams) error
 	UpdateExpeditionParticipantResults(ctx context.Context, arg UpdateExpeditionParticipantResultsParams) error
 	UpdateExpeditionState(ctx context.Context, arg UpdateExpeditionStateParams) error
 	UpdateExpeditionStateIfMatches(ctx context.Context, arg UpdateExpeditionStateIfMatchesParams) (pgconn.CommandTag, error)

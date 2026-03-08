@@ -11,13 +11,7 @@ const (
 	EventVersion1_0 = "1.0"
 )
 
-// Engagement Metric Types - used in progression engagement tracking
-const (
-	EngagementMetricMessage     = "message"
-	EngagementMetricCommand     = "command"
-	EngagementMetricItemCrafted = "item_crafted"
-	EngagementMetricItemUsed    = "item_used"
-)
+// Engagement Metric Types are now in domain/metrics.go
 
 // Default Engagement Weights - fallback values when DB weights are unavailable
 const (

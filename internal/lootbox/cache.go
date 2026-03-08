@@ -212,9 +212,7 @@ func isItemUnlocked(ctx context.Context, itemInternalName string, progressionSvc
 		return true // No progression service = all items unlocked
 	}
 
-	// Item progression nodes follow the pattern "item_{internal_name}"
-	nodeKey := fmt.Sprintf("item_%s", itemInternalName)
-	unlocked, err := progressionSvc.IsNodeUnlocked(ctx, nodeKey, 1)
+	unlocked, err := progressionSvc.IsItemUnlocked(ctx, itemInternalName)
 	if err != nil {
 		// On error, default to unlocked to avoid breaking loot system
 		logger.Warn("Failed to check item unlock status, defaulting to unlocked", "item", itemInternalName, "error", err)
