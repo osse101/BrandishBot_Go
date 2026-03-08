@@ -52,7 +52,6 @@ func (c *TestLogsCommand) Run(args []string) error {
 
 func (c *TestLogsCommand) buildApp() (string, error) {
 	PrintInfo("Building the application...")
-	//nolint:forbidigo // Safe usage of wrapper
 	if err := runCommandVerbose("make", "build"); err != nil {
 		return "", fmt.Errorf("failed to build app: %w", err)
 	}

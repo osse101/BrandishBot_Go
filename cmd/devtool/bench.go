@@ -45,7 +45,6 @@ func (c *BenchCommand) Run(args []string) error {
 
 func (c *BenchCommand) runAll() error {
 	PrintHeader("Running all benchmarks...")
-	//nolint:forbidigo
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
 }
 
@@ -63,7 +62,6 @@ func (c *BenchCommand) runHot() error {
 
 	fmt.Println("  → Utils: Inventory operations (existing)")
 	// This one shouldn't fail silently as it catches all in utils
-	//nolint:forbidigo
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./internal/utils")
 }
 

@@ -16,13 +16,11 @@ func getChangedPackages(baseRef string, stagedOnly bool) ([]string, error) {
 	var err error
 
 	if stagedOnly {
-		//nolint:forbidigo
 		out, err = getCommandOutput("git", "diff", "--cached", "--name-only", "--diff-filter=ACMR")
 	} else {
 		if baseRef == "" {
 			baseRef = "HEAD"
 		}
-		//nolint:forbidigo
 		out, err = getCommandOutput("git", "diff", baseRef, "--name-only", "--diff-filter=ACMR")
 	}
 
