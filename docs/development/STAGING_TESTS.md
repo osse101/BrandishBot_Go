@@ -69,3 +69,9 @@ The staging test suite includes **11 tests** covering:
 2. Add `//go:build staging` to the top of the file.
 3. Use `makeRequest` helper to interact with the API.
 4. Focus on black-box testing (test behavior, not implementation).
+
+## Assertions
+
+- Tests now leverage `github.com/stretchr/testify/assert` and `github.com/stretchr/testify/require` for clearer, more concise assertions.
+- `require` is used for assertions where a failure should halt execution (e.g. HTTP status codes, JSON parsing).
+- `assert` is used when multiple checks can be performed.

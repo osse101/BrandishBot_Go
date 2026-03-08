@@ -6,6 +6,7 @@
 - **Video Filters**: Added fun new video filter items to customize your experience!
 
 ## System Updates
+- **Testing Improvements**: Updated integration tests in `tests/staging` to use robust testify assertions, making failures easier to diagnose.
 
 - **Developer Tools**: Improved the internal developer tools by consolidating mock generation, making it safer and faster to test the bot across different platforms.
 - **Behind the Scenes**: Refactored the internal Slots minigame code and loading utilities to keep the bot running smoothly and efficiently.
