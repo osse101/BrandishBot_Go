@@ -19,11 +19,12 @@ import (
 
 // mockEventBus is a minimal implementation of event.Bus for testing
 type mockEventBus struct {
-	mu           sync.Mutex
-	publishDelay time.Duration
-	lastContext  context.Context
-	lastEvent    event.Event
-	callCount    int
+	mu          sync.Mutex
+	lastContext context.Context
+	lastEvent   event.Event
+	callCount   int
+	publishCh   chan struct{} // Used to signal when publish is called
+	continueCh  chan struct{} // Used to block publish for graceful shutdown test
 }
 
 func (m *mockEventBus) Publish(ctx context.Context, e event.Event) error {
@@ -31,11 +32,13 @@ func (m *mockEventBus) Publish(ctx context.Context, e event.Event) error {
 	m.lastContext = ctx
 	m.lastEvent = e
 	m.callCount++
-	delay := m.publishDelay
 	m.mu.Unlock()
 
-	if delay > 0 {
-		time.Sleep(delay)
+	if m.publishCh != nil {
+		m.publishCh <- struct{}{}
+	}
+	if m.continueCh != nil {
+		<-m.continueCh
 	}
 	return nil
 }
@@ -65,7 +68,7 @@ func setupHarvestService(t *testing.T, bus *mockEventBus) (Service, *mocks.MockR
 	// Setup ResilientPublisher with our mock bus
 	tmpFile := t.TempDir() + "/deadletter_test.jsonl"
 	// Use minimal retry to speed up tests, but allow enough for reliable execution
-	rp, err := event.NewResilientPublisher(bus, 1, 10*time.Millisecond, tmpFile)
+	rp, err := event.NewResilientPublisher(bus, 1, time.Millisecond, tmpFile)
 	require.NoError(t, err)
 
 	// Start publisher worker (handled by NewResilientPublisher, but we should handle shutdown)
@@ -79,9 +82,12 @@ func setupHarvestService(t *testing.T, bus *mockEventBus) (Service, *mocks.MockR
 }
 
 func TestHarvest_GracefulShutdown(t *testing.T) {
-	// Setup with a delay in the bus
+	// Setup with a channel to wait for publish
+	publishCh := make(chan struct{}, 1)
+	continueCh := make(chan struct{})
 	bus := &mockEventBus{
-		publishDelay: 100 * time.Millisecond,
+		publishCh:  publishCh,
+		continueCh: continueCh,
 	}
 	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc := setupHarvestService(t, bus)
 
@@ -120,23 +126,50 @@ func TestHarvest_GracefulShutdown(t *testing.T) {
 	_, err := svc.Harvest(context.Background(), domain.PlatformDiscord, "123", "User")
 	require.NoError(t, err)
 
-	// Immediately Shutdown and measure time
-	start := time.Now()
-	err = svc.Shutdown(context.Background())
-	elapsed := time.Since(start)
+	// Wait for async task to start publishing
+	select {
+	case <-publishCh:
+		// success
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for publish to start")
+	}
 
-	assert.NoError(t, err)
+	shutdownDone := make(chan struct{})
+	go func() {
+		err := svc.Shutdown(context.Background())
+		assert.NoError(t, err)
+		close(shutdownDone)
+	}()
 
-	// Verify Shutdown waits for async tasks. Uses 50ms lower bound for 100ms delay to account for jitter.
-	assert.GreaterOrEqual(t, elapsed.Milliseconds(), int64(50), "Shutdown should wait for async XP award")
+	// Ensure shutdown doesn't complete immediately
+	select {
+	case <-shutdownDone:
+		t.Fatal("Shutdown completed before async task finished")
+	case <-time.After(50 * time.Millisecond):
+		// Expected, shutdown is blocked waiting for bus.Publish to finish
+	}
+
+	// Unblock publish
+	close(continueCh)
+
+	// Wait for shutdown to complete
+	select {
+	case <-shutdownDone:
+		// success
+	case <-time.After(time.Second):
+		t.Fatal("Shutdown did not complete after async task finished")
+	}
 
 	// Verify bus was called
 	assert.Equal(t, 1, bus.CallCount(), "XP event should have been published")
 }
 
 func TestHarvest_ContextCancellation(t *testing.T) {
-	// Setup with no significant delay
-	bus := &mockEventBus{}
+	// Setup with a channel to wait for publish
+	publishCh := make(chan struct{}, 1)
+	bus := &mockEventBus{
+		publishCh: publishCh,
+	}
 	svc, mockHarvestRepo, mockUserRepo, mockProgressionSvc := setupHarvestService(t, bus)
 
 	// Setup User and Harvest State
@@ -179,6 +212,14 @@ func TestHarvest_ContextCancellation(t *testing.T) {
 
 	// Cancel context immediately
 	cancel()
+
+	// Wait for async task to publish
+	select {
+	case <-publishCh:
+		// success
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for publish to complete")
+	}
 
 	// Wait for async task to complete
 	_ = svc.Shutdown(context.Background())
