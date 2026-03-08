@@ -27,8 +27,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 	var message string
 	var eventToPublish func()
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		inventory, err := tx.GetInventory(ctx, user.ID)
+	err = s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(txCtx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToGetInventory

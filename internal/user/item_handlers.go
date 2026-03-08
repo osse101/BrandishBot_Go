@@ -16,7 +16,6 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -407,7 +406,7 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 		return "", err
 	}
 
-	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := s.executeTrapTransaction(ctx, user, item, quantity, platform, potentialTargets, isMine)
+	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := s.executeTrapTransaction(ctx, user, item, quantity, platform, potentialTargets, isMine, inventory)
 	if err != nil {
 		return "", err
 	}
@@ -458,58 +457,41 @@ func (s *service) validateTrapInventory(inventory *domain.Inventory, item *domai
 	return nil
 }
 
-func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool) (int, int, bool, bool, error) {
+func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool, inventory *domain.Inventory) (int, int, bool, bool, error) {
 	itemsConsumed := 0
 	trapsPlaced := 0
 	selfTriggered := false
 	badLuckSelf := false
 
-	err := s.withTx(ctx, func(tx repository.UserTx) error {
-		txInventory, err := tx.GetInventory(ctx, user.ID)
+	totalQty := utils.GetTotalQuantity(inventory, item.ID)
+	if totalQty < 1 {
+		return 0, 0, false, false, fmt.Errorf("item no longer available")
+	}
+
+	maxPossible := quantity
+	if totalQty < maxPossible {
+		maxPossible = totalQty
+	}
+
+	if isMine && len(potentialTargets) == 1 && strings.EqualFold(potentialTargets[0], user.Username) {
+		// Special case: if we ONLY targeted ourselves (e.g. no other active chatters)
+		badLuckSelf = true
+		itemsConsumed = 1
+		trapsPlaced = 1
+		err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
 		if err != nil {
-			return fmt.Errorf("failed to get inventory: %w", err)
+			return 0, 0, false, false, err
 		}
-
-		totalQty := utils.GetTotalQuantity(txInventory, item.ID)
-		if totalQty < 1 {
-			return fmt.Errorf("item no longer available")
+		s.handleSelfTargetMine(ctx, user)
+	} else {
+		var err error
+		itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err = s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, inventory, item, isMine)
+		if err != nil {
+			return 0, 0, false, false, err
 		}
+	}
 
-		maxPossible := quantity
-		if totalQty < maxPossible {
-			maxPossible = totalQty
-		}
-
-		if isMine && len(potentialTargets) == 1 && strings.EqualFold(potentialTargets[0], user.Username) {
-			// Special case: if we ONLY targeted ourselves (e.g. no other active chatters)
-			badLuckSelf = true
-			itemsConsumed = 1
-			trapsPlaced = 1
-			err := utils.ConsumeItems(txInventory, item.ID, 1, s.rnd)
-			if err != nil {
-				return err
-			}
-			s.handleSelfTargetMine(ctx, user)
-		} else {
-			consumed, placed, triggered, badLuck, err := s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, txInventory, item, isMine)
-			if err != nil {
-				return err
-			}
-			itemsConsumed = consumed
-			trapsPlaced = placed
-			selfTriggered = triggered
-			badLuckSelf = badLuck
-		}
-
-		if itemsConsumed > 0 {
-			if err := tx.UpdateInventory(ctx, user.ID, *txInventory); err != nil {
-				return fmt.Errorf("failed to update inventory: %w", err)
-			}
-		}
-		return nil
-	})
-
-	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err
+	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, nil
 }
 
 func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, inventory *domain.Inventory, item *domain.Item, isMine bool) (int, int, bool, bool, error) {

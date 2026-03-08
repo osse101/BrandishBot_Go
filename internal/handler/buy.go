@@ -65,26 +65,30 @@ func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progress
 			"item", req.ItemName,
 			"items_bought", bought)
 
-		// Track engagement for buying
+		// Attempt to resolve the correct UUID for metrics/events
+		eventUserID := req.Username
 		if userID, err := userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			eventUserID = userID
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
 				domain.MetricTypeItemBought,
 				bought,
 			)
+		} else {
+			log.Warn("Could not resolve UUID for item bought metrics, using username", "username", req.Username, "error", err)
 		}
 
 		// Record contribution for buying
-		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeItemBought, bought); err != nil {
-			log.Error("Failed to record buy engagement", "error", err)
+		if err := progressionSvc.RecordEngagement(r.Context(), eventUserID, domain.MetricTypeItemBought, bought); err != nil {
+			log.Error("Failed to record buy engagement", "error", err, "user_id", eventUserID)
 			// Don't fail the request
 		}
 
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
 		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemBought, map[string]interface{}{
-			"user_id":   req.Username,
+			"user_id":   eventUserID,
 			"item_name": req.ItemName,
 			"quantity":  bought,
 		}); err != nil {

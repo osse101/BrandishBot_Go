@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // MockNamingResolver implements naming.Resolver interface for testing
@@ -820,4 +821,24 @@ func TestUseItem_Lootbox2(t *testing.T) {
 		assert.Equal(t, 1, inv.Slots[0].ItemID, "Expected lootbox1 (ID 1)")
 		assert.Equal(t, 1, inv.Slots[0].Quantity, "Expected quantity 1")
 	})
+}
+
+func TestWithTx_NestedTransactionDetection(t *testing.T) {
+	repo := NewFakeRepository()
+	setupTestData(repo)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
+	ctx := context.Background()
+
+	err := svc.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		// Attempt to start a nested transaction using the new txCtx
+		nestedErr := svc.withTx(txCtx, func(nestedCtx context.Context, nestedTx repository.UserTx) error {
+			return nil
+		})
+
+		require.Error(t, nestedErr)
+		assert.Contains(t, nestedErr.Error(), "developer error: nested transactions are not supported and cause deadlocks")
+		return nil
+	})
+
+	require.NoError(t, err, "Outer transaction should succeed")
 }

@@ -36,8 +36,8 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 
 	var eventToPublish func()
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		inventory, err := tx.GetInventory(ctx, user.ID)
+	err = s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(txCtx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToGetInventory
@@ -58,7 +58,7 @@ func (s *service) addItemToUserInternal(ctx context.Context, user *domain.User, 
 			})
 		}
 
-		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		if err := tx.UpdateInventory(txCtx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToUpdateInventory
 		}
@@ -100,8 +100,8 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 	var removed int
 	var eventToPublish func()
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		inventory, err := tx.GetInventory(ctx, user.ID)
+	err = s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(txCtx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToGetInventory
@@ -125,7 +125,7 @@ func (s *service) removeItemFromUserInternal(ctx context.Context, user *domain.U
 			inventory.Slots = append(inventory.Slots[:i], inventory.Slots[i+1:]...)
 		}
 
-		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		if err := tx.UpdateInventory(txCtx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToUpdateInventory
 		}
@@ -299,9 +299,9 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 	// Start single transaction for all items
 	var eventsToPublish []func()
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
+	err = s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
 		// Get inventory once
-		inventory, err := tx.GetInventory(ctx, user.ID)
+		inventory, err := tx.GetInventory(txCtx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToGetInventory
@@ -311,7 +311,7 @@ func (s *service) AddItems(ctx context.Context, platform, platformID, username s
 		utils.AddItemsToInventory(inventory, slotsToAdd, nil)
 
 		// Single inventory update
-		if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
+		if err := tx.UpdateInventory(txCtx, user.ID, *inventory); err != nil {
 			log.Error("Failed to update inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToUpdateInventory
 		}
@@ -397,8 +397,8 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 
 	var eventToPublish func()
 
-	err := s.withTx(ctx, func(tx repository.UserTx) error {
-		ownerInventory, err := tx.GetInventory(ctx, owner.ID)
+	err := s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		ownerInventory, err := tx.GetInventory(txCtx, owner.ID)
 		if err != nil {
 			log.Error("Failed to get owner inventory", "error", err)
 			return domain.ErrFailedToGetInventory
@@ -418,7 +418,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		// Capture the quality level being transferred
 		transferredQuality := ownerInventory.Slots[ownerSlotIndex].QualityLevel
 
-		receiverInventory, err := tx.GetInventory(ctx, receiver.ID)
+		receiverInventory, err := tx.GetInventory(txCtx, receiver.ID)
 		if err != nil {
 			log.Error("Failed to get receiver inventory", "error", err)
 			return domain.ErrFailedToGetInventory
@@ -443,11 +443,11 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			})
 		}
 
-		if err := tx.UpdateInventory(ctx, owner.ID, *ownerInventory); err != nil {
+		if err := tx.UpdateInventory(txCtx, owner.ID, *ownerInventory); err != nil {
 			log.Error("Failed to update owner inventory", "error", err)
 			return domain.ErrFailedToUpdateInventory
 		}
-		if err := tx.UpdateInventory(ctx, receiver.ID, *receiverInventory); err != nil {
+		if err := tx.UpdateInventory(txCtx, receiver.ID, *receiverInventory); err != nil {
 			log.Error("Failed to update receiver inventory", "error", err)
 			return domain.ErrFailedToUpdateInventory
 		}

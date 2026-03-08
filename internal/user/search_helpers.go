@@ -36,8 +36,8 @@ func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quan
 		return fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
 	}
 
-	return s.withTx(ctx, func(tx repository.UserTx) error {
-		return s.addItemToTx(ctx, tx, user.ID, item.ID, quantity, qualityLevel)
+	return s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		return s.addItemToTx(txCtx, tx, user.ID, item.ID, quantity, qualityLevel)
 	})
 }
 

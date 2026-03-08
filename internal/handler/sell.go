@@ -67,19 +67,23 @@ func HandleSellItem(svc economy.Service, userSvc user.ManagementService, progres
 			"items_sold", itemsSold,
 			"money_gained", moneyGained)
 
-		// Track engagement for selling
+		// Attempt to resolve the correct UUID for metrics/events
+		eventUserID := req.Username
 		if userID, err := userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
+			eventUserID = userID
 			middleware.TrackEngagementFromContext(
 				middleware.WithUserID(r.Context(), userID),
 				eventBus,
 				domain.MetricTypeItemSold,
 				itemsSold,
 			)
+		} else {
+			log.Warn("Could not resolve UUID for item sold metrics, using username", "username", req.Username, "error", err)
 		}
 
 		// Publish item.sold event
 		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemSold, map[string]interface{}{
-			"user_id":      req.Username,
+			"user_id":      eventUserID,
 			"item_name":    req.ItemName,
 			"quantity":     itemsSold,
 			"money_gained": moneyGained,
