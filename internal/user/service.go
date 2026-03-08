@@ -60,6 +60,8 @@ type service struct {
 
 	rnd func() float64 // For RNG - allows deterministic testing
 
+	searchRegions []SearchRegion // Search regions loaded from config
+
 	wg sync.WaitGroup // Track background tasks for graceful shutdown
 }
 
@@ -114,7 +116,7 @@ type ProgressionService interface {
 
 // NewService creates a new user service
 func NewService(repo repository.User, trapRepo repository.TrapRepository, statsService stats.Service, publisher *event.ResilientPublisher, lootboxService lootbox.Service, namingResolver naming.Resolver, cooldownService cooldown.Service, progressionSvc ProgressionService, jobService job.Service, eventBus event.Bus, devMode bool) Service {
-	return &service{
+	svc := &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
 		handlerRegistry:      NewHandlerRegistry(),
@@ -135,6 +137,13 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		activeChatterTracker: NewActiveChatterTracker(),
 		rnd:                  utils.RandomFloat,
 	}
+
+	// Load search regions (non-fatal if missing)
+	if regions, err := loadSearchRegions(domain.SearchRegionConfigPath); err == nil {
+		svc.searchRegions = regions
+	}
+
+	return svc
 }
 
 func getPlatformKeysFromUser(user domain.User) map[string]string {

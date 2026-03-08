@@ -906,9 +906,9 @@ func (_c *MockUserService_HandleIncomingMessage_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// HandleSearch provides a mock function with given fields: ctx, platform, platformID, username
-func (_m *MockUserService) HandleSearch(ctx context.Context, platform string, platformID string, username string) (string, error) {
-	ret := _m.Called(ctx, platform, platformID, username)
+// HandleSearch provides a mock function with given fields: ctx, platform, platformID, username, itemHint
+func (_m *MockUserService) HandleSearch(ctx context.Context, platform string, platformID string, username string, itemHint string) (string, error) {
+	ret := _m.Called(ctx, platform, platformID, username, itemHint)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HandleSearch")
@@ -916,17 +916,17 @@ func (_m *MockUserService) HandleSearch(ctx context.Context, platform string, pl
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (string, error)); ok {
-		return rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) (string, error)); ok {
+		return rf(ctx, platform, platformID, username, itemHint)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) string); ok {
-		r0 = rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) string); ok {
+		r0 = rf(ctx, platform, platformID, username, itemHint)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, platform, platformID, username)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID, username, itemHint)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -944,13 +944,14 @@ type MockUserService_HandleSearch_Call struct {
 //   - platform string
 //   - platformID string
 //   - username string
-func (_e *MockUserService_Expecter) HandleSearch(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockUserService_HandleSearch_Call {
-	return &MockUserService_HandleSearch_Call{Call: _e.mock.On("HandleSearch", ctx, platform, platformID, username)}
+//   - itemHint string
+func (_e *MockUserService_Expecter) HandleSearch(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, itemHint interface{}) *MockUserService_HandleSearch_Call {
+	return &MockUserService_HandleSearch_Call{Call: _e.mock.On("HandleSearch", ctx, platform, platformID, username, itemHint)}
 }
 
-func (_c *MockUserService_HandleSearch_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockUserService_HandleSearch_Call {
+func (_c *MockUserService_HandleSearch_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, itemHint string)) *MockUserService_HandleSearch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -960,7 +961,7 @@ func (_c *MockUserService_HandleSearch_Call) Return(_a0 string, _a1 error) *Mock
 	return _c
 }
 
-func (_c *MockUserService_HandleSearch_Call) RunAndReturn(run func(context.Context, string, string, string) (string, error)) *MockUserService_HandleSearch_Call {
+func (_c *MockUserService_HandleSearch_Call) RunAndReturn(run func(context.Context, string, string, string, string) (string, error)) *MockUserService_HandleSearch_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -100,7 +100,7 @@ func (m *benchMockUserService) UnlinkPlatform(ctx context.Context, userID, platf
 func (m *benchMockUserService) GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error) {
 	return nil, nil
 }
-func (m *benchMockUserService) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
+func (m *benchMockUserService) HandleSearch(ctx context.Context, platform, platformID, username, itemHint string) (string, error) {
 	return "", nil
 }
 func (m *benchMockUserService) ClearTimeout(ctx context.Context, platform, username string) error {

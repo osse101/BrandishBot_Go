@@ -41,6 +41,13 @@ func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quan
 	})
 }
 
+// grantItemReward adds a specific item to inventory within a transaction
+func (s *service) grantItemReward(ctx context.Context, user *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel) error {
+	return s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		return s.addItemToTx(txCtx, tx, user.ID, item.ID, quantity, qualityLevel)
+	})
+}
+
 var searchQualityLevels = []domain.QualityLevel{
 	domain.QualityCursed,    // 0
 	domain.QualityJunk,      // 1

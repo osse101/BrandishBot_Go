@@ -405,7 +405,7 @@ func TestHandleSearch_Success(t *testing.T) {
 
 	// ACT
 	svc.rnd = func() float64 { return 0.5 } // Force success
-	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -468,7 +468,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 
 			// ACT
 			svc.rnd = func() float64 { return 0.5 } // Force success if search executes
-			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+			message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 			// ASSERT
 			if tt.expectCooldown {
@@ -492,7 +492,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 
 	// ACT - Search with non-existent user
 	svc.rnd = func() float64 { return 0.5 } // Force success
-	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "", "newuser")
+	message, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "", "newuser", "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -583,7 +583,7 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 			svc.rnd = func() float64 { return 0.5 }
 
 			// ACT
-			_, err := svc.HandleSearch(context.Background(), tt.platform, "", tt.username)
+			_, err := svc.HandleSearch(context.Background(), tt.platform, "", tt.username, "")
 
 			// ASSERT
 			if tt.wantErr {
@@ -608,7 +608,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 		repo.shouldFailGet = true
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 		// ASSERT
 		require.Error(t, err)
@@ -634,7 +634,7 @@ func TestHandleSearch_PublicNameUsage(t *testing.T) {
 	svc.rnd = func() float64 { return 0.5 }
 
 	// Call with devMode false
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	// ASSERT
@@ -661,7 +661,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 
 		// ACT
 		svc.rnd = func() float64 { return 0.5 } // Force success
-		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 		// ASSERT
 		require.NoError(t, err)
@@ -686,7 +686,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 		}
 
 		// ACT
-		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 		// ASSERT
 		require.Error(t, err)
@@ -710,7 +710,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 
 		// ACT - First search
 		svc.rnd = func() float64 { return 0.5 } // Force success
-		_, err1 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err1 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 		require.NoError(t, err1)
 
 		// Manually expire cooldown
@@ -718,7 +718,7 @@ func TestHandleSearch_MultipleSearches(t *testing.T) {
 		repo.cooldowns[user.ID][domain.ActionSearch] = &expiredTime
 
 		// Second search after expiry
-		_, err2 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+		_, err2 := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 		// ASSERT
 		require.NoError(t, err2, "Should be able to search again after cooldown expires")
@@ -786,7 +786,7 @@ func TestHandleSearch_CriticalSuccess(t *testing.T) {
 	svc.rnd = func() float64 { return 0.01 }
 
 	// ACT
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -815,7 +815,7 @@ func TestHandleSearch_NormalSuccess(t *testing.T) {
 	svc.rnd = func() float64 { return 0.5 }
 
 	// ACT
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -845,7 +845,7 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 	ctx := context.Background()
 
 	// ACT
-	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	// ASSERT
@@ -872,7 +872,7 @@ func TestHandleSearch_NearMiss(t *testing.T) {
 	svc.rnd = func() float64 { return 0.81 }
 
 	// ACT
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -893,7 +893,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	statsSvc.mockCounts[domain.StatsEventSearch] = 1
 	svc.rnd = func() float64 { return 0.5 } // Guaranteed success
 
-	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	assert.NotContains(t, msg, domain.MsgFirstSearchBonus)
@@ -906,7 +906,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 	// Reset cooldown manually
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 
-	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	assert.Contains(t, msg, "(Exhausted)")
@@ -923,7 +923,7 @@ func TestHandleSearch_CriticalFail(t *testing.T) {
 	svc.rnd = func() float64 { return 0.96 }
 
 	// ACT
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -942,7 +942,7 @@ func TestHandleSearch_NormalFailure(t *testing.T) {
 	svc.rnd = func() float64 { return 0.9 }
 
 	// ACT
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 
 	// ASSERT
 	require.NoError(t, err)
@@ -988,7 +988,7 @@ func TestHandleSearch_BoundaryConditions(t *testing.T) {
 
 			svc.rnd = func() float64 { return tt.roll }
 
-			msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+			msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 			require.NoError(t, err)
 
 			switch tt.expectType {
@@ -1022,7 +1022,7 @@ func TestHandleSearch_JobBonus(t *testing.T) {
 
 	// ACT
 	svc.rnd = func() float64 { return 0.5 } // Normal success
-	_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	_, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	inv, _ := repo.GetInventory(context.Background(), user.ID)
@@ -1048,7 +1048,7 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 
 	// 1. Normal Search
 	svc.rnd = func() float64 { return 0.5 }
-	_, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	_, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
@@ -1067,7 +1067,7 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 	// Reset cooldown
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 
-	_, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername)
+	_, err = svc.HandleSearch(ctx, domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool {
@@ -1091,7 +1091,7 @@ func TestHandleSearch_StreakBonus(t *testing.T) {
 
 	// ACT
 	svc.rnd = func() float64 { return 0.5 }
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 
 	// ASSERT
@@ -1113,21 +1113,21 @@ func TestHandleSearch_ExhaustedMessage_Logic(t *testing.T) {
 	// 1. Count 5 (Threshold-1) -> No message
 	statsSvc.mockCounts[domain.StatsEventSearch] = 5
 	svc.rnd = func() float64 { return 0.5 }
-	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err := svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 	assert.NotContains(t, msg, "(Exhausted)")
 
 	// 2. Count 6 (Threshold) -> Message
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 	statsSvc.mockCounts[domain.StatsEventSearch] = 6
-	msg, err = svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err = svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 	assert.Contains(t, msg, "(Exhausted)")
 
 	// 3. Count 7 (Threshold+1) -> No message
 	delete(repo.cooldowns[user.ID], domain.ActionSearch)
 	statsSvc.mockCounts[domain.StatsEventSearch] = 7
-	msg, err = svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername)
+	msg, err = svc.HandleSearch(context.Background(), domain.PlatformTwitch, "testuser123", TestUsername, "")
 	require.NoError(t, err)
 	assert.NotContains(t, msg, "(Exhausted)", "Should only show exhausted message once")
 }

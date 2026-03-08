@@ -1,0 +1,120 @@
+{
+  "version": "1.0",
+  "regions": [
+    {
+      "key": "the_clearing",
+      "name": "The Clearing",
+      "required_explorer_level": 0,
+      "lootbox_chance_modifier": 0.0,
+      "item_drops": []
+    },
+    {
+      "key": "whispering_meadow",
+      "name": "Whispering Meadow",
+      "required_explorer_level": 5,
+      "lootbox_chance_modifier": -0.05,
+      "item_drops": [
+        {
+          "item_name": "item_stick",
+          "weight": 40
+        },
+        {
+          "item_name": "item_shovel",
+          "weight": 30
+        },
+        {
+          "item_name": "item_scrap",
+          "weight": 30
+        }
+      ]
+    },
+    {
+      "key": "crimson_hollow",
+      "name": "Crimson Hollow",
+      "required_explorer_level": 10,
+      "lootbox_chance_modifier": -0.08,
+      "item_drops": [
+        {
+          "item_name": "explosive_mine",
+          "weight": 25
+        },
+        {
+          "item_name": "explosive_trap",
+          "weight": 10
+        },
+        {
+          "item_name": "item_grenade",
+          "weight": 40
+        },
+        {
+          "item_name": "item_scrap",
+          "weight": 25
+        }
+      ]
+    },
+    {
+      "key": "sunlit_grove",
+      "name": "Sunlit Grove",
+      "required_explorer_level": 15,
+      "lootbox_chance_modifier": -0.1,
+      "item_drops": [
+        {
+          "item_name": "revive_small",
+          "weight": 30
+        },
+        {
+          "item_name": "item_shield",
+          "weight": 30
+        },
+        {
+          "item_name": "weapon_mirror",
+          "weight": 5
+        },
+        {
+          "item_name": "item_shovel",
+          "weight": 35
+        }
+      ]
+    },
+    {
+      "key": "thornveil_depths",
+      "name": "Thornveil Depths",
+      "required_explorer_level": 20,
+      "lootbox_chance_modifier": -0.12,
+      "item_drops": [
+        {
+          "item_name": "explosive_bomb",
+          "weight": 2
+        },
+        {
+          "item_name": "explosive_tnt",
+          "weight": 2
+        },
+        {
+          "item_name": "explosive_mine",
+          "weight": 15
+        },
+        {
+          "item_name": "weapon_grenade",
+          "weight": 15
+        },
+        {
+          "item_name": "explosive_trap",
+          "weight": 15
+        },
+        {
+          "item_name": "weapon_missile",
+          "weight": 15
+        },
+        {
+          "item_name": "xp_rarecandy",
+          "weight": 2
+        },
+        {
+          "item_name": "item_scrap",
+          "weight": 34
+        }
+      ]
+    }
+  ]
+}

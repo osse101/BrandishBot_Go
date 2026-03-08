@@ -41,14 +41,18 @@ namespace BrandishBot.Client
         /// <param name="platform">The platform (e.g. "twitch", "discord")</param>
         /// <param name="platformId">The user's platform ID</param>
         /// <param name="username">The user's username</param>
-        public async Task<SuccessResponse> Search(string platform, string platformId, string username)
+        /// <param name="itemHint">Optional item name to target a specific search region</param>
+        public async Task<SuccessResponse> Search(string platform, string platformId, string username, string itemHint = null)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/user/search", new
+            var body = new Dictionary<string, object>
             {
-                platform = platform,
-                platform_id = platformId,
-                username = username
-            });
+                { "platform", platform },
+                { "platform_id", platformId },
+                { "username", username }
+            };
+            if (!string.IsNullOrWhiteSpace(itemHint))
+                body["item_hint"] = itemHint;
+            return await PostAsync<SuccessResponse>("/api/v1/user/search", body);
         }
 
         /// <summary>

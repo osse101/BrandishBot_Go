@@ -16,6 +16,7 @@ type SearchRequest struct {
 	Platform   string `json:"platform" validate:"required,platform"`
 	PlatformID string `json:"platform_id" validate:"required"`
 	Username   string `json:"username" validate:"required,max=100,excludesall=\x00\n\r\t"`
+	ItemHint   string `json:"item_hint,omitempty" validate:"max=50"`
 }
 
 type SearchResponse struct {
@@ -47,7 +48,7 @@ func HandleSearch(svc user.Service, progressionSvc progression.Service, eventBus
 		}
 
 		// Perform search through user service
-		resultMessage, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username)
+		resultMessage, err := svc.HandleSearch(r.Context(), req.Platform, req.PlatformID, req.Username, req.ItemHint)
 		if err != nil {
 			log := logger.FromContext(r.Context())
 			if errors.Is(err, domain.ErrOnCooldown) {

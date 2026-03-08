@@ -3470,6 +3470,10 @@ const docTemplate = `{
                 "username"
             ],
             "properties": {
+                "item_hint": {
+                    "type": "string",
+                    "maxLength": 50
+                },
                 "platform": {
                     "type": "string"
                 },

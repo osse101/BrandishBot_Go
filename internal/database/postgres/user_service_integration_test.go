@@ -359,7 +359,7 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 
 	triggered := false
 	for i := 0; i < 5; i++ {
-		msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, userD.TwitchID, userD.Username)
+		msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, userD.TwitchID, userD.Username, "")
 		if err == nil && (len(msg) > 0 && msg != domain.MsgSearchNearMiss && msg != domain.MsgSearchCriticalFail) {
 			triggered = true
 		}

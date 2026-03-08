@@ -38,7 +38,7 @@ func TestHandleSearch(t *testing.T) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
 				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
-				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("Found a sword!", nil)
+				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", mock.Anything).Return("Found a sword!", nil)
 				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
@@ -73,7 +73,7 @@ func TestHandleSearch(t *testing.T) {
 			},
 			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser").Return("", errors.New(ErrMsgGenericServerError))
+				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", mock.Anything).Return("", errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,

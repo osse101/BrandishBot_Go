@@ -9,12 +9,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // HandleSearch performs a search action for a user with cooldown tracking
-func (s *service) HandleSearch(ctx context.Context, platform, platformID, username string) (string, error) {
+func (s *service) HandleSearch(ctx context.Context, platform, platformID, username, itemHint string) (string, error) {
 	log := logger.FromContext(ctx)
-	log.Info("HandleSearch called", "platform", platform, "platformID", platformID, "username", username)
+	log.Info("HandleSearch called", "platform", platform, "platformID", platformID, "username", username, "itemHint", itemHint)
 
 	// Get or create user
 	user, err := s.getUserOrRegister(ctx, platform, platformID, username)
@@ -27,7 +28,7 @@ func (s *service) HandleSearch(ctx context.Context, platform, platformID, userna
 	var resultMessage string
 	err = s.cooldownService.EnforceCooldown(ctx, user.ID, domain.ActionSearch, func() error {
 		var err error
-		resultMessage, err = s.executeSearch(ctx, user)
+		resultMessage, err = s.executeSearch(ctx, user, itemHint)
 		return err
 	})
 
@@ -46,11 +47,34 @@ type searchParams struct {
 	successThreshold   float64
 	dailyCount         int
 	streak             int
+	region             *SearchRegion // resolved search region (nil = default/no regions)
 }
 
 // executeSearch performs the actual search logic (called within cooldown enforcement)
-func (s *service) executeSearch(ctx context.Context, user *domain.User) (string, error) {
+func (s *service) executeSearch(ctx context.Context, user *domain.User, itemHint string) (string, error) {
+	log := logger.FromContext(ctx)
 	params := s.calculateSearchParameters(ctx, user)
+
+	// Resolve search region based on explorer level and optional item hint
+	if len(s.searchRegions) > 0 {
+		explorerLevel := 0
+		if s.jobService != nil {
+			if level, err := s.jobService.GetJobLevel(ctx, user.ID, domain.JobKeyExplorer); err == nil {
+				explorerLevel = level
+			} else {
+				log.Warn("Failed to get explorer level for region resolution", "error", err)
+			}
+		}
+		pubIndex := s.buildPublicNameIndex()
+		params.region = resolveRegion(s.searchRegions, explorerLevel, itemHint, pubIndex)
+		if params.region != nil {
+			params.successThreshold += params.region.LootboxChanceModifier
+			if params.successThreshold < 0.1 {
+				params.successThreshold = 0.1
+			}
+			log.Debug("Search region resolved", "region", params.region.Name, "modifier", params.region.LootboxChanceModifier, "threshold", params.successThreshold)
+		}
+	}
 
 	// Perform search roll
 	roll := s.rnd()
@@ -150,20 +174,77 @@ func (s *service) processSearchSuccess(ctx context.Context, user *domain.User, r
 		quantity = 2
 	}
 
-	// Grant reward
+	// Determine if we grant a region item instead of a lootbox
+	if params.region != nil && len(params.region.ItemDrops) > 0 {
+		regionRoll := utils.RandomFloat()
+		if regionRoll < domain.SearchRegionItemDropChance {
+			return s.processRegionItemDrop(ctx, user, isCritical, quantity, params)
+		}
+	}
+
+	// Default: grant lootbox
 	qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
 	if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
 		return "", err
 	}
 
-	// Get item for message formatting and event recording
+	// Get item for message formatting
 	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
 	if err != nil {
 		return "", fmt.Errorf("failed to get reward item: %w", err)
 	}
 
-	// Format and return result message
-	return s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params), nil
+	msg := s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params)
+	if params.region != nil && params.region.RequiredExplorerLevel > 0 {
+		msg += fmt.Sprintf(" [%s]", params.region.Name)
+	}
+	return msg, nil
+}
+
+// processRegionItemDrop grants a region-specific item instead of a lootbox.
+func (s *service) processRegionItemDrop(ctx context.Context, user *domain.User, isCritical bool, quantity int, params searchParams) (string, error) {
+	log := logger.FromContext(ctx)
+	droppedItemName := rollRegionItemDrop(params.region.ItemDrops)
+	if droppedItemName == "" {
+		// Fallback to lootbox if roll fails
+		log.Warn("Region item drop roll returned empty, falling back to lootbox")
+		qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
+		if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
+			return "", err
+		}
+		item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
+		if err != nil {
+			return "", fmt.Errorf("failed to get reward item: %w", err)
+		}
+		return s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params), nil
+	}
+
+	// Grant the region item
+	item, err := s.getItemByNameCached(ctx, droppedItemName)
+	if err != nil || item == nil {
+		log.Error("Failed to get region drop item, falling back to lootbox", "item", droppedItemName, "error", err)
+		qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
+		if err := s.grantSearchReward(ctx, user, quantity, qualityLevel); err != nil {
+			return "", err
+		}
+		lbItem, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
+		if err != nil {
+			return "", fmt.Errorf("failed to get reward item: %w", err)
+		}
+		return s.formatSearchSuccessMessage(ctx, user, lbItem, quantity, isCritical, params), nil
+	}
+
+	qualityLevel := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
+	if err := s.grantItemReward(ctx, user, item, quantity, qualityLevel); err != nil {
+		return "", err
+	}
+
+	msg := s.formatSearchSuccessMessage(ctx, user, item, quantity, isCritical, params)
+	if params.region != nil {
+		msg += fmt.Sprintf(" [%s]", params.region.Name)
+	}
+	log.Info("Region item drop granted", "item", droppedItemName, "region", params.region.Name, "quantity", quantity)
+	return msg, nil
 }
 
 func (s *service) processSearchFailure(roll float64, successThreshold float64, params searchParams) string {
@@ -172,6 +253,11 @@ func (s *service) processSearchFailure(roll float64, successThreshold float64, p
 
 	// Format failure message
 	resultMessage := formatSearchFailureMessage(failureType)
+
+	// Append region name if applicable
+	if params.region != nil && params.region.RequiredExplorerLevel > 0 {
+		resultMessage += fmt.Sprintf(" [%s]", params.region.Name)
+	}
 
 	// Append streak and exhausted status if applicable
 	return s.formatSearchFailureMessageWithMeta(resultMessage, params)

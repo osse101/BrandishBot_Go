@@ -46,7 +46,7 @@ type AccountLinkingService interface {
 
 // GameplayService handles gameplay features
 type GameplayService interface {
-	HandleSearch(ctx context.Context, platform, platformID, username string) (string, error)
+	HandleSearch(ctx context.Context, platform, platformID, username, itemHint string) (string, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
 
 	// Platform-aware timeout methods (accumulating)
