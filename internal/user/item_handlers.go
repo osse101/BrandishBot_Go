@@ -132,7 +132,14 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	// Convert drops to inventory slots for batch adding
 	itemsToAdd := make([]domain.InventorySlot, 0, len(drops))
 
-	first := true
+	// Group items by their resolved display name (which includes quality where applicable)
+	type dropGroup struct {
+		Quantity int
+		Name     string
+	}
+	displayGroups := make(map[string]*dropGroup)
+	var displayOrder []string
+
 	for _, drop := range drops {
 		// Track stats for feedback
 		stats.totalValue += drop.Value
@@ -149,18 +156,34 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			QualityLevel: drop.QualityLevel,
 		})
 
-		if !first {
-			msgBuilder.WriteString(LootboxDropSeparator)
-		}
-
 		// Get display name (which might be "Shiny credit" for money or "Ray Gun" for blaster)
 		// We trust the resolver to give the base name, and we handle pluralization
 		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.QualityLevel)
 
+		if group, exists := displayGroups[itemDisplayName]; exists {
+			group.Quantity += drop.Quantity
+		} else {
+			displayOrder = append(displayOrder, itemDisplayName)
+			displayGroups[itemDisplayName] = &dropGroup{
+				Quantity: drop.Quantity,
+				Name:     itemDisplayName,
+			}
+		}
+	}
+
+	// Format output with grouped items
+	first := true
+	for _, displayName := range displayOrder {
+		group := displayGroups[displayName]
+
+		if !first {
+			msgBuilder.WriteString(LootboxDropSeparator)
+		}
+
 		// Simplify output: "Quantity Name"
-		msgBuilder.WriteString(strconv.Itoa(drop.Quantity))
+		msgBuilder.WriteString(strconv.Itoa(group.Quantity))
 		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(s.pluralize(itemDisplayName, drop.Quantity))
+		msgBuilder.WriteString(s.pluralize(group.Name, group.Quantity))
 
 		first = false
 	}
