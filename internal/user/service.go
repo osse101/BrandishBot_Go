@@ -10,6 +10,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/itemhandler"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
@@ -36,7 +37,7 @@ type timeoutInfo struct {
 type service struct {
 	repo            repository.User
 	trapRepo        repository.TrapRepository
-	handlerRegistry *HandlerRegistry
+	handlerRegistry *itemhandler.Registry
 	timeoutMu       sync.Mutex
 	timeouts        map[string]*timeoutInfo // Keyed by "platform:username"
 	lootboxService  lootbox.Service
@@ -59,8 +60,6 @@ type service struct {
 	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
 
 	rnd func() float64 // For RNG - allows deterministic testing
-
-	searchRegions []SearchRegion // Search regions loaded from config
 
 	wg sync.WaitGroup // Track background tasks for graceful shutdown
 }
@@ -119,7 +118,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 	svc := &service{
 		repo:                 repo,
 		trapRepo:             trapRepo,
-		handlerRegistry:      NewHandlerRegistry(),
+		handlerRegistry:      itemhandler.NewRegistry(),
 		timeouts:             make(map[string]*timeoutInfo),
 		lootboxService:       lootboxService,
 		publisher:            publisher,
@@ -136,11 +135,6 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: NewActiveChatterTracker(),
 		rnd:                  utils.RandomFloat,
-	}
-
-	// Load search regions (non-fatal if missing)
-	if regions, err := loadSearchRegions(domain.SearchRegionConfigPath); err == nil {
-		svc.searchRegions = regions
 	}
 
 	return svc

@@ -23,7 +23,7 @@ func TestHandleSearch(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService, *mocks.MockEventBus)
+		setupMock      func(*mocks.MockSearchService, *mocks.MockUserService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -34,12 +34,12 @@ func TestHandleSearch(t *testing.T) {
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
-			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+			setupMock: func(ms *mocks.MockSearchService, u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-
-				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", mock.Anything).Return("Found a sword!", nil)
 				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
+
+				ms.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "").Return("Found a sword!", nil)
+
 				// Expect both engagement and search.performed events
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
 					return evt.Type == "engagement" || evt.Type == "search.performed"
@@ -55,7 +55,7 @@ func TestHandleSearch(t *testing.T) {
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
-			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+			setupMock: func(ms *mocks.MockSearchService, u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(false, nil)
 				p.On("GetRequiredNodes", mock.Anything, progression.FeatureSearch).Return([]*domain.ProgressionNode{
 					{DisplayName: "Progression System"},
@@ -71,9 +71,9 @@ func TestHandleSearch(t *testing.T) {
 				PlatformID: "test-id",
 				Username:   "testuser",
 			},
-			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+			setupMock: func(ms *mocks.MockSearchService, u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSearch).Return(true, nil)
-				u.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", mock.Anything).Return("", errors.New(ErrMsgGenericServerError))
+				ms.On("HandleSearch", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "").Return("", errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
@@ -82,12 +82,13 @@ func TestHandleSearch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			mockSearch := mocks.NewMockSearchService(t)
 			mockUser := mocks.NewMockUserService(t)
 			mockProg := mocks.NewMockProgressionService(t)
 			mockBus := mocks.NewMockEventBus(t)
-			tt.setupMock(mockUser, mockProg, mockBus)
+			tt.setupMock(mockSearch, mockUser, mockProg, mockBus)
 
-			handler := HandleSearch(mockUser, mockProg, mockBus)
+			handler := HandleSearch(mockSearch, mockUser, mockProg, mockBus)
 
 			body, _ := json.Marshal(tt.requestBody)
 			req := httptest.NewRequest("POST", "/user/search", bytes.NewBuffer(body))
@@ -99,6 +100,7 @@ func TestHandleSearch(t *testing.T) {
 			if tt.expectedBody != "" {
 				assert.Contains(t, w.Body.String(), tt.expectedBody)
 			}
+			mockSearch.AssertExpectations(t)
 			mockUser.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
 			mockBus.AssertExpectations(t)

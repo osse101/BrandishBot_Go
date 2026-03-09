@@ -26,6 +26,12 @@ type InventoryService interface {
 	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
 	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
 	GetInventoryByUsername(ctx context.Context, platform, username, filter string) ([]InventoryItem, error)
+
+	// Search and reward adapters
+	GetItemByName(ctx context.Context, name string) (*domain.Item, error)
+	BuildPublicNameIndex() map[string]string
+	GrantSearchReward(ctx context.Context, user *domain.User, quantity int, qualityLevel domain.QualityLevel) error
+	GrantItemReward(ctx context.Context, user *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel) error
 }
 
 // ManagementService handles user lifecycle operations
@@ -35,6 +41,7 @@ type ManagementService interface {
 	FindUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	GetUserByPlatformUsername(ctx context.Context, platform, username string) (*domain.User, error)
 	GetUserIDByPlatformID(ctx context.Context, platform, platformID string) (string, error)
+	GetUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error)
 }
 
 // AccountLinkingService handles account linking operations
@@ -46,7 +53,6 @@ type AccountLinkingService interface {
 
 // GameplayService handles gameplay features
 type GameplayService interface {
-	HandleSearch(ctx context.Context, platform, platformID, username, itemHint string) (string, error)
 	HandleIncomingMessage(ctx context.Context, platform, platformID, username, message string) (*domain.MessageResult, error)
 
 	// Platform-aware timeout methods (accumulating)

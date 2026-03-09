@@ -5,6 +5,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/itemhandler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -50,7 +51,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrItemNotHandled
 		}
 
-		handlerArgs := ItemHandlerArgs{
+		handlerArgs := itemhandler.HandlerArgs{
 			Username: user.Username,
 			Platform: platform,
 		}

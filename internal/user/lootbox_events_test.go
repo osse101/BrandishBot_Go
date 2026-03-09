@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/itemhandler"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 )
 
@@ -179,7 +180,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		).Return(nil).Once()
 
 		// Execute
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 1, drops)
 
 		// Verify
 		assert.NoError(t, err)
@@ -223,7 +224,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		).Return(nil).Once()
 
 		// Execute
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 1, drops)
 
 		// Verify
 		assert.NoError(t, err)
@@ -257,7 +258,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
 		// Execute
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 1, drops)
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 1, drops)
 
 		// Verify
 		assert.NoError(t, err)
@@ -309,7 +310,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 4, createCommonDrops())
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 4, createCommonDrops())
 
 		assert.NoError(t, err)
 		assert.NotContains(t, msg, "Nice haul!", "Should NOT show bulk feedback below threshold")
@@ -326,7 +327,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 5, createCommonDrops())
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 5, createCommonDrops())
 
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback at threshold")
@@ -343,7 +344,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 6, createCommonDrops())
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 6, createCommonDrops())
 
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "Nice haul!", "Should show bulk feedback above threshold")
@@ -371,7 +372,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxJackpot, mock.Anything).Return(nil)
 
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, legendaryDrops)
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 10, legendaryDrops)
 
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "JACKPOT!", "Jackpot should appear")
@@ -400,7 +401,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxBigWin, mock.Anything).Return(nil)
 
-		msg, err := svc.processLootboxDrops(ctx, user, inventory, lootboxItem, 10, epicDrops)
+		msg, err := itemhandler.ProcessLootboxDrops(ctx, svc, user, inventory, lootboxItem, 10, epicDrops)
 
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "BIG WIN!", "Big win should appear")

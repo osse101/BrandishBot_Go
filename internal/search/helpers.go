@@ -1,4 +1,4 @@
-package user
+package search
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
-	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -22,32 +21,11 @@ const (
 	searchFailureNormal
 )
 
-// grantSearchReward adds lootbox to inventory within a transaction
-func (s *service) grantSearchReward(ctx context.Context, user *domain.User, quantity int, qualityLevel domain.QualityLevel) error {
-	log := logger.FromContext(ctx)
+const (
+	MsgExhaustedSuffix = " (Exhausted)"
+)
 
-	item, err := s.getItemByNameCached(ctx, domain.ItemLootbox0)
-	if err != nil {
-		log.Error("Failed to get lootbox0 item", "error", err)
-		return fmt.Errorf("failed to get reward item: %w", err)
-	}
-	if item == nil {
-		log.Error("Lootbox0 item not found in database")
-		return fmt.Errorf("%w: %s", domain.ErrItemNotFound, domain.ItemLootbox0)
-	}
-
-	return s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
-		return s.addItemToTx(txCtx, tx, user.ID, item.ID, quantity, qualityLevel)
-	})
-}
-
-// grantItemReward adds a specific item to inventory within a transaction
-func (s *service) grantItemReward(ctx context.Context, user *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel) error {
-	return s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
-		return s.addItemToTx(txCtx, tx, user.ID, item.ID, quantity, qualityLevel)
-	})
-}
-
+// searchQualityLevels maps point totals to quality levels.
 var searchQualityLevels = []domain.QualityLevel{
 	domain.QualityCursed,    // 0
 	domain.QualityJunk,      // 1
@@ -59,25 +37,21 @@ var searchQualityLevels = []domain.QualityLevel{
 	domain.QualityLegendary, // 7
 }
 
-// calculateSearchQuality determines the quality level for search results based on a point system
+// calculateSearchQuality determines the quality level for search results.
 func (s *service) calculateSearchQuality(ctx context.Context, userID string, isCritical bool, params searchParams) domain.QualityLevel {
 	log := logger.FromContext(ctx)
-	// 1. Determine base quality index by daily count (1: uncommon, 2-5: common, 6-9: poor, 10-14: junk, 15+: cursed).
-	baseIndex := s.calculateBaseQualityIndex(params.dailyCount)
+	baseIndex := calculateBaseQualityIndex(params.dailyCount)
 
-	// 2. Add points for bonuses
 	points := 0
 	if isCritical {
 		points += 2
 	}
-	// Streak milestone (multiple of 5)
 	if params.streak > 0 && params.streak%5 == 0 {
 		points += 1
 	}
 
-	// 3. Add Explorer job level bonus (+1 point per 5 levels)
-	if s.jobService != nil {
-		explorerLevel, err := s.jobService.GetJobLevel(ctx, userID, "job_explorer")
+	if s.deps.JobSvc != nil {
+		explorerLevel, err := s.deps.JobSvc.GetJobLevel(ctx, userID, "job_explorer")
 		if err != nil {
 			log.Warn("Failed to get Explorer job level for search quality", "error", err)
 		} else if explorerLevel > 0 {
@@ -87,19 +61,16 @@ func (s *service) calculateSearchQuality(ctx context.Context, userID string, isC
 		}
 	}
 
-	// 4. Calculate final index
 	finalIndex := baseIndex + points
 
-	// 5. Apply progression modifier
-	if s.progressionSvc != nil {
-		if modifiedIndex, err := s.progressionSvc.GetModifiedValue(ctx, userID, "search_quality", float64(finalIndex)); err == nil {
+	if s.deps.ProgressionSvc != nil {
+		if modifiedIndex, err := s.deps.ProgressionSvc.GetModifiedValue(ctx, userID, "search_quality", float64(finalIndex)); err == nil {
 			finalIndex = int(modifiedIndex)
 		} else {
 			log.Warn("Failed to apply search_quality modifier", "error", err)
 		}
 	}
 
-	// 6. Clamp final index
 	if finalIndex >= len(searchQualityLevels) {
 		finalIndex = len(searchQualityLevels) - 1
 	}
@@ -110,16 +81,13 @@ func (s *service) calculateSearchQuality(ctx context.Context, userID string, isC
 	return searchQualityLevels[finalIndex]
 }
 
-// formatSearchSuccessMessage builds the success message with appropriate formatting
+// formatSearchSuccessMessage builds the success message.
 func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.User, item *domain.Item, quantity int, isCritical bool, params searchParams) string {
 	log := logger.FromContext(ctx)
-
 	actualQuality := s.calculateSearchQuality(ctx, user.ID, isCritical, params)
-
-	// User Request: "Search should use the item's public name"
 	displayName := cases.Title(language.English).String(item.PublicName)
-	var resultMessage string
 
+	var resultMessage string
 	if isCritical {
 		resultMessage = fmt.Sprintf("%s You found %dx%s", domain.MsgSearchCriticalSuccess, quantity, displayName)
 		log.Info("Search CRITICAL success", "item", item.InternalName, "quantity", quantity, "quality", actualQuality)
@@ -128,12 +96,10 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 		log.Info("Search successful - lootbox found", "item", item.InternalName, "quality", actualQuality)
 	}
 
-	// Show streak only on the first search of the day
 	if params.isFirstSearchDaily && params.streak > 0 && params.streak%5 == 0 {
 		resultMessage += fmt.Sprintf(domain.MsgStreakBonus, params.streak)
 	}
 
-	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
 	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
 		resultMessage += " (Exhausted)"
 	}
@@ -141,7 +107,7 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 	return resultMessage
 }
 
-// determineSearchFailureType categorizes the type of search failure based on roll
+// determineSearchFailureType categorizes the type of search failure based on roll.
 func determineSearchFailureType(roll, successThreshold float64) searchFailureType {
 	if roll <= successThreshold+domain.SearchNearMissRate {
 		return searchFailureNearMiss
@@ -152,12 +118,11 @@ func determineSearchFailureType(roll, successThreshold float64) searchFailureTyp
 	return searchFailureNormal
 }
 
-// formatSearchFailureMessage builds the failure message based on failure type
+// formatSearchFailureMessage builds the failure message based on failure type.
 func formatSearchFailureMessage(failureType searchFailureType) string {
 	switch failureType {
 	case searchFailureNearMiss:
 		return domain.MsgSearchNearMiss
-
 	case searchFailureCritical:
 		resultMessage := domain.MsgSearchCriticalFail
 		if len(domain.SearchCriticalFailMessages) > 0 {
@@ -165,39 +130,34 @@ func formatSearchFailureMessage(failureType searchFailureType) string {
 			resultMessage = fmt.Sprintf("%s %s", domain.MsgSearchCriticalFail, domain.SearchCriticalFailMessages[idx])
 		}
 		return resultMessage
-
 	case searchFailureNormal:
 		if len(domain.SearchFailureMessages) > 0 {
 			idx := utils.SecureRandomIntRange(0, len(domain.SearchFailureMessages)-1)
 			return domain.SearchFailureMessages[idx]
 		}
 		return domain.MsgSearchNothingFound
-
 	default:
 		return domain.MsgSearchNothingFound
 	}
 }
 
-// formatSearchFailureMessageWithMeta appends streak and exhausted status to failure messages
-func (s *service) formatSearchFailureMessageWithMeta(message string, params searchParams) string {
+// formatSearchFailureMessageWithMeta appends streak and exhausted status to failure messages.
+func formatSearchFailureMessageWithMeta(message string, params searchParams) string {
 	result := message
 
-	// Show streak only on the first search of the day
 	if params.isFirstSearchDaily && params.streak > 0 && params.streak%5 == 0 {
 		result += fmt.Sprintf(domain.MsgStreakBonus, params.streak)
 	}
 
-	// Show (Exhausted) only on the VERY FIRST search that hits the threshold
 	if params.dailyCount == domain.SearchDailyDiminishmentThreshold {
-		result += " (Exhausted)"
+		result += MsgExhaustedSuffix
 	}
 
 	return result
 }
 
-// calculateBaseQualityIndex determines the base quality index based on daily search count
-func (s *service) calculateBaseQualityIndex(dailyCount int) int {
-	// Bracket mapping: 1=uncommon, 2-5=common, 6-9=poor, 10-14=junk, 15+=cursed
+// calculateBaseQualityIndex determines the base quality index based on daily search count.
+func calculateBaseQualityIndex(dailyCount int) int {
 	switch {
 	case dailyCount == 0:
 		return 4 // 1st search: UNCOMMON

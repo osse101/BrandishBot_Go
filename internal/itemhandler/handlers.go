@@ -1,4 +1,4 @@
-package user
+package itemhandler
 
 import (
 	"context"
@@ -12,21 +12,18 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-const (
-	// Error messages
-	ErrMsgInvalidQuantity = "invalid quantity"
-)
+// ============================================================================
+// Lootbox Handler
+// ============================================================================
 
-// Item effect handlers
-
-func (s *service) processLootbox(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
+// ProcessLootbox handles lootbox opening: validates, consumes, opens, and returns feedback.
+func ProcessLootbox(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
@@ -38,7 +35,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, s.rnd)
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, ec.RandomFloat)
 	if err != nil {
 		return "", err
 	}
@@ -46,7 +43,7 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	// 2. Use lootbox service to open lootboxes
 	var allDrops []lootbox.DroppedItem
 	for _, slot := range consumedSlots {
-		drops, err := s.lootboxService.OpenLootbox(ctx, lootboxItem.InternalName, slot.Quantity, slot.QualityLevel)
+		drops, err := ec.OpenLootbox(ctx, lootboxItem.InternalName, slot.Quantity, slot.QualityLevel)
 		if err != nil {
 			log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
 			return "", fmt.Errorf("failed to open lootbox: %w", err)
@@ -59,20 +56,21 @@ func (s *service) processLootbox(ctx context.Context, user *domain.User, invento
 	}
 
 	// 3. Process drops and generate feedback
-	return s.processLootboxDrops(ctx, user, inventory, lootboxItem, quantity, allDrops)
+	return ProcessLootboxDrops(ctx, ec, user, inventory, lootboxItem, quantity, allDrops)
 }
 
-func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
+// ProcessLootboxDrops processes drops from a lootbox opening and generates feedback.
+func ProcessLootboxDrops(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
-	// User Request: Use alias for the lootbox when opening
-	displayName := s.namingResolver.GetDisplayName(lootboxItem.InternalName, "")
+	// Use alias for the lootbox when opening
+	displayName := ec.GetDisplayName(lootboxItem.InternalName, "")
 
 	msgBuilder.WriteString(MsgLootboxOpened)
 	msgBuilder.WriteString(" ")
 	if quantity > 1 {
 		msgBuilder.WriteString(strconv.Itoa(quantity))
 		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(s.pluralize(displayName, quantity))
+		msgBuilder.WriteString(ec.Pluralize(displayName, quantity))
 	} else {
 		msgBuilder.WriteString(getIndefiniteArticle(displayName))
 		msgBuilder.WriteString(" ")
@@ -80,40 +78,25 @@ func (s *service) processLootboxDrops(ctx context.Context, user *domain.User, in
 	}
 	msgBuilder.WriteString(MsgLootboxReceived)
 
-	stats := s.aggregateDropsAndUpdateInventory(inventory, drops, &msgBuilder)
-
-	// Open messages are simplified per user request (e.g., "Opened Junkbox and received: 5 Shiny credits").
+	stats := aggregateDropsAndUpdateInventory(ec, inventory, drops, &msgBuilder)
 
 	if stats.hasLegendary {
-		if s.statsService != nil && user != nil {
-			eventData := &domain.LootboxEventData{
-				Item:   lootboxItem.InternalName,
-				Drops:  drops,
-				Value:  stats.totalValue,
-				Source: "lootbox",
-			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, eventData); err != nil {
-				log := logger.FromContext(ctx)
-				log.Warn(LogWarnFailedToRecordLootboxJackpot, "error", err, "user_id", user.ID)
-			}
-		}
+		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, &domain.LootboxEventData{
+			Item:   lootboxItem.InternalName,
+			Drops:  drops,
+			Value:  stats.totalValue,
+			Source: "lootbox",
+		})
 		msgBuilder.WriteString(MsgLootboxJackpot)
 	} else if stats.hasEpic {
-		if s.statsService != nil && user != nil {
-			eventData := &domain.LootboxEventData{
-				Item:   lootboxItem.InternalName,
-				Drops:  drops,
-				Value:  stats.totalValue,
-				Source: "lootbox",
-			}
-			if err := s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, eventData); err != nil {
-				log := logger.FromContext(ctx)
-				log.Warn(LogWarnFailedToRecordLootboxBigWin, "error", err, "user_id", user.ID)
-			}
-		}
+		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, &domain.LootboxEventData{
+			Item:   lootboxItem.InternalName,
+			Drops:  drops,
+			Value:  stats.totalValue,
+			Source: "lootbox",
+		})
 		msgBuilder.WriteString(MsgLootboxBigWin)
 	} else if stats.totalValue > 0 && quantity >= domain.BulkFeedbackThreshold {
-		// If opening many boxes and getting nothing special, at least acknowledge the haul
 		msgBuilder.WriteString(MsgLootboxNiceHaul)
 	}
 
@@ -126,7 +109,7 @@ type dropStats struct {
 	hasEpic      bool
 }
 
-func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
+func aggregateDropsAndUpdateInventory(ec EffectContext, inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
 	var stats dropStats
 
 	// Convert drops to inventory slots for batch adding
@@ -156,9 +139,8 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 			QualityLevel: drop.QualityLevel,
 		})
 
-		// Get display name (which might be "Shiny credit" for money or "Ray Gun" for blaster)
-		// We trust the resolver to give the base name, and we handle pluralization
-		itemDisplayName := s.namingResolver.GetDisplayName(drop.ItemName, drop.QualityLevel)
+		// Get display name
+		itemDisplayName := ec.GetDisplayName(drop.ItemName, drop.QualityLevel)
 
 		if group, exists := displayGroups[itemDisplayName]; exists {
 			group.Quantity += drop.Quantity
@@ -183,7 +165,7 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 		// Simplify output: "Quantity Name"
 		msgBuilder.WriteString(strconv.Itoa(group.Quantity))
 		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(s.pluralize(group.Name, group.Quantity))
+		msgBuilder.WriteString(ec.Pluralize(group.Name, group.Quantity))
 
 		first = false
 	}
@@ -194,17 +176,11 @@ func (s *service) aggregateDropsAndUpdateInventory(inventory *domain.Inventory, 
 	return stats
 }
 
-// weaponTimeouts maps weapon internal names to their timeout durations
-var weaponTimeouts = map[string]time.Duration{
-	domain.ItemMissile:     60 * time.Second,
-	domain.ItemHugeMissile: 6000 * time.Second,
-	domain.ItemThis:        101 * time.Second,
-	domain.ItemDeez:        202 * time.Second,
-	domain.ItemGrenade:     60 * time.Second,
-	domain.ItemTNT:         60 * time.Second,
-}
+// ============================================================================
+// Weapon Handler
+// ============================================================================
 
-// getWeaponTimeout returns the timeout duration for a weapon, with a default fallback
+// getWeaponTimeout returns the timeout duration for a weapon, with a default fallback.
 func getWeaponTimeout(itemName string) time.Duration {
 	if timeout, ok := weaponTimeouts[itemName]; ok {
 		return timeout
@@ -212,7 +188,7 @@ func getWeaponTimeout(itemName string) time.Duration {
 	return domain.BlasterTimeoutDuration // default fallback
 }
 
-func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleWeaponCalled, "item", item.InternalName, "quantity", quantity)
 
@@ -231,7 +207,7 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, s.rnd)
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
 	if err != nil {
 		return "", err
 	}
@@ -242,7 +218,7 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		baseTimeout := getWeaponTimeout(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
 		timeout += baseTimeout * time.Duration(slot.Quantity)
 		if i == 0 {
-			displayName = s.namingResolver.GetDisplayName(item.InternalName, slot.QualityLevel)
+			displayName = ec.GetDisplayName(item.InternalName, slot.QualityLevel)
 		}
 	}
 
@@ -252,7 +228,7 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 
 		// Select 5-9 random targets
 		numTargets := 5 + rand.Intn(5) //nolint:gosec // weak random is fine for games
-		targets, err := s.activeChatterTracker.GetRandomTargets(platform, numTargets)
+		targets, err := ec.GetRandomTargets(platform, numTargets)
 		if err != nil {
 			log.Warn("No active targets available for TNT", "error", err)
 			return "", errors.New(ErrMsgNoActiveTargets)
@@ -261,20 +237,20 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 		// Apply timeout to all targets and collect names
 		hitUsernames := make([]string, 0, len(targets))
 		for _, target := range targets {
-			if err := s.TimeoutUser(ctx, target.Username, timeout, MsgBlasterReasonBy+username); err != nil {
+			if err := ec.TimeoutUser(ctx, target.Username, timeout, MsgBlasterReasonBy+username); err != nil {
 				log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", target.Username)
 				// Continue with other targets even if one fails
 			}
 
 			// Remove from active chatters
-			s.activeChatterTracker.Remove(platform, target.UserID)
+			ec.RemoveActiveChatter(platform, target.UserID)
 			hitUsernames = append(hitUsernames, target.Username)
 		}
 
 		log.Info("TNT hit multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
 
 		// Format message with all hit users
-		targetsStr := formatTargetList(hitUsernames)
+		targetsStr := FormatTargetList(hitUsernames)
 		return fmt.Sprintf("%s used %s! Hit %d targets: %s! Timed out for %v.",
 			username, displayName, len(hitUsernames), targetsStr, timeout), nil
 	}
@@ -283,20 +259,20 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	if item.InternalName == domain.ItemGrenade {
 		log.Info("Grenade used, selecting single random target")
 
-		randomUsername, randomUserID, err := s.activeChatterTracker.GetRandomTarget(platform)
+		randomUsername, randomUserID, err := ec.GetRandomTarget(platform)
 		if err != nil {
 			log.Warn("No active targets available for grenade", "error", err)
 			return "", errors.New(ErrMsgNoActiveTargets)
 		}
 
 		// Apply timeout
-		if err := s.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
+		if err := ec.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
 			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", randomUsername)
 			// Continue anyway, as the item was used
 		}
 
 		// Remove from active chatters
-		s.activeChatterTracker.Remove(platform, randomUserID)
+		ec.RemoveActiveChatter(platform, randomUserID)
 		log.Info("Grenade hit target", "target", randomUsername)
 
 		return fmt.Sprintf("%s used %s! Hit random target: %s! Timed out for %v.",
@@ -310,7 +286,7 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	}
 
 	// Apply timeout
-	if err := s.TimeoutUser(ctx, targetUsername, timeout, MsgBlasterReasonBy+username); err != nil {
+	if err := ec.TimeoutUser(ctx, targetUsername, timeout, MsgBlasterReasonBy+username); err != nil {
 		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
@@ -319,8 +295,8 @@ func (s *service) handleWeapon(ctx context.Context, _ *service, _ *domain.User, 
 	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
 }
 
-// formatTargetList formats a list of usernames for display
-func formatTargetList(usernames []string) string {
+// FormatTargetList formats a list of usernames for display.
+func FormatTargetList(usernames []string) string {
 	if len(usernames) == 0 {
 		return ""
 	}
@@ -344,14 +320,11 @@ func formatTargetList(usernames []string) string {
 	return result
 }
 
-// reviveRecoveryTimes maps revive internal names to their recovery durations
-var reviveRecoveryTimes = map[string]time.Duration{
-	domain.ItemReviveSmall:  60 * time.Second,
-	domain.ItemReviveMedium: 600 * time.Second,
-	domain.ItemReviveLarge:  6000 * time.Second,
-}
+// ============================================================================
+// Revive Handler
+// ============================================================================
 
-// getReviveRecovery returns the recovery duration for a revive item
+// getReviveRecovery returns the recovery duration for a revive item.
 func getReviveRecovery(itemName string) time.Duration {
 	if recovery, ok := reviveRecoveryTimes[itemName]; ok {
 		return recovery
@@ -359,7 +332,7 @@ func getReviveRecovery(itemName string) time.Duration {
 	return 60 * time.Second // default fallback
 }
 
-func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+func handleRevive(ctx context.Context, ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleReviveCalled, "item", item.InternalName, "quantity", quantity)
 	targetUsername := args.TargetUsername
@@ -380,7 +353,7 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
 
-	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, s.rnd)
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
 	if err != nil {
 		return "", err
 	}
@@ -392,12 +365,12 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 		recovery := getReviveRecovery(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
 		totalRecovery += time.Duration(slot.Quantity) * recovery
 		if i == 0 {
-			displayName = s.namingResolver.GetDisplayName(item.InternalName, slot.QualityLevel)
+			displayName = ec.GetDisplayName(item.InternalName, slot.QualityLevel)
 		}
 	}
 
 	// Reduce timeout for target user
-	if err := s.ReduceTimeout(ctx, targetUsername, totalRecovery); err != nil {
+	if err := ec.ReduceTimeout(ctx, targetUsername, totalRecovery); err != nil {
 		log.Error(LogWarnFailedToReduceTimeout, "error", err, "target", targetUsername)
 		// Continue anyway, as the item was used
 	}
@@ -406,7 +379,11 @@ func (s *service) handleRevive(ctx context.Context, _ *service, _ *domain.User, 
 	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
 }
 
-func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+// ============================================================================
+// Trap Handler
+// ============================================================================
+
+func handleTrap(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleTrapCalled, "item", item.InternalName, "quantity", quantity)
 
@@ -419,29 +396,29 @@ func (s *service) handleTrap(ctx context.Context, _ *service, user *domain.User,
 		platform = domain.PlatformTwitch
 	}
 
-	potentialTargets, isMine, err := s.getTrapTargets(ctx, item, quantity, user, platform, args)
+	potentialTargets, isMine, err := getTrapTargets(ctx, ec, item, quantity, user, platform, args)
 	if err != nil {
 		return "", err
 	}
 
-	if err := s.validateTrapInventory(inventory, item, quantity, isMine); err != nil {
+	if err := validateTrapInventory(ec, inventory, item, quantity, isMine); err != nil {
 		log.Warn("Trap inventory validation failed", "item", item.InternalName, "error", err)
 		return "", err
 	}
 
-	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := s.executeTrapTransaction(ctx, user, item, quantity, platform, potentialTargets, isMine, inventory)
+	itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err := executeTrapTransaction(ctx, ec, user, item, quantity, platform, potentialTargets, isMine, inventory)
 	if err != nil {
 		return "", err
 	}
 
-	return s.formatTrapResponse(user, item, potentialTargets, itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf), nil
+	return formatTrapResponse(user, item, potentialTargets, itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf), nil
 }
 
-func (s *service) getTrapTargets(ctx context.Context, item *domain.Item, quantity int, user *domain.User, platform string, args ItemHandlerArgs) ([]string, bool, error) {
+func getTrapTargets(ctx context.Context, ec EffectContext, item *domain.Item, quantity int, user *domain.User, platform string, args HandlerArgs) ([]string, bool, error) {
 	log := logger.FromContext(ctx)
 	if item.InternalName == domain.ItemMine {
 		log.Info("Mine used, selecting random targets", "count", quantity)
-		targets, err := s.activeChatterTracker.GetRandomTargets(platform, quantity)
+		targets, err := ec.GetRandomTargets(platform, quantity)
 		if err != nil {
 			return []string{user.Username}, true, nil
 		}
@@ -466,8 +443,8 @@ func (s *service) getTrapTargets(ctx context.Context, item *domain.Item, quantit
 	return []string{targetUsername}, false, nil
 }
 
-func (s *service) validateTrapInventory(inventory *domain.Inventory, item *domain.Item, quantity int, isMine bool) error {
-	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, s.rnd)
+func validateTrapInventory(ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, isMine bool) error {
+	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, ec.RandomFloat)
 	if itemSlotIndex == -1 {
 		return errors.New(ErrMsgItemNotFoundInInventory)
 	}
@@ -480,7 +457,7 @@ func (s *service) validateTrapInventory(inventory *domain.Inventory, item *domai
 	return nil
 }
 
-func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool, inventory *domain.Inventory) (int, int, bool, bool, error) {
+func executeTrapTransaction(ctx context.Context, ec EffectContext, user *domain.User, item *domain.Item, quantity int, platform string, potentialTargets []string, isMine bool, inventory *domain.Inventory) (int, int, bool, bool, error) {
 	itemsConsumed := 0
 	trapsPlaced := 0
 	selfTriggered := false
@@ -501,14 +478,14 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 		badLuckSelf = true
 		itemsConsumed = 1
 		trapsPlaced = 1
-		err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
+		err := utils.ConsumeItems(inventory, item.ID, 1, ec.RandomFloat)
 		if err != nil {
 			return 0, 0, false, false, err
 		}
-		s.handleSelfTargetMine(ctx, user)
+		handleSelfTargetMine(ctx, ec, user)
 	} else {
 		var err error
-		itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err = s.processTrapTargets(ctx, user, potentialTargets, platform, maxPossible, inventory, item, isMine)
+		itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, err = processTrapTargets(ctx, ec, user, potentialTargets, platform, maxPossible, inventory, item, isMine)
 		if err != nil {
 			return 0, 0, false, false, err
 		}
@@ -517,7 +494,7 @@ func (s *service) executeTrapTransaction(ctx context.Context, user *domain.User,
 	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, nil
 }
 
-func (s *service) processTrapTargets(ctx context.Context, user *domain.User, potentialTargets []string, platform string, maxPossible int, inventory *domain.Inventory, item *domain.Item, isMine bool) (int, int, bool, bool, error) {
+func processTrapTargets(ctx context.Context, ec EffectContext, user *domain.User, potentialTargets []string, platform string, maxPossible int, inventory *domain.Inventory, item *domain.Item, isMine bool) (int, int, bool, bool, error) {
 	log := logger.FromContext(ctx)
 	itemsConsumed := 0
 	trapsPlaced := 0
@@ -533,40 +510,40 @@ func (s *service) processTrapTargets(ctx context.Context, user *domain.User, pot
 			badLuckSelf = true
 			itemsConsumed++
 			trapsPlaced++
-			err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
+			err := utils.ConsumeItems(inventory, item.ID, 1, ec.RandomFloat)
 			if err != nil {
 				return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
 			}
-			s.handleSelfTargetMine(ctx, user)
+			handleSelfTargetMine(ctx, ec, user)
 			break
 		}
 
-		targetUser, err := s.repo.GetUserByPlatformUsername(ctx, platform, targetName)
+		targetUser, err := ec.GetUserByPlatformUsername(ctx, platform, targetName)
 		if err != nil {
 			log.Warn("Target user not found, skipping", "username", targetName)
 			continue
 		}
 
 		targetUserID, _ := uuid.Parse(targetUser.ID)
-		existingTrap, err := s.trapRepo.GetActiveTrapForUpdate(ctx, targetUserID)
+		existingTrap, err := ec.GetActiveTrapForUpdate(ctx, targetUserID)
 		if err != nil {
 			return itemsConsumed, trapsPlaced, selfTriggered, false, fmt.Errorf("failed to check existing trap: %w", err)
 		}
 
 		if existingTrap != nil {
 			itemsConsumed++
-			err := utils.ConsumeItems(inventory, item.ID, 1, s.rnd)
+			err := utils.ConsumeItems(inventory, item.ID, 1, ec.RandomFloat)
 			if err != nil {
 				return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
 			}
 			selfTriggered = true
-			if err := s.handleExistingTrapTrigger(ctx, user, targetName, existingTrap); err != nil {
+			if err := handleExistingTrapTrigger(ctx, ec, user, targetName, existingTrap); err != nil {
 				return itemsConsumed, trapsPlaced, true, false, err
 			}
 			break
 		}
 
-		consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, 1, s.rnd)
+		consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, 1, ec.RandomFloat)
 		if err != nil || len(consumedSlots) == 0 {
 			break // Should not happen since we checked maxPossible
 		}
@@ -586,14 +563,14 @@ func (s *service) processTrapTargets(ctx context.Context, user *domain.User, pot
 			TimeoutSeconds: 60,
 			PlacedAt:       time.Now(),
 		}
-		if err := s.trapRepo.CreateTrap(ctx, newTrap); err != nil {
+		if err := ec.CreateTrap(ctx, newTrap); err != nil {
 			return itemsConsumed, trapsPlaced, false, false, fmt.Errorf("failed to create trap: %w", err)
 		}
 	}
 	return itemsConsumed, trapsPlaced, selfTriggered, badLuckSelf, nil
 }
 
-func (s *service) formatTrapResponse(user *domain.User, item *domain.Item, potentialTargets []string, itemsConsumed, trapsPlaced int, selfTriggered, badLuckSelf bool) string {
+func formatTrapResponse(user *domain.User, item *domain.Item, potentialTargets []string, itemsConsumed, trapsPlaced int, selfTriggered, badLuckSelf bool) string {
 	if selfTriggered {
 		return fmt.Sprintf("%s tried to use %s but stepped on a trap!", user.Username, item.PublicName)
 	}
@@ -612,30 +589,27 @@ func (s *service) formatTrapResponse(user *domain.User, item *domain.Item, poten
 	return fmt.Sprintf("%s set %d %s for %s!", user.Username, trapsPlaced, item.PublicName, targetMsg)
 }
 
-func (s *service) handleSelfTargetMine(ctx context.Context, user *domain.User) {
+func handleSelfTargetMine(ctx context.Context, ec EffectContext, user *domain.User) {
 	log := logger.FromContext(ctx)
-	if err := s.TimeoutUser(ctx, user.Username, 60*time.Second, "tripped on your own mine immediately!"); err != nil {
+	if err := ec.TimeoutUser(ctx, user.Username, 60*time.Second, "tripped on your own mine immediately!"); err != nil {
 		log.Error("Failed to timeout user for bad luck", "error", err)
 	}
 }
 
-func (s *service) handleExistingTrapTrigger(ctx context.Context, user *domain.User, targetName string, existingTrap *domain.Trap) error {
+func handleExistingTrapTrigger(ctx context.Context, ec EffectContext, user *domain.User, targetName string, existingTrap *domain.Trap) error {
 	timeout := time.Duration(existingTrap.CalculateTimeout()) * time.Second
-	if err := s.TimeoutUser(ctx, user.Username, timeout, fmt.Sprintf("stepped on %s's trap entirely by accident!", targetName)); err != nil {
+	if err := ec.TimeoutUser(ctx, user.Username, timeout, fmt.Sprintf("stepped on %s's trap entirely by accident!", targetName)); err != nil {
 		return fmt.Errorf("failed to apply self-trap timeout: %w", err)
 	}
-	if err := s.trapRepo.TriggerTrap(ctx, existingTrap.ID); err != nil {
+	if err := ec.TriggerTrap(ctx, existingTrap.ID); err != nil {
 		return fmt.Errorf("failed to trigger existing trap: %w", err)
 	}
 
-	s.recordTrapSelfTriggerStats(ctx, user, targetName, existingTrap)
+	recordTrapSelfTriggerStats(ctx, ec, user, targetName, existingTrap)
 	return nil
 }
 
-func (s *service) recordTrapSelfTriggerStats(ctx context.Context, user *domain.User, targetName string, trap *domain.Trap) {
-	if s.statsService == nil {
-		return
-	}
+func recordTrapSelfTriggerStats(ctx context.Context, ec EffectContext, user *domain.User, targetName string, trap *domain.Trap) {
 	eventData := &domain.TrapTriggeredData{
 		TrapID:           trap.ID,
 		SetterID:         trap.SetterID,
@@ -646,10 +620,14 @@ func (s *service) recordTrapSelfTriggerStats(ctx context.Context, user *domain.U
 		TimeoutSeconds:   trap.CalculateTimeout(),
 		WasSelfTriggered: true,
 	}
-	_ = s.statsService.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData)
+	_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTrapSelfTriggered, eventData)
 }
 
-func (s *service) handleShield(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, _ ItemHandlerArgs) (string, error) {
+// ============================================================================
+// Shield Handler
+// ============================================================================
+
+func handleShield(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleShieldCalled, "item", item.InternalName, "quantity", quantity)
 
@@ -663,7 +641,7 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 		log.Warn(LogWarnNotEnoughShields)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
 	}
 
@@ -671,12 +649,12 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 	isMirror := item.InternalName == domain.ItemMirrorShield
 
 	// Apply shield status to user
-	if err := s.ApplyShield(ctx, user, quantity, isMirror); err != nil {
+	if err := ec.ApplyShield(ctx, user, quantity, isMirror); err != nil {
 		log.Error(LogWarnFailedToApplyShield, "error", err)
 		return "", errors.New(ErrMsgFailedToApplyShield)
 	}
 
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
+	displayName := ec.GetDisplayName(item.InternalName, "")
 	log.Info(LogMsgShieldApplied, "item", item.InternalName, "quantity", quantity, "is_mirror", isMirror)
 
 	if isMirror {
@@ -685,10 +663,11 @@ func (s *service) handleShield(ctx context.Context, _ *service, user *domain.Use
 	return fmt.Sprintf("Activated %d %s! Protected from next %d attacks.", quantity, displayName, quantity), nil
 }
 
-// rarecandyXPAmount defines the XP granted per rare candy
-const rarecandyXPAmount = 500
+// ============================================================================
+// Rare Candy Handler
+// ============================================================================
 
-func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+func handleRareCandy(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgHandleRareCandyCalled, "quantity", quantity)
 
@@ -708,35 +687,27 @@ func (s *service) handleRareCandy(ctx context.Context, _ *service, user *domain.
 		log.Warn(LogWarnNotEnoughRareCandy)
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
 	}
 
 	// Award XP to the specified job via event
 	totalXP := quantity * rarecandyXPAmount
-	if s.publisher != nil {
-		s.publisher.PublishWithRetry(ctx, event.Event{
-			Version: "1.1",
-			Type:    domain.EventTypeItemUsed,
-			Payload: domain.ItemUsedPayload{
-				UserID:   user.ID,
-				ItemName: item.InternalName,
-				Quantity: quantity,
-				Metadata: map[string]interface{}{
-					"job_name": jobName,
-					"xp_total": totalXP,
-					"source":   job.SourceRareCandy,
-				},
-				Timestamp: time.Now().Unix(),
-			},
-		})
-	}
+	ec.PublishItemUsedEvent(ctx, user.ID, item.InternalName, quantity, map[string]interface{}{
+		"job_name": jobName,
+		"xp_total": totalXP,
+		"source":   job.SourceRareCandy,
+	})
 
 	log.Info(LogMsgRareCandyUsed, "job", jobName, "xp", totalXP, "quantity", quantity)
 	return fmt.Sprintf("Used %d rare candy! Granted %d XP to %s.", quantity, totalXP, jobName), nil
 }
 
-func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+// ============================================================================
+// Resource Generator Handler
+// ============================================================================
+
+func handleResourceGenerator(ctx context.Context, ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgResourceGeneratorCalled, "item", item.InternalName, "quantity", quantity)
 
@@ -750,12 +721,12 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 	if totalAvailable < quantity {
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
 	}
 
 	// Generate sticks (shovel generates 2 sticks per use)
-	stickItem, err := s.getItemByNameCached(ctx, domain.ItemStick)
+	stickItem, err := ec.GetItemByName(ctx, domain.ItemStick)
 	if err != nil {
 		return "", fmt.Errorf("failed to get stick item: %w", err)
 	}
@@ -765,11 +736,15 @@ func (s *service) handleResourceGenerator(ctx context.Context, _ *service, _ *do
 		{ItemID: stickItem.ID, Quantity: sticksGenerated, QualityLevel: domain.QualityCommon},
 	}, nil)
 
-	displayName := s.namingResolver.GetDisplayName(domain.ItemStick, "")
+	displayName := ec.GetDisplayName(domain.ItemStick, "")
 	return fmt.Sprintf("%s%d %s!", username+MsgShovelUsed, sticksGenerated, displayName), nil
 }
 
-func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
+// ============================================================================
+// Utility Handler
+// ============================================================================
+
+func handleUtility(ctx context.Context, ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info(LogMsgUtilityCalled, "item", item.InternalName, "quantity", quantity)
 
@@ -783,15 +758,52 @@ func (s *service) handleUtility(ctx context.Context, _ *service, _ *domain.User,
 	if totalAvailable < quantity {
 		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
 	}
-	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
 	}
 
 	return username + MsgStickUsed, nil
 }
 
-// pluralize handles simple pluralization for game items and phrases
-func (s *service) pluralize(name string, quantity int) string {
+// ============================================================================
+// Video Filter Handler
+// ============================================================================
+
+func handleVideoFilter(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("handleVideoFilter called", "item", item.InternalName, "quantity", quantity)
+
+	filterKey := strings.ToLower(strings.TrimSpace(args.TargetUsername))
+	if filterKey == "" {
+		return "", errors.New("must specify a video filter to use! Valid filters: " + validVideoFiltersList)
+	}
+
+	if !strings.Contains(validVideoFiltersList, filterKey) {
+		return "", fmt.Errorf("invalid video filter '%s'. Valid filters: %s", filterKey, validVideoFiltersList)
+	}
+
+	// Find total availability
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
+		return "", errors.New(ErrMsgItemNotFoundInInventory)
+	}
+	if totalAvailable < quantity {
+		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+	}
+	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
+		return "", err
+	}
+
+	displayName := ec.GetDisplayName(item.InternalName, "")
+	return fmt.Sprintf("%s applied the %s %s!", user.Username, filterKey, displayName), nil
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+// Pluralize handles simple pluralization for game items and phrases.
+func Pluralize(name string, quantity int) string {
 	if quantity <= 1 || name == "" {
 		return name
 	}
@@ -811,7 +823,7 @@ func (s *service) pluralize(name string, quantity int) string {
 	// Handle "of" phrases: "pouch of coins" -> "pouches of coins"
 	if strings.Contains(baseName, " of ") {
 		parts := strings.SplitN(baseName, " of ", 2)
-		return s.pluralize(parts[0], quantity) + " of " + parts[1] + suffix
+		return Pluralize(parts[0], quantity) + " of " + parts[1] + suffix
 	}
 
 	// Common uncountable or collective nouns in game context
@@ -840,46 +852,14 @@ func (s *service) pluralize(name string, quantity int) string {
 	return baseName + "s" + suffix
 }
 
-// getIndefiniteArticle returns "a" or "an" based on the first letter of the word
+// getIndefiniteArticle returns "a" or "an" based on the first letter of the word.
 func getIndefiniteArticle(word string) string {
 	if len(word) == 0 {
 		return "a"
 	}
-	// Simplified a/an logic logic
 	first := strings.ToLower(string(word[0]))
 	if strings.ContainsAny(first, "aeiou") {
 		return "an"
 	}
 	return "a"
-}
-
-const validVideoFiltersList = "bloom, bw, frameskip, gameboy, glitch, matrix, outline, page, perspective, pixelate, polar, rainbow, sick, thermal, undertale, vhs, zoom"
-
-func (s *service) handleVideoFilter(ctx context.Context, _ *service, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args ItemHandlerArgs) (string, error) {
-	log := logger.FromContext(ctx)
-	log.Info("handleVideoFilter called", "item", item.InternalName, "quantity", quantity)
-
-	filterKey := strings.ToLower(strings.TrimSpace(args.TargetUsername))
-	if filterKey == "" {
-		return "", errors.New("must specify a video filter to use! Valid filters: " + validVideoFiltersList)
-	}
-
-	if !strings.Contains(validVideoFiltersList, filterKey) {
-		return "", fmt.Errorf("invalid video filter '%s'. Valid filters: %s", filterKey, validVideoFiltersList)
-	}
-
-	// Find total availability
-	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
-	if totalAvailable == 0 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
-	}
-	if totalAvailable < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
-	}
-	if err := utils.ConsumeItems(inventory, item.ID, quantity, s.rnd); err != nil {
-		return "", err
-	}
-
-	displayName := s.namingResolver.GetDisplayName(item.InternalName, "")
-	return fmt.Sprintf("%s applied the %s %s!", user.Username, filterKey, displayName), nil
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
 	"github.com/osse101/BrandishBot_Go/internal/database"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/economy"
 	"github.com/osse101/BrandishBot_Go/internal/eventlog"
 	"github.com/osse101/BrandishBot_Go/internal/expedition"
@@ -33,6 +34,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/scenario"
 	"github.com/osse101/BrandishBot_Go/internal/scenario/providers"
 	"github.com/osse101/BrandishBot_Go/internal/scheduler"
+	"github.com/osse101/BrandishBot_Go/internal/search"
 	"github.com/osse101/BrandishBot_Go/internal/server"
 	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
@@ -40,6 +42,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/streamerbot"
 	"github.com/osse101/BrandishBot_Go/internal/subscription"
 	"github.com/osse101/BrandishBot_Go/internal/user"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 	"github.com/osse101/BrandishBot_Go/internal/worker"
 )
 
@@ -212,6 +215,26 @@ func main() {
 	// Initialize services that depend on job service and naming resolver
 	userService := user.NewService(repos.User, repos.Trap, statsService, resilientPublisher, lootboxSvc, namingResolver, cooldownSvc, progressionService, jobService, eventBus, cfg.DevMode)
 
+	// Load search regions (non-fatal if missing)
+	var regions []search.Region
+	if loaded, err := search.LoadSearchRegions(domain.SearchRegionConfigPath); err == nil {
+		regions = loaded
+	}
+
+	// Wire up search service using userService adapters
+	searchService := search.New(search.Deps{
+		UserResolver:   userService,
+		ItemLookup:     userService,
+		RewardGranter:  userService,
+		CooldownSvc:    cooldownSvc,
+		StatsSvc:       statsService,
+		JobSvc:         jobService,
+		ProgressionSvc: progressionService,
+		Publisher:      resilientPublisher,
+		Rnd:            utils.RandomFloat,
+		Regions:        regions,
+	})
+
 	// Initialize Harvest Service
 	harvestService := harvest.NewService(repos.Harvest, repos.User, progressionService, jobService, resilientPublisher)
 	slog.Info("Harvest service initialized")
@@ -335,7 +358,7 @@ func main() {
 	scenarioEngine := scenario.NewEngine(scenarioRegistry)
 	slog.Info("Scenario engine initialized", "features", scenarioRegistry.Features())
 
-	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, compostService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
+	srv := server.NewServer(cfg.Port, cfg.APIKey, cfg.TrustedProxies, dbPool, userService, economyService, craftingService, statsService, progressionService, searchService, gambleService, jobService, linkingService, harvestService, predictionService, expeditionService, questService, subscriptionService, slotsService, compostService, namingResolver, eventBus, sseHub, repos.User, scenarioEngine, eventLogService)
 
 	// Run server in a goroutine
 	go func() {

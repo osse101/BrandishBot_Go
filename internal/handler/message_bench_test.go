@@ -50,6 +50,18 @@ func (m *benchMockUserService) HandleIncomingMessage(ctx context.Context, platfo
 func (m *benchMockUserService) GetUser(ctx context.Context, platform, platformID string) (*domain.User, error) {
 	return nil, nil
 }
+func (m *benchMockUserService) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
+	return nil, nil
+}
+func (m *benchMockUserService) BuildPublicNameIndex() map[string]string {
+	return nil
+}
+func (m *benchMockUserService) GrantSearchReward(ctx context.Context, user *domain.User, quantity int, qualityLevel domain.QualityLevel) error {
+	return nil
+}
+func (m *benchMockUserService) GrantItemReward(ctx context.Context, user *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel) error {
+	return nil
+}
 
 func (m *benchMockUserService) AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error {
 	return nil
@@ -100,8 +112,8 @@ func (m *benchMockUserService) UnlinkPlatform(ctx context.Context, userID, platf
 func (m *benchMockUserService) GetLinkedPlatforms(ctx context.Context, platform, platformID string) ([]string, error) {
 	return nil, nil
 }
-func (m *benchMockUserService) HandleSearch(ctx context.Context, platform, platformID, username, itemHint string) (string, error) {
-	return "", nil
+func (m *benchMockUserService) GetUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
+	return &domain.User{ID: "bench-user-123", Username: username}, nil
 }
 func (m *benchMockUserService) ClearTimeout(ctx context.Context, platform, username string) error {
 	return nil

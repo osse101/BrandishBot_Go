@@ -210,3 +210,9 @@ packages:
       mockname: 'MockQuest{{.InterfaceName}}'
     interfaces:
       Service:
+  github.com/osse101/BrandishBot_Go/internal/search:
+    config:
+      filename: 'mock_search_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockSearch{{.InterfaceName}}'
+    interfaces:
+      Service:
