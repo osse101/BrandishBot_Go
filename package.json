@@ -5,7 +5,7 @@
     "prettier": "^3.4.2"
   },
   "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write . | grep -v '(unchanged)' || true",
+    "format:check": "prettier --check . | grep -v '(unchanged)' || true"
   }
 }

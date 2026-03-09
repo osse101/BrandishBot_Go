@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/activechatter"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -397,6 +398,16 @@ func (c *APIClient) GetProgressionTree() ([]*domain.ProgressionTreeNode, error) 
 	}
 
 	return treeResp.Nodes, nil
+}
+
+// AdminGetActiveChatters retrieves active chatters (admin only)
+func (c *APIClient) AdminGetActiveChatters(minutes int) ([]activechatter.Chatter, error) {
+	var chatters []activechatter.Chatter
+	path := fmt.Sprintf("/api/v1/admin/users/active?minutes=%d", minutes)
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &chatters); err != nil {
+		return nil, err
+	}
+	return chatters, nil
 }
 
 // BuyItem purchases an item from the shop
@@ -1421,19 +1432,6 @@ func (c *APIClient) AdminGetRecentUsers(limit int) ([]domain.User, error) {
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
 	path := fmt.Sprintf("/api/v1/admin/users/recent?%s", params.Encode())
-	var result []domain.User
-	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// AdminGetActiveChatters retrieves active chatters within a time window (admin only)
-func (c *APIClient) AdminGetActiveChatters(minutes int) ([]domain.User, error) {
-	params := url.Values{}
-	params.Set("minutes", fmt.Sprintf("%d", minutes))
-
-	path := fmt.Sprintf("/api/v1/admin/users/active?%s", params.Encode())
 	var result []domain.User
 	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err

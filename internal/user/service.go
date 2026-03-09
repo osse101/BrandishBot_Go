@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/activechatter"
 	"github.com/osse101/BrandishBot_Go/internal/cooldown"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -17,6 +18,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/naming"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
+	"github.com/osse101/BrandishBot_Go/internal/stringfinder"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
@@ -43,7 +45,7 @@ type service struct {
 	lootboxService  lootbox.Service
 	publisher       *event.ResilientPublisher
 	statsService    stats.Service
-	stringFinder    *StringFinder
+	stringFinder    *stringfinder.Finder
 	namingResolver  naming.Resolver
 	cooldownService cooldown.Service
 	progressionSvc  ProgressionService
@@ -57,7 +59,7 @@ type service struct {
 	itemIDToName    map[int]string         // Index for ID -> name lookups
 	itemCacheMu     sync.RWMutex           // Protects both maps
 
-	activeChatterTracker *ActiveChatterTracker // Tracks users eligible for random targeting
+	activeChatterTracker *activechatter.Tracker // Tracks users eligible for random targeting
 
 	rnd func() float64 // For RNG - allows deterministic testing
 
@@ -123,7 +125,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		lootboxService:       lootboxService,
 		publisher:            publisher,
 		statsService:         statsService,
-		stringFinder:         NewStringFinder("configs/string_finder_rules.json"),
+		stringFinder:         stringfinder.New("configs/string_finder_rules.json"),
 		namingResolver:       namingResolver,
 		cooldownService:      cooldownService,
 		progressionSvc:       progressionSvc,
@@ -133,7 +135,7 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		itemCacheByName:      make(map[string]domain.Item),
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
-		activeChatterTracker: NewActiveChatterTracker(),
+		activeChatterTracker: activechatter.NewTracker(),
 		rnd:                  utils.RandomFloat,
 	}
 

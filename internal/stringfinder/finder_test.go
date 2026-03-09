@@ -1,4 +1,4 @@
-package user
+package stringfinder
 
 import (
 	"sort"
@@ -10,15 +10,13 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-func TestStringFinder_FindMatches(t *testing.T) {
-	// Test setup: reconstructs StringFinder manually to adapt to internal structure changes without using NewStringFinder.
-
+func TestFinder_FindMatches(t *testing.T) {
 	// Create blank finder
-	sf := &StringFinder{
-		ruleMap: make(map[string][]FinderRule),
+	sf := &Finder{
+		ruleMap: make(map[string][]Rule),
 	}
 
-	// Add test rules (using real production rules)
+	// Add test rules
 	sf.AddRule("Bapanada", "OBS", 10)
 	sf.AddRule("gary", "OBS", 10)
 	sf.AddRule("shedinja", "OBS", 10)
@@ -131,10 +129,9 @@ func TestStringFinder_FindMatches(t *testing.T) {
 	}
 }
 
-// TestStringFinder_EdgeCases tests edge cases per TEST_GUIDANCE.md
-func TestStringFinder_EdgeCases(t *testing.T) {
-	sf := &StringFinder{
-		ruleMap: make(map[string][]FinderRule),
+func TestFinder_EdgeCases(t *testing.T) {
+	sf := &Finder{
+		ruleMap: make(map[string][]Rule),
 	}
 	sf.AddRule("Bapanada", "OBS", 10)
 	sf.AddRule("gary", "OBS", 10)
@@ -213,10 +210,9 @@ func TestStringFinder_EdgeCases(t *testing.T) {
 	}
 }
 
-// TestStringFinder_BoundaryConditions tests boundary conditions per TEST_GUIDANCE.md
-func TestStringFinder_BoundaryConditions(t *testing.T) {
-	sf := &StringFinder{
-		ruleMap: make(map[string][]FinderRule),
+func TestFinder_BoundaryConditions(t *testing.T) {
+	sf := &Finder{
+		ruleMap: make(map[string][]Rule),
 	}
 	sf.AddRule("Bapanada", "OBS", 10)
 	sf.Compile()
@@ -276,10 +272,9 @@ func TestStringFinder_BoundaryConditions(t *testing.T) {
 	}
 }
 
-// TestStringFinder_EmptyRules tests behavior when no rules are configured
-func TestStringFinder_EmptyRules(t *testing.T) {
-	sf := &StringFinder{
-		ruleMap: make(map[string][]FinderRule),
+func TestFinder_EmptyRules(t *testing.T) {
+	sf := &Finder{
+		ruleMap: make(map[string][]Rule),
 	}
 	// Don't add any rules, don't compile
 
@@ -287,10 +282,9 @@ func TestStringFinder_EmptyRules(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-// TestStringFinder_PriorityFiltering tests that only highest priority matches are returned
-func TestStringFinder_PriorityFiltering(t *testing.T) {
-	sf := &StringFinder{
-		ruleMap: make(map[string][]FinderRule),
+func TestFinder_PriorityFiltering(t *testing.T) {
+	sf := &Finder{
+		ruleMap: make(map[string][]Rule),
 	}
 	sf.AddRule("high", "HIGH", 10)
 	sf.AddRule("low", "LOW", 5)

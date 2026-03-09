@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/activechatter"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -70,12 +71,7 @@ type GameplayService interface {
 }
 
 // ActiveChatter represents a user who recently sent a message
-type ActiveChatter struct {
-	UserID        string    `json:"user_id"`
-	Username      string    `json:"username"`
-	Platform      string    `json:"platform"`
-	LastMessageAt time.Time `json:"last_message_at"`
-}
+type ActiveChatter activechatter.Chatter
 
 // Service is the full interface that composes all sub-interfaces.
 // New code should depend on the smallest interface that meets its needs.

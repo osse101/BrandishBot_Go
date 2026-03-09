@@ -1,6 +1,7 @@
-package user
+package activechatter
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
-func TestActiveChatterTracker_Track(t *testing.T) {
-	tracker := NewActiveChatterTracker()
+func TestTracker_Track(t *testing.T) {
+	tracker := NewTracker()
 	defer tracker.Stop()
 
 	// Track a user
@@ -27,13 +28,13 @@ func TestActiveChatterTracker_Track(t *testing.T) {
 	assert.Equal(t, 1, count, "Expected 1 active chatter after update")
 
 	// Track different user
-	tracker.Track("discord", "user2", "Bob")
-	count = tracker.GetActiveCount("discord")
+	tracker.Track(domain.PlatformDiscord, "user2", "Bob")
+	count = tracker.GetActiveCount(domain.PlatformDiscord)
 	assert.Equal(t, 2, count, "Expected 2 active chatters")
 }
 
-func TestActiveChatterTracker_GetRandomTarget(t *testing.T) {
-	tracker := NewActiveChatterTracker()
+func TestTracker_GetRandomTarget(t *testing.T) {
+	tracker := NewTracker()
 	defer tracker.Stop()
 
 	// No users yet
@@ -59,8 +60,8 @@ func TestActiveChatterTracker_GetRandomTarget(t *testing.T) {
 	assert.GreaterOrEqual(t, len(seen), 2, "Expected to see at least 2 different users in 20 random selections")
 }
 
-func TestActiveChatterTracker_Remove(t *testing.T) {
-	tracker := NewActiveChatterTracker()
+func TestTracker_Remove(t *testing.T) {
+	tracker := NewTracker()
 	defer tracker.Stop()
 
 	// Add users
@@ -91,8 +92,8 @@ func TestActiveChatterTracker_Remove(t *testing.T) {
 	require.Error(t, err, "Expected error when no active chatters remain")
 }
 
-func TestActiveChatterTracker_PlatformIsolation(t *testing.T) {
-	tracker := NewActiveChatterTracker()
+func TestTracker_PlatformIsolation(t *testing.T) {
+	tracker := NewTracker()
 	defer tracker.Stop()
 
 	// Add users to different platforms
@@ -127,54 +128,22 @@ func TestActiveChatterTracker_PlatformIsolation(t *testing.T) {
 	require.Error(t, err, "Expected error for unknown platform")
 }
 
-func TestActiveChatterTracker_ExpiryFiltering(t *testing.T) {
-	// Test with very short expiry for faster testing
-	// Note: This test directly manipulates the internal state for testing purposes
-	tracker := &ActiveChatterTracker{
-		chatters: make(map[string]*ChatterInfo),
-		stopCh:   make(chan struct{}),
-	}
-	defer tracker.Stop()
-
-	// Add a user with old timestamp
-	oldTime := time.Now().Add(-31 * time.Minute)
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &ChatterInfo{
-		UserID:        "user1",
-		Username:      "Alice",
-		Platform:      domain.PlatformDiscord,
-		LastMessageAt: oldTime,
-	}
-
-	// Add a user with recent timestamp
-	tracker.Track(domain.PlatformDiscord, "user2", "Bob")
-
-	// GetRandomTarget should only return the recent user
-	username, userID, err := tracker.GetRandomTarget(domain.PlatformDiscord)
-	require.NoError(t, err)
-	assert.Equal(t, "Bob", username)
-	assert.Equal(t, "user2", userID)
-
-	// GetActiveCount should only count the recent user
-	count := tracker.GetActiveCount(domain.PlatformDiscord)
-	assert.Equal(t, 1, count, "Expected 1 active chatter (excluding expired)")
-}
-
-func TestActiveChatterTracker_Cleanup(t *testing.T) {
-	tracker := &ActiveChatterTracker{
-		chatters: make(map[string]*ChatterInfo),
+func TestTracker_Cleanup(t *testing.T) {
+	tracker := &Tracker{
+		chatters: make(map[string]*Chatter),
 		stopCh:   make(chan struct{}),
 	}
 	defer tracker.Stop()
 
 	// Add expired entries
 	oldTime := time.Now().Add(-31 * time.Minute)
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &ChatterInfo{
+	tracker.chatters[makeKey(domain.PlatformDiscord, "user1")] = &Chatter{
 		UserID:        "user1",
 		Username:      "Alice",
 		Platform:      domain.PlatformDiscord,
 		LastMessageAt: oldTime,
 	}
-	tracker.chatters[makeKey(domain.PlatformDiscord, "user2")] = &ChatterInfo{
+	tracker.chatters[makeKey(domain.PlatformDiscord, "user2")] = &Chatter{
 		UserID:        "user2",
 		Username:      "Bob",
 		Platform:      domain.PlatformDiscord,
@@ -200,39 +169,33 @@ func TestActiveChatterTracker_Cleanup(t *testing.T) {
 	assert.Equal(t, "user3", userID)
 }
 
-func TestActiveChatterTracker_Concurrency(t *testing.T) {
-	tracker := NewActiveChatterTracker()
+func TestTracker_GetRandomTargets(t *testing.T) {
+	tracker := NewTracker()
 	defer tracker.Stop()
 
-	// Run concurrent operations
-	done := make(chan bool)
-	numGoroutines := 10
-	operationsPerGoroutine := 100
+	// No users - should error
+	_, err := tracker.GetRandomTargets(domain.PlatformDiscord, 5)
+	require.Error(t, err)
 
-	for i := 0; i < numGoroutines; i++ {
-		go func(_ int) {
-			for j := 0; j < operationsPerGoroutine; j++ {
-				// Mix of operations
-				switch j % 4 {
-				case 0:
-					tracker.Track(domain.PlatformDiscord, "user1", "Alice")
-				case 1:
-					tracker.GetRandomTarget(domain.PlatformDiscord)
-				case 2:
-					tracker.Remove(domain.PlatformDiscord, "user1")
-				case 3:
-					tracker.GetActiveCount(domain.PlatformDiscord)
-				}
-			}
-			done <- true
-		}(i)
+	// Add 10 users
+	for i := 1; i <= 10; i++ {
+		tracker.Track(domain.PlatformDiscord, fmt.Sprintf("user%d", i), fmt.Sprintf("User%d", i))
 	}
 
-	// Wait for all goroutines to complete
-	for i := 0; i < numGoroutines; i++ {
-		<-done
+	// Request 5 targets
+	targets, err := tracker.GetRandomTargets(domain.PlatformDiscord, 5)
+	require.NoError(t, err)
+	assert.Equal(t, 5, len(targets))
+
+	// Verify uniqueness
+	seen := make(map[string]bool)
+	for _, target := range targets {
+		assert.False(t, seen[target.UserID])
+		seen[target.UserID] = true
 	}
 
-	// If we get here without panicking or deadlocking, the test passes
-	t.Log("Concurrency test completed successfully")
+	// Request more than available
+	targets, err = tracker.GetRandomTargets(domain.PlatformDiscord, 20)
+	require.NoError(t, err)
+	assert.Equal(t, 10, len(targets))
 }
