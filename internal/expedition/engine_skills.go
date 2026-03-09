@@ -1,7 +1,7 @@
 package expedition
 
 import (
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )

@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 	"time"
 
@@ -42,7 +42,7 @@ func TestCooldownService_StandardLifecycle_Integration(t *testing.T) {
 	ensureMigrations(t)
 
 	// Create test user
-	userID := fmt.Sprintf("550e8400-e29b-41d4-a716-44665544%04d", rand.Intn(9999))
+	userID := fmt.Sprintf("550e8400-e29b-41d4-a716-44665544%04d", rand.IntN(9999))
 	_, err := testPool.Exec(ctx, `
 		INSERT INTO users (user_id, username, created_at, updated_at)
 		VALUES ($1, $2, NOW(), NOW())

@@ -1,7 +1,7 @@
 package expedition
 
 import (
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -23,10 +23,9 @@ type Engine struct {
 
 // NewEngine creates a new expedition engine
 func NewEngine(config *EncounterConfig, party []*domain.PartyMemberState, seed int64) *Engine {
-	//nolint:gosec // G404: math/rand is acceptable for game mechanics, not for cryptographic purposes
 	return &Engine{
 		config:       config,
-		rng:          rand.New(rand.NewSource(seed)),
+		rng:          rand.New(rand.NewPCG(uint64(seed), uint64(seed))), //nolint:gosec // G404: math/rand is acceptable for game mechanics, not for cryptographic purposes
 		party:        party,
 		fatigue:      0,
 		purse:        config.Settings.StartingPurse,
@@ -65,7 +64,7 @@ func (e *Engine) Run() *domain.ExpeditionResult {
 }
 
 func (e *Engine) appendIntro() {
-	narrative := e.config.IntroNarratives[e.rng.Intn(len(e.config.IntroNarratives))]
+	narrative := e.config.IntroNarratives[e.rng.IntN(len(e.config.IntroNarratives))]
 	e.journal = append(e.journal, domain.ExpeditionTurn{
 		TurnNumber:    0,
 		EncounterType: "",
@@ -89,7 +88,7 @@ func (e *Engine) runTurn() bool {
 	outcomeType := e.rollOutcome(encounter)
 
 	// 4. Pick a random skill from the encounter's skill list
-	skill := encounter.Skills[e.rng.Intn(len(encounter.Skills))]
+	skill := encounter.Skills[e.rng.IntN(len(encounter.Skills))]
 
 	// 5. Resolve skill check
 	consciousMembers := e.getConsciousMembers()

@@ -2,7 +2,7 @@ package activechatter
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 )
 
@@ -28,7 +28,7 @@ func (t *Tracker) GetRandomTarget(platform string) (username string, userID stri
 	}
 
 	// Select a random chatter
-	selected := activeChatters[rand.Intn(len(activeChatters))] //nolint:gosec // weak random is fine for games
+	selected := activeChatters[rand.IntN(len(activeChatters))] //nolint:gosec // weak random is fine for games
 	return selected.Username, selected.UserID, nil
 }
 
@@ -69,7 +69,7 @@ func (t *Tracker) GetRandomTargets(platform string, count int) ([]TargetInfo, er
 
 	// Partial Fisher-Yates shuffle (only shuffle first numToSelect positions)
 	for i := 0; i < numToSelect; i++ {
-		j := i + rand.Intn(len(selectedIndices)-i) //nolint:gosec // weak random is fine for games
+		j := i + rand.IntN(len(selectedIndices)-i) //nolint:gosec // weak random is fine for games
 		selectedIndices[i], selectedIndices[j] = selectedIndices[j], selectedIndices[i]
 
 		selectedChatter := activeChatters[selectedIndices[i]]

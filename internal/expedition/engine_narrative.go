@@ -13,7 +13,7 @@ func (e *Engine) buildNarrative(detail *OutcomeDetail, actingMember *domain.Part
 	}
 
 	// Pick a random narrative from the available options
-	narr := detail.Narratives[e.rng.Intn(len(detail.Narratives))]
+	narr := detail.Narratives[e.rng.IntN(len(detail.Narratives))]
 
 	// Build the 3-part narrative
 	parts := make([]string, 0, 3)
@@ -36,7 +36,7 @@ func (e *Engine) buildNarrative(detail *OutcomeDetail, actingMember *domain.Part
 }
 
 // replacePlaceholders replaces {{primary}} and {{secondary}} with member names
-func replacePlaceholders(text string, primary *domain.PartyMemberState, party []*domain.PartyMemberState, rng interface{ Intn(int) int }) string {
+func replacePlaceholders(text string, primary *domain.PartyMemberState, party []*domain.PartyMemberState, rng interface{ IntN(int) int }) string {
 	if primary != nil {
 		text = strings.ReplaceAll(text, "{{primary}}", primary.Username)
 	}
@@ -54,7 +54,7 @@ func replacePlaceholders(text string, primary *domain.PartyMemberState, party []
 	return text
 }
 
-func pickSecondary(exclude *domain.PartyMemberState, party []*domain.PartyMemberState, rng interface{ Intn(int) int }) *domain.PartyMemberState {
+func pickSecondary(exclude *domain.PartyMemberState, party []*domain.PartyMemberState, rng interface{ IntN(int) int }) *domain.PartyMemberState {
 	candidates := make([]*domain.PartyMemberState, 0)
 	for _, m := range party {
 		if m != exclude && m.IsConscious {
@@ -64,5 +64,5 @@ func pickSecondary(exclude *domain.PartyMemberState, party []*domain.PartyMember
 	if len(candidates) == 0 {
 		return nil
 	}
-	return candidates[rng.Intn(len(candidates))]
+	return candidates[rng.IntN(len(candidates))]
 }

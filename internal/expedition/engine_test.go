@@ -1,7 +1,7 @@
 package expedition
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/google/uuid"
@@ -240,7 +240,7 @@ func TestResolveSkillCheck_HighLevel_AlwaysPass(t *testing.T) {
 	maxLevel := 100
 
 	passCount := 0
-	rng := rand.New(rand.NewSource(42))
+	rng := rand.New(rand.NewPCG(42, 42))
 	for i := 0; i < 1000; i++ {
 		passed, member := ResolveSkillCheck(rng, domain.SkillFortitude, party, maxLevel, 0.3)
 		if passed {
@@ -265,7 +265,7 @@ func TestResolveSkillCheck_ZeroLevel_AlwaysFail(t *testing.T) {
 	maxLevel := 10
 
 	passCount := 0
-	rng := rand.New(rand.NewSource(42))
+	rng := rand.New(rand.NewPCG(42, 42))
 	for i := 0; i < 1000; i++ {
 		passed, _ := ResolveSkillCheck(rng, domain.SkillFortitude, party, maxLevel, 0.3)
 		if passed {
@@ -285,7 +285,7 @@ func TestResolveSkillCheck_Distribution(t *testing.T) {
 
 	actCounts := map[string]int{}
 	passCount := 0
-	rng := rand.New(rand.NewSource(42))
+	rng := rand.New(rand.NewPCG(42, 42))
 	iterations := 10000
 
 	for i := 0; i < iterations; i++ {
@@ -320,7 +320,7 @@ func TestResolveSkillCheck_TempSkillBonus(t *testing.T) {
 	// Without temp bonus: contribution = 3/10 = 0.3
 	// With temp bonus 0.3: contribution = 0.6
 	passCount := 0
-	rng := rand.New(rand.NewSource(42))
+	rng := rand.New(rand.NewPCG(42, 42))
 	for i := 0; i < 10000; i++ {
 		passed, _ := ResolveSkillCheck(rng, domain.SkillPerception, party, maxLevel, 0.3)
 		if passed {

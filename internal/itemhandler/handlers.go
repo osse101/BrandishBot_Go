@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -227,7 +227,7 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 		log.Info("TNT used, selecting 5-9 random targets")
 
 		// Select 5-9 random targets
-		numTargets := 5 + rand.Intn(5) //nolint:gosec // weak random is fine for games
+		numTargets := 5 + rand.IntN(5) //nolint:gosec // weak random is fine for games
 		targets, err := ec.GetRandomTargets(platform, numTargets)
 		if err != nil {
 			log.Warn("No active targets available for TNT", "error", err)

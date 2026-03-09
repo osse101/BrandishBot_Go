@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"math"
 	"math/big"
-	mrand "math/rand"
+	mrand "math/rand/v2"
 )
 
 func RandomFloat() float64 {
@@ -15,7 +15,7 @@ func RandomInt(min, max int) int {
 	if min > max {
 		return min
 	}
-	return mrand.Intn(max-min+1) + min //nolint:gosec // Game logic randomness, not security critical
+	return mrand.IntN(max-min+1) + min //nolint:gosec // Game logic randomness, not security critical
 }
 
 func SecureRandomInt(max int) int {

@@ -14,14 +14,14 @@ func (e *Engine) calculateRewards(won bool) []domain.PartyMemberReward {
 	// Randomly assign pooled items to participants
 	itemAssignments := make(map[int][]string) // index -> items
 	for _, item := range e.rewardPool {
-		idx := e.rng.Intn(len(e.party))
+		idx := e.rng.IntN(len(e.party))
 		itemAssignments[idx] = append(itemAssignments[idx], item)
 	}
 
 	for i, m := range e.party {
 		money := baseMoney
 		if variance > 0 {
-			money += e.rng.Intn(variance*2+1) - variance
+			money += e.rng.IntN(variance*2+1) - variance
 		}
 		if money < 0 {
 			money = 0
