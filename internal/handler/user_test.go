@@ -18,6 +18,7 @@ import (
 )
 
 func TestHandleRegisterUser(t *testing.T) {
+	t.Parallel()
 	InitValidator()
 
 	tests := []struct {
@@ -98,7 +99,9 @@ func TestHandleRegisterUser(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
@@ -119,7 +122,294 @@ func TestHandleRegisterUser(t *testing.T) {
 	}
 }
 
+func TestHandleSetTimeout(t *testing.T) {
+	t.Parallel()
+	InitValidator()
+
+	tests := []struct {
+		name           string
+		requestBody    interface{}
+		setupMock      func(*mocks.MockUserService)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "Success - Best Case",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformTwitch,
+				Username:        "validuser",
+				DurationSeconds: 60,
+				Reason:          "spam",
+			},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddTimeout", mock.Anything, domain.PlatformTwitch, "validuser", time.Duration(60)*time.Second, "spam").Return(nil)
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformTwitch, "validuser").Return(time.Duration(120)*time.Second, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"total_remaining_seconds":120`,
+		},
+		{
+			name: "Success - Boundary Case (Min Duration)",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformYoutube,
+				Username:        "minuser",
+				DurationSeconds: 1,
+				Reason:          "min",
+			},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddTimeout", mock.Anything, domain.PlatformYoutube, "minuser", time.Duration(1)*time.Second, "min").Return(nil)
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformYoutube, "minuser").Return(time.Duration(1)*time.Second, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"total_remaining_seconds":1`,
+		},
+		{
+			name: "Success - Boundary Case (Max Duration)",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformDiscord,
+				Username:        "maxuser",
+				DurationSeconds: 86400,
+				Reason:          "max",
+			},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddTimeout", mock.Anything, domain.PlatformDiscord, "maxuser", time.Duration(86400)*time.Second, "max").Return(nil)
+				m.On("GetTimeoutPlatform", mock.Anything, domain.PlatformDiscord, "maxuser").Return(time.Duration(86400)*time.Second, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"total_remaining_seconds":86400`,
+		},
+		{
+			name: "Invalid Case - Invalid Platform",
+			requestBody: SetTimeoutRequest{
+				Platform:        "invalidplatform",
+				Username:        "user",
+				DurationSeconds: 60,
+				Reason:          "spam",
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Invalid Case - Missing Fields",
+			requestBody: SetTimeoutRequest{
+				Username: "badrequest",
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Invalid Case - Duration Below Min",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformTwitch,
+				Username:        "user",
+				DurationSeconds: 0,
+				Reason:          "short",
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Invalid Case - Duration Above Max",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformTwitch,
+				Username:        "user",
+				DurationSeconds: 86401,
+				Reason:          "long",
+			},
+			setupMock:      func(m *mocks.MockUserService) {},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Service Error - AddTimeout Failed",
+			requestBody: SetTimeoutRequest{
+				Platform:        domain.PlatformTwitch,
+				Username:        "erroruser",
+				DurationSeconds: 60,
+				Reason:          "spam",
+			},
+			setupMock: func(m *mocks.MockUserService) {
+				m.On("AddTimeout", mock.Anything, domain.PlatformTwitch, "erroruser", time.Duration(60)*time.Second, "spam").Return(errors.New(ErrMsgGenericServerError))
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   ErrMsgGenericServerError,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mockSvc := mocks.NewMockUserService(t)
+			tt.setupMock(mockSvc)
+
+			handler := HandleSetTimeout(mockSvc)
+
+			body, _ := json.Marshal(tt.requestBody)
+			req := httptest.NewRequest("PUT", "/user/timeout", bytes.NewBuffer(body))
+			w := httptest.NewRecorder()
+
+			handler.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			if tt.expectedBody != "" {
+				assert.Contains(t, w.Body.String(), tt.expectedBody)
+			}
+			mockSvc.AssertExpectations(t)
+		})
+	}
+}
+
+func TestGetPlatformID(t *testing.T) {
+	t.Parallel()
+
+	user := &domain.User{
+		TwitchID:  "twitch123",
+		YoutubeID: "yt123",
+		DiscordID: "disc123",
+	}
+
+	tests := []struct {
+		name     string
+		platform string
+		expected string
+	}{
+		{
+			name:     "Twitch Platform",
+			platform: domain.PlatformTwitch,
+			expected: "twitch123",
+		},
+		{
+			name:     "Youtube Platform",
+			platform: domain.PlatformYoutube,
+			expected: "yt123",
+		},
+		{
+			name:     "Discord Platform",
+			platform: domain.PlatformDiscord,
+			expected: "disc123",
+		},
+		{
+			name:     "Unknown Platform",
+			platform: "unknown",
+			expected: "",
+		},
+		{
+			name:     "Empty Platform",
+			platform: "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := getPlatformID(user, tt.platform)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestUpdatePlatformID(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		initialUser      domain.User
+		platform         string
+		platformID       string
+		platformUsername string
+		expectedUser     domain.User
+	}{
+		{
+			name:             "Twitch Platform",
+			initialUser:      domain.User{},
+			platform:         domain.PlatformTwitch,
+			platformID:       "twitch123",
+			platformUsername: "twitch_user",
+			expectedUser: domain.User{
+				TwitchID:          "twitch123",
+				PlatformUsernames: map[string]string{domain.PlatformTwitch: "twitch_user"},
+			},
+		},
+		{
+			name:             "Youtube Platform",
+			initialUser:      domain.User{},
+			platform:         domain.PlatformYoutube,
+			platformID:       "yt123",
+			platformUsername: "yt_user",
+			expectedUser: domain.User{
+				YoutubeID:         "yt123",
+				PlatformUsernames: map[string]string{domain.PlatformYoutube: "yt_user"},
+			},
+		},
+		{
+			name:             "Discord Platform",
+			initialUser:      domain.User{},
+			platform:         domain.PlatformDiscord,
+			platformID:       "disc123",
+			platformUsername: "disc_user",
+			expectedUser: domain.User{
+				DiscordID:         "disc123",
+				PlatformUsernames: map[string]string{domain.PlatformDiscord: "disc_user"},
+			},
+		},
+		{
+			name:             "Unknown Platform",
+			initialUser:      domain.User{},
+			platform:         "unknown",
+			platformID:       "unk123",
+			platformUsername: "unk_user",
+			expectedUser: domain.User{
+				PlatformUsernames: map[string]string{"unknown": "unk_user"},
+			},
+		},
+		{
+			name:             "Empty Username",
+			initialUser:      domain.User{},
+			platform:         domain.PlatformTwitch,
+			platformID:       "twitch123",
+			platformUsername: "",
+			expectedUser: domain.User{
+				TwitchID:          "twitch123",
+				PlatformUsernames: map[string]string{},
+			},
+		},
+		{
+			name: "Existing PlatformUsernames",
+			initialUser: domain.User{
+				PlatformUsernames: map[string]string{domain.PlatformTwitch: "existing_twitch"},
+			},
+			platform:         domain.PlatformDiscord,
+			platformID:       "disc123",
+			platformUsername: "disc_user",
+			expectedUser: domain.User{
+				DiscordID: "disc123",
+				PlatformUsernames: map[string]string{
+					domain.PlatformTwitch:  "existing_twitch",
+					domain.PlatformDiscord: "disc_user",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			user := tt.initialUser
+			updatePlatformID(&user, tt.platform, tt.platformID, tt.platformUsername)
+			assert.Equal(t, tt.expectedUser, user)
+		})
+	}
+}
+
 func TestHandleGetTimeout(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		queryParams    map[string]string
@@ -197,7 +487,9 @@ func TestHandleGetTimeout(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
