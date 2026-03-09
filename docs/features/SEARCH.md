@@ -11,9 +11,18 @@ The Search system allows players to scavenge for items and earn experience point
 - **Cost**: None (free action).
 - **Reward**: Chance to find a **Lootbox (Tier 0)** and gain **Explorer Job XP**.
 
+### Search Regions
+
+Search regions add level gating, thematic item drops, and outcome modifiers based on the user's Explorer job level.
+
+- **Unlock System**: As your Explorer level increases, you gain access to new search regions. Higher-level regions modify the base success rates and introduce the chance to find specific items instead of just lootboxes.
+- **Configuration**: Regions are defined in `configs/search_regions.json`.
+- **Targeted Searches**: Players can provide an **item hint** (e.g., `/search mine`) to automatically search the highest-level accessible region that drops that specific item. If no hint is provided (or if the item isn't in any accessible region's drop table), the system defaults to the highest-level region the player qualifies for.
+- **Drop Chance**: If a region has specific item drops, there is a chance (`domain.SearchRegionItemDropChance`, default 20%) that a successful search will yield a region-specific item instead of a lootbox. The specific item is determined by a weighted roll against the region's drop table.
+
 ### Success Rate
 
-- **Base Success Rate**: **80%**
+- **Base Success Rate**: **80%** (modified by current Search Region's `LootboxChanceModifier`).
 - **Critical Success Rate**: **5%** (Roll ≤ 0.05)
   - **Effect**: Finds **2x** items and applies a **+2 Quality Bonus**.
 - **Near Miss Rate**: **5%** (Roll just above success threshold)
@@ -70,7 +79,7 @@ _Example: 1st search (Uncommon base) + Critical (+2) + Level 5 Explorer (+1) = *
 
 ### Items
 
-- **Primary Reward**: `lootbox_tier0` (Junkbox).
+- **Primary Reward**: `lootbox_tier0` (Junkbox) or a Region-specific item (e.g., `item_stick`, `item_scrap`, `explosive_mine`).
 - **Quantity**:
   - Standard: **1**
   - Critical Success: **2**

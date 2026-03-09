@@ -12,7 +12,7 @@ The core job system infrastructure is complete, including XP awarding, daily res
 Currently, job benefits are integrated primarily through progression system modifiers rather than direct level checks.
 
 - [x] **Blacksmith**: Link `UpgradeItem` success rates or cost reductions to Blacksmith job level. (Implemented via `crafting_success_rate` modifier)
-- [ ] **Explorer**: Link Search "Quality" chance or item rarity weight to Explorer job level. (Not implemented - `calculateSearchQuality` logic does not use modifiers)
+- [x] **Explorer**: Link Search "Quality" chance or item rarity weight to Explorer job level. (Implemented via Search Regions modifier)
 - [x] **Merchant**: Integrate Merchant level into buy/sell price calculations. (Implemented via `economy_bonus` modifier)
 - [x] **Gambler**: Add a small win probability bonus based on Gambler level. (Implemented via `gamble_win_bonus` modifier)
 
@@ -21,7 +21,7 @@ Currently, job benefits are integrated primarily through progression system modi
 Implement RPG-style requirements for advanced features:
 
 - [ ] "Requires Blacksmith Level X to craft" for high-tier recipes. (Currently relies on recipe unlocks, not explicit job level checks in code)
-- [ ] "Requires Explorer Level X" for certain search locations (when implemented) -> Usage: `!search item` for the server to select the best location for finding that item type. Defaults to highest level location available.
+- [x] "Requires Explorer Level X" for certain search locations (when implemented) -> Usage: `!search item` for the server to select the best location for finding that item type. Defaults to highest level location available.
 
 ## 4. Job Identity & UI
 
@@ -46,7 +46,7 @@ Implement RPG-style requirements for advanced features:
 
 ## Status Update (2026-02-06)
 
-- **Explorer Job**: `internal/user/search_helpers.go` confirmed to not use Explorer job level for quality calculations.
+- **Explorer Job**: Explorer job level is now used by Search Regions to modify search success rates and offer region-specific item drops.
 - **Farmer Job**: `internal/harvest/service.go` awards XP but does not use job level to modify yield or speed.
 - **Workers**: Daily and weekly reset workers are implemented and functioning.
 - **Status**: Still In Progress for feature integration.
