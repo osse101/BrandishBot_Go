@@ -192,6 +192,7 @@ packages:
       HarvestTx:
       CompostRepository:
       CompostTx:
+      Subscription:
   github.com/osse101/BrandishBot_Go/internal/harvest:
     config:
       filename: 'mock_harvest_{{.InterfaceName | snakecase}}.go'
@@ -208,5 +209,18 @@ packages:
     config:
       filename: 'mock_quest_{{.InterfaceName | snakecase}}.go'
       mockname: 'MockQuest{{.InterfaceName}}'
+    interfaces:
+      Service:
+  github.com/osse101/BrandishBot_Go/internal/expedition:
+    config:
+      filename: 'mock_expedition_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockExpedition{{.InterfaceName}}'
+    interfaces:
+      Service:
+      Subscription:
+  github.com/osse101/BrandishBot_Go/internal/subscription:
+    config:
+      filename: 'mock_subscription_{{.InterfaceName | snakecase}}.go'
+      mockname: 'MockSubscription{{.InterfaceName}}'
     interfaces:
       Service:
