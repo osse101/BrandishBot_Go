@@ -18,7 +18,6 @@ import (
 )
 
 func TestHandleSellItem(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		requestBody    interface{}

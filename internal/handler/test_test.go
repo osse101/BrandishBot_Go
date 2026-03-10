@@ -17,7 +17,6 @@ import (
 )
 
 func TestHandleTest(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		method         string

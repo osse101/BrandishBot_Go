@@ -49,7 +49,6 @@ func TestProgressionHandlers_HandleGetTree(t *testing.T) {
 }
 
 func TestProgressionHandlers_HandleVote(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		body           interface{}
@@ -126,7 +125,6 @@ func TestProgressionHandlers_HandleGetStatus(t *testing.T) {
 }
 
 func TestProgressionHandlers_HandleAdminUnlock(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		body           map[string]interface{}

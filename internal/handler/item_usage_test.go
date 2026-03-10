@@ -17,7 +17,6 @@ import (
 )
 
 func TestHandleUseItem(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		requestBody    interface{}

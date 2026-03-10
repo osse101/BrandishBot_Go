@@ -16,7 +16,6 @@ import (
 )
 
 func TestQuestHandler_GetActiveQuests(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		setupMock      func(*mocks.MockQuestService, *mocks.MockProgressionService)
@@ -79,7 +78,6 @@ func TestQuestHandler_GetActiveQuests(t *testing.T) {
 }
 
 func TestQuestHandler_GetUserQuestProgress(t *testing.T) {
-
 	tests := []struct {
 		name           string
 		userID         string
@@ -147,7 +145,6 @@ func TestQuestHandler_GetUserQuestProgress(t *testing.T) {
 }
 
 func TestQuestHandler_ClaimQuestReward(t *testing.T) {
-
 	type claimRequest struct {
 		UserID  string `json:"user_id"`
 		QuestID int    `json:"quest_id"`
