@@ -208,6 +208,16 @@ make check-db           # Ensure database is running
 
 ## ⚡ AI Agent Best Practices
 
+### 🚨 Prevention of Silent Hangs (> 1 minute)
+
+> [!CAUTION]
+> **Agents frequently cause silent hangs by blocked `run_command` calls.**
+> The UI can fail to show approval prompts for `run_command`, causing the agent to lock up indefinitely.
+>
+> 1. **Prioritize Native Tools**: NEVER use `run_command` for tasks that native tools can handle. Use `list_dir` for `ls`, `grep_search` for `grep`, `view_file` for `cat`, etc.
+> 2. **Never Wait Synchronously**: When you MUST run a build/test command, `WaitMsBeforeAsync` MUST be exceptionally short (e.g., `500`). NEVER block the main agent loop.
+> 3. **Avoid Unnecessary Approvals**: Read `.agent/rules/prevent-agent-hangs.md` and follow it strictly to prevent wasting user time.
+
 ### Process Management
 
 When running background commands:
