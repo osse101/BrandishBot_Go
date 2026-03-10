@@ -19,29 +19,11 @@ func (s *service) GetBuyablePrices(ctx context.Context) ([]domain.Item, error) {
 		return nil, err
 	}
 
-	if s.progressionService == nil {
-		return allItems, nil
+	filtered, err := s.filterUnlockedItems(ctx, allItems, false)
+	if err == nil {
+		log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
 	}
-
-	itemNames := make([]string, len(allItems))
-	for i, item := range allItems {
-		itemNames[i] = item.InternalName
-	}
-
-	unlockStatus, err := s.progressionService.AreItemsUnlocked(ctx, itemNames)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
-	}
-
-	filtered := make([]domain.Item, 0, len(allItems))
-	for _, item := range allItems {
-		if unlockStatus[item.InternalName] {
-			filtered = append(filtered, item)
-		}
-	}
-
-	log.Info("Buyable prices filtered", "total", len(allItems), "unlocked", len(filtered))
-	return filtered, nil
+	return filtered, err
 }
 
 func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) {
@@ -53,16 +35,26 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 		return nil, err
 	}
 
+	filtered, err := s.filterUnlockedItems(ctx, allItems, true)
+	if err == nil {
+		log.Info("Sellable prices filtered", "total", len(allItems), "unlocked", len(filtered))
+	}
+	return filtered, err
+}
+
+func (s *service) filterUnlockedItems(ctx context.Context, items []domain.Item, calculateSellPrice bool) ([]domain.Item, error) {
 	if s.progressionService == nil {
-		for i := range allItems {
-			sellPrice := s.calculateSellPriceWithModifier(ctx, allItems[i].BaseValue)
-			allItems[i].SellPrice = &sellPrice
+		if calculateSellPrice {
+			for i := range items {
+				sellPrice := s.calculateSellPriceWithModifier(ctx, items[i].BaseValue)
+				items[i].SellPrice = &sellPrice
+			}
 		}
-		return allItems, nil
+		return items, nil
 	}
 
-	itemNames := make([]string, len(allItems))
-	for i, item := range allItems {
+	itemNames := make([]string, len(items))
+	for i, item := range items {
 		itemNames[i] = item.InternalName
 	}
 
@@ -71,16 +63,17 @@ func (s *service) GetSellablePrices(ctx context.Context) ([]domain.Item, error) 
 		return nil, fmt.Errorf("failed to check item unlock status: %w", err)
 	}
 
-	filtered := make([]domain.Item, 0, len(allItems))
-	for _, item := range allItems {
+	filtered := make([]domain.Item, 0, len(items))
+	for _, item := range items {
 		if unlockStatus[item.InternalName] {
-			sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-			item.SellPrice = &sellPrice
+			if calculateSellPrice {
+				sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
+				item.SellPrice = &sellPrice
+			}
 			filtered = append(filtered, item)
 		}
 	}
 
-	log.Info("Sellable prices filtered", "total", len(allItems), "unlocked", len(filtered))
 	return filtered, nil
 }
 
