@@ -18,7 +18,6 @@ import (
 )
 
 func TestHandleSearch(t *testing.T) {
-	InitValidator()
 
 	tests := []struct {
 		name           string

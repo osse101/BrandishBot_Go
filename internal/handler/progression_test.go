@@ -49,7 +49,6 @@ func TestProgressionHandlers_HandleGetTree(t *testing.T) {
 }
 
 func TestProgressionHandlers_HandleVote(t *testing.T) {
-	InitValidator() // Ensure validator is initialized
 
 	tests := []struct {
 		name           string
@@ -127,7 +126,6 @@ func TestProgressionHandlers_HandleGetStatus(t *testing.T) {
 }
 
 func TestProgressionHandlers_HandleAdminUnlock(t *testing.T) {
-	InitValidator()
 
 	tests := []struct {
 		name           string

@@ -16,7 +16,6 @@ import (
 )
 
 func TestHandleRecordEvent(t *testing.T) {
-	InitValidator()
 
 	tests := []struct {
 		name           string

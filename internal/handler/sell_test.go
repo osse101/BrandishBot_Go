@@ -18,7 +18,6 @@ import (
 )
 
 func TestHandleSellItem(t *testing.T) {
-	InitValidator()
 
 	tests := []struct {
 		name           string

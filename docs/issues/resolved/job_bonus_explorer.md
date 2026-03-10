@@ -20,7 +20,7 @@ The Explorer job affects **search** and **expeditions**. XP is earned through se
 | ----- | ---------------------------------------------- |
 | 10    | Bonus encounter type in expedition config      |
 | 15    | Guaranteed quality boost on first daily search |
-| *     | Search Regions unlock based on Explorer level  |
+| \*    | Search Regions unlock based on Explorer level  |
 
 ## Integration Points
 

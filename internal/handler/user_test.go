@@ -19,7 +19,6 @@ import (
 
 func TestHandleRegisterUser(t *testing.T) {
 	t.Parallel()
-	InitValidator()
 
 	tests := []struct {
 		name           string
@@ -124,7 +123,6 @@ func TestHandleRegisterUser(t *testing.T) {
 
 func TestHandleSetTimeout(t *testing.T) {
 	t.Parallel()
-	InitValidator()
 
 	tests := []struct {
 		name           string
