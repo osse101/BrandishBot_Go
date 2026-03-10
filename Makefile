@@ -117,7 +117,7 @@ migrate-create:
 # Development commands
 test:
 	@echo "Running tests..."
-	@go test ./... -race
+	@go run ./cmd/devtool test
 
 test-smart:
 	@echo "Running smart tests (changed packages vs $(BASE_REF))..."

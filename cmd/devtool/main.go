@@ -39,6 +39,7 @@ func main() {
 	registry.Register(&TestLogsCommand{})
 	registry.Register(&TestLootboxCommand{})
 	registry.Register(&GenerateMocksCommand{})
+	registry.Register(&TestCommand{})
 
 	if len(os.Args) < 2 {
 		registry.PrintHelp()
