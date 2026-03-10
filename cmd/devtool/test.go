@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+const (
+	testLogDir      = "logs"
+	testFailLogFile = "test_failures.log"
+)
+
 type TestCommand struct{}
 
 func (c *TestCommand) Name() string {
@@ -33,12 +38,11 @@ type testEvent struct {
 func (c *TestCommand) Run(args []string) error {
 	PrintHeader("Running Tests...")
 
-	logDir := "logs"
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(testLogDir, 0755); err != nil {
 		return fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	failLogPath := filepath.Join(logDir, "test_failures.log")
+	failLogPath := filepath.Join(testLogDir, testFailLogFile)
 	// Clean up previous failure log
 	_ = os.Remove(failLogPath)
 
@@ -97,6 +101,9 @@ func (c *TestCommand) Run(args []string) error {
 				testOutputs[event.Package] = make(map[string][]string)
 			}
 			if event.Action == "output" {
+				if strings.Contains(event.Output, "--- SKIP:") || strings.Contains(event.Output, "=== SKIP:") {
+					continue // Filter out skipped subtests output
+				}
 				testOutputs[event.Package][event.Test] = append(testOutputs[event.Package][event.Test], event.Output)
 			}
 		} else if event.Action == "output" {
@@ -106,6 +113,12 @@ func (c *TestCommand) Run(args []string) error {
 			}
 			if strings.Contains(event.Output, "(cached)") && strings.HasPrefix(event.Output, "ok") {
 				continue // Ignore cached passing packages
+			}
+			if strings.Contains(event.Output, "[no tests to run]") {
+				continue // Ignore packages with no tests entirely
+			}
+			if event.Output == "PASS\n" || strings.HasPrefix(event.Output, "ok  \t") || strings.HasPrefix(event.Output, "?   \t") {
+				continue // Filter out standard pass outputs so completely quiet packages don't trigger the success print
 			}
 			if testOutputs[event.Package] == nil {
 				testOutputs[event.Package] = make(map[string][]string)
@@ -129,15 +142,7 @@ func (c *TestCommand) Run(args []string) error {
 			}
 			failedPackages[event.Package] = true
 		case "pass":
-			if event.Test == "" && event.Package != "" {
-				// Package passed
-				if !failedPackages[event.Package] { // Make sure no subtest failed
-					// Only print package pass if we didn't skip it
-					if len(testOutputs[event.Package][""]) > 0 {
-						PrintSuccess("ok\t%s\t%.3fs", event.Package, event.Elapsed)
-					}
-				}
-			}
+			// Package passed - intentionally silence any output for passing packages
 		case "fail":
 			if event.Test == "" && event.Package != "" {
 				// Package failed
@@ -159,12 +164,9 @@ func (c *TestCommand) Run(args []string) error {
 
 				if failLogFile != nil {
 					fmt.Fprintf(failLogFile, "--- FAIL: Package %s ---\n", event.Package)
-					// Write all failed tests for this package
-					// Actually, let's just dump the entire package output to the failure log
-					for _, lines := range testOutputs[event.Package] {
-						for _, l := range lines {
-							fmt.Fprint(failLogFile, l)
-						}
+					// Write package-level output
+					for _, l := range testOutputs[event.Package][""] {
+						fmt.Fprint(failLogFile, l)
 					}
 					fmt.Fprintf(failLogFile, "\n")
 				}

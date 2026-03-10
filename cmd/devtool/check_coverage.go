@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -208,8 +209,7 @@ func (c *CheckCoverageCommand) addRecursiveWatch(watcher *fsnotify.Watcher, root
 		if strings.HasPrefix(base, ".") && base != "." {
 			return filepath.SkipDir
 		}
-		//nolint:goconst // Exclude directories for watch
-		if base == "vendor" || base == "node_modules" || base == "bin" || base == "dist" || base == "logs" || base == "mocks" {
+		if slices.Contains(IgnoreDirs(), base) {
 			return filepath.SkipDir
 		}
 
@@ -566,4 +566,16 @@ func (c *CheckCoverageCommand) printTopMissingFunctions(file string) error {
 	fmt.Println()
 
 	return nil
+}
+
+func IgnoreDirs() []string {
+	return []string{
+		".git",
+		".idea",
+		".vscode",
+		"logs",
+		"bin",
+		"vendor",
+		"node_modules",
+	}
 }
