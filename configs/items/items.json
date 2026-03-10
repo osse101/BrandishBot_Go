@@ -8,8 +8,12 @@
       "description": "Currency used for transactions",
       "max_stack": 1000000,
       "base_value": 1,
-      "tags": ["currency"],
-      "type": ["utility"],
+      "tags": [
+        "currency"
+      ],
+      "type": [
+        "utility"
+      ],
       "default_display": "money"
     },
     {
@@ -18,8 +22,16 @@
       "description": "A basic shovel",
       "max_stack": 1000,
       "base_value": 100,
-      "tags": ["consumable", "tradeable", "sellable", "buyable", "compostable"],
-      "type": ["utility"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "compostable"
+      ],
+      "type": [
+        "utility"
+      ],
       "default_display": "A basic shovel"
     },
     {
@@ -28,8 +40,14 @@
       "description": "A simple wooden stick - basic crafting material",
       "max_stack": 1000,
       "base_value": 100,
-      "tags": ["tradeable", "material", "buyable"],
-      "type": ["material"],
+      "tags": [
+        "tradeable",
+        "material",
+        "buyable"
+      ],
+      "type": [
+        "material"
+      ],
       "default_display": "A simple stick"
     },
     {
@@ -38,8 +56,17 @@
       "description": "A protective shield - blocks the next weapon attack",
       "max_stack": 100,
       "base_value": 1000,
-      "tags": ["consumable", "tradeable", "disassembleable", "sellable", "buyable", "compostable"],
-      "type": ["defense"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "disassembleable",
+        "sellable",
+        "buyable",
+        "compostable"
+      ],
+      "type": [
+        "defense"
+      ],
       "handler": "shield",
       "default_display": "A sturdy shield"
     },
@@ -49,8 +76,16 @@
       "description": "A basic lootbox containing random items",
       "max_stack": 1000,
       "base_value": 100,
-      "tags": ["consumable", "tradeable", "can_open", "upgradeable", "compostable"],
-      "type": ["container"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "upgradeable",
+        "compostable"
+      ],
+      "type": [
+        "container"
+      ],
       "handler": "lootbox",
       "default_display": "A dingy box"
     },
@@ -68,7 +103,9 @@
         "disassembleable",
         "compostable"
       ],
-      "type": ["container"],
+      "type": [
+        "container"
+      ],
       "handler": "lootbox",
       "default_display": "A sturdy chest"
     },
@@ -86,7 +123,9 @@
         "disassembleable",
         "compostable"
       ],
-      "type": ["container"],
+      "type": [
+        "container"
+      ],
       "handler": "lootbox",
       "default_display": "A gleaming golden chest"
     },
@@ -96,8 +135,16 @@
       "description": "The ultimate lootbox with legendary items",
       "max_stack": 1000,
       "base_value": 10000,
-      "tags": ["consumable", "tradeable", "can_open", "disassembleable", "compostable"],
-      "type": ["container"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "can_open",
+        "disassembleable",
+        "compostable"
+      ],
+      "type": [
+        "container"
+      ],
       "handler": "lootbox",
       "default_display": "A radiant diamond chest"
     },
@@ -107,8 +154,16 @@
       "description": "A powerful weapon - times out target for 60s",
       "max_stack": 1000,
       "base_value": 1000,
-      "tags": ["upgradeable", "consumable", "compostable", "buyable", "sellable"],
-      "type": ["weapon"],
+      "tags": [
+        "upgradeable",
+        "consumable",
+        "compostable",
+        "buyable",
+        "sellable"
+      ],
+      "type": [
+        "weapon"
+      ],
       "handler": "weapon",
       "handler_config": {
         "timeout_seconds": 60
@@ -121,8 +176,14 @@
       "description": "The ultimate weapon - times out target for 100 minutes",
       "max_stack": 10,
       "base_value": 15000,
-      "tags": ["disassembleable", "consumable", "compostable"],
-      "type": ["weapon"],
+      "tags": [
+        "disassembleable",
+        "consumable",
+        "compostable"
+      ],
+      "type": [
+        "weapon"
+      ],
       "handler": "weapon",
       "handler_config": {
         "timeout_seconds": 6000
@@ -135,8 +196,17 @@
       "description": "A meme weapon - times out target for 101s",
       "max_stack": 1000,
       "base_value": 101,
-      "tags": ["upgradeable", "consumable", "tradeable", "sellable", "buyable", "compostable"],
-      "type": ["weapon"],
+      "tags": [
+        "upgradeable",
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "compostable"
+      ],
+      "type": [
+        "weapon"
+      ],
       "handler": "weapon",
       "handler_config": {
         "timeout_seconds": 101
@@ -149,8 +219,16 @@
       "description": "A legendary meme weapon with a dreadful curse",
       "max_stack": 100,
       "base_value": 1001,
-      "tags": ["consumable", "tradeable", "sellable", "disassembleable", "compostable"],
-      "type": ["weapon"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "disassembleable",
+        "compostable"
+      ],
+      "type": [
+        "weapon"
+      ],
       "default_display": "deez"
     },
     {
@@ -159,8 +237,16 @@
       "description": "A small revive - reduces timeout by 60s",
       "max_stack": 1000,
       "base_value": 1000,
-      "tags": ["consumable", "tradeable", "sellable", "buyable", "compostable"],
-      "type": ["healing"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "compostable"
+      ],
+      "type": [
+        "healing"
+      ],
       "handler": "revive",
       "handler_config": {
         "recovery_seconds": 60
@@ -173,8 +259,17 @@
       "description": "A basic explosive - creates a small blast",
       "max_stack": 1000,
       "base_value": 250,
-      "tags": ["consumable", "tradeable", "sellable", "buyable", "upgradeable", "compostable"],
-      "type": ["explosive"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "upgradeable",
+        "compostable"
+      ],
+      "type": [
+        "explosive"
+      ],
       "handler": "explosive",
       "handler_config": {
         "damage_type": "search_trap",
@@ -196,7 +291,9 @@
         "disassembleable",
         "compostable"
       ],
-      "type": ["explosive"],
+      "type": [
+        "explosive"
+      ],
       "handler": "trap",
       "handler_config": {
         "timeout_seconds": 60
@@ -209,8 +306,16 @@
       "description": "A large explosive - bringer of fear",
       "max_stack": 100,
       "base_value": 2500,
-      "tags": ["consumable", "tradeable", "sellable", "disassembleable", "compostable"],
-      "type": ["explosive"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "disassembleable",
+        "compostable"
+      ],
+      "type": [
+        "explosive"
+      ],
       "handler": "explosive",
       "handler_config": {
         "damage_type": "search_trap",
@@ -224,8 +329,16 @@
       "description": "The ultimate explosive - massive area effect",
       "max_stack": 10,
       "base_value": 7500,
-      "tags": ["disassembleable", "consumable", "tradeable", "sellable", "compostable"],
-      "type": ["explosive"],
+      "tags": [
+        "disassembleable",
+        "consumable",
+        "tradeable",
+        "sellable",
+        "compostable"
+      ],
+      "type": [
+        "explosive"
+      ],
       "handler": "explosive",
       "handler_config": {
         "damage_type": "search_trap",
@@ -239,8 +352,14 @@
       "description": "Instantly grants XP to a selected job",
       "max_stack": 100,
       "base_value": 2500,
-      "tags": ["consumable", "tradeable", "sellable"],
-      "type": ["magical"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable"
+      ],
+      "type": [
+        "magical"
+      ],
       "handler": "rarecandy",
       "handler_config": {
         "xp_amount": 500
@@ -253,8 +372,17 @@
       "description": "Randomly time out a user",
       "max_stack": 100,
       "base_value": 500,
-      "tags": ["consumable", "tradeable", "sellable", "buyable", "upgradeable", "compostable"],
-      "type": ["weapon"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "buyable",
+        "upgradeable",
+        "compostable"
+      ],
+      "type": [
+        "weapon"
+      ],
       "handler": "weapon",
       "handler_config": {
         "timeout_seconds": 60
@@ -267,8 +395,16 @@
       "description": "Reflect attacks back at attackers",
       "max_stack": 1,
       "base_value": 5000,
-      "tags": ["consumable", "tradeable", "sellable", "disassembleable", "compostable"],
-      "type": ["defense"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "sellable",
+        "disassembleable",
+        "compostable"
+      ],
+      "type": [
+        "defense"
+      ],
       "handler": "shield",
       "default_display": "A reflective mirror shield"
     },
@@ -278,8 +414,14 @@
       "description": "Common crafting material from disassembling items",
       "max_stack": 1000,
       "base_value": 10,
-      "tags": ["material", "tradeable", "buyable"],
-      "type": ["material"],
+      "tags": [
+        "material",
+        "tradeable",
+        "buyable"
+      ],
+      "type": [
+        "material"
+      ],
       "default_display": "A pile of scrap metal"
     },
     {
@@ -288,8 +430,13 @@
       "description": "Special currency for advanced economy features",
       "max_stack": 100,
       "base_value": 1000,
-      "tags": ["currency", "tradeable"],
-      "type": ["material"],
+      "tags": [
+        "currency",
+        "tradeable"
+      ],
+      "type": [
+        "material"
+      ],
       "default_display": "A mysterious script"
     },
     {
@@ -298,8 +445,16 @@
       "description": "Apply a webcam filter",
       "max_stack": 100,
       "base_value": 200,
-      "tags": ["consumable", "tradeable", "compostable", "buyable", "sellable"],
-      "type": ["utility"],
+      "tags": [
+        "consumable",
+        "tradeable",
+        "compostable",
+        "buyable",
+        "sellable"
+      ],
+      "type": [
+        "utility"
+      ],
       "default_display": "A video filter"
     },
     {
@@ -308,8 +463,12 @@
       "description": "Decomposed compost residue - utterly useless",
       "max_stack": 1000,
       "base_value": 1,
-      "tags": ["no-use"],
-      "type": ["material"],
+      "tags": [
+        "no-use"
+      ],
+      "type": [
+        "material"
+      ],
       "default_display": "A clump of foul-smelling sludge"
     }
   ]

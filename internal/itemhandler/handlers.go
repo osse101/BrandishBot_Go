@@ -279,6 +279,18 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 			username, displayName, randomUsername, timeout), nil
 	}
 
+	// Special handling for this - targets self
+	if item.InternalName == domain.ItemThis {
+		log.Info("This used, targeting self")
+
+		// Apply timeout to self
+		if err := ec.TimeoutUser(ctx, username, timeout, "Played yourself"); err != nil {
+			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", username)
+		}
+
+		return fmt.Sprintf("%s used %s... Congratulations, you played yourself. Timed out for %v.", username, displayName, timeout), nil
+	}
+
 	// Standard weapons require a user-provided target
 	if targetUsername == "" {
 		log.Warn(LogWarnTargetUsernameMissingWeapon)

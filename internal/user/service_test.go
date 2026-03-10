@@ -608,6 +608,49 @@ func TestUseItem_Blaster(t *testing.T) {
 	})
 }
 
+func TestUseItem_This(t *testing.T) {
+	repo := NewFakeRepository()
+	setupTestData(repo)
+
+	// Add weapon_this to repo
+	repo.items[domain.ItemThis] = &domain.Item{
+		ID:           6,
+		InternalName: domain.ItemThis,
+		PublicName:   "this",
+		Description:  "A meme weapon",
+		BaseValue:    101,
+	}
+
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false)
+	ctx := context.Background()
+	alice := domain.User{
+		ID:        "user-alice",
+		Username:  "alice",
+		TwitchID:  "alice123",
+		DiscordID: "alice456",
+	}
+
+	// Setup: Give alice the 'this' weapon
+	_, err := svc.RegisterUser(ctx, alice)
+	require.NoError(t, err)
+
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemThis, 2)
+	require.NoError(t, err)
+
+	t.Run("use this weapon targets self", func(t *testing.T) {
+		message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemThis, 1, "")
+		require.NoError(t, err, "UseItem failed")
+
+		expectedMsg := "alice used weapon_this... Congratulations, you played yourself. Timed out for 1m41s."
+		assert.Equal(t, expectedMsg, message)
+
+		// Verify inventory
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, inv.Slots[0].Quantity, "Expected 1 left")
+	})
+}
+
 func TestUseItem_RareCandy(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
