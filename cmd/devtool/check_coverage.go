@@ -208,6 +208,7 @@ func (c *CheckCoverageCommand) addRecursiveWatch(watcher *fsnotify.Watcher, root
 		if strings.HasPrefix(base, ".") && base != "." {
 			return filepath.SkipDir
 		}
+		//nolint:goconst // Exclude directories for watch
 		if base == "vendor" || base == "node_modules" || base == "bin" || base == "dist" || base == "logs" || base == "mocks" {
 			return filepath.SkipDir
 		}
