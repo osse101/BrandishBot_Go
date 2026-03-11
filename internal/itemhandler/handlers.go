@@ -222,73 +222,14 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 		}
 	}
 
-	// Special handling for TNT - multi-target (5-9 targets)
-	if item.InternalName == domain.ItemTNT {
-		log.Info("TNT used, selecting 5-9 random targets")
-
-		// Select 5-9 random targets
-		numTargets := 5 + rand.Intn(5) //nolint:gosec // weak random is fine for games
-		targets, err := ec.GetRandomTargets(platform, numTargets)
-		if err != nil {
-			log.Warn("No active targets available for TNT", "error", err)
-			return "", errors.New(ErrMsgNoActiveTargets)
-		}
-
-		// Apply timeout to all targets and collect names
-		hitUsernames := make([]string, 0, len(targets))
-		for _, target := range targets {
-			if err := ec.TimeoutUser(ctx, target.Username, timeout, MsgBlasterReasonBy+username); err != nil {
-				log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", target.Username)
-				// Continue with other targets even if one fails
-			}
-
-			// Remove from active chatters
-			ec.RemoveActiveChatter(platform, target.UserID)
-			hitUsernames = append(hitUsernames, target.Username)
-		}
-
-		log.Info("TNT hit multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
-
-		// Format message with all hit users
-		targetsStr := FormatTargetList(hitUsernames)
-		return fmt.Sprintf("%s used %s! Hit %d targets: %s! Timed out for %v.",
-			username, displayName, len(hitUsernames), targetsStr, timeout), nil
-	}
-
-	// Special handling for grenade - single random target
-	if item.InternalName == domain.ItemGrenade {
-		log.Info("Grenade used, selecting single random target")
-
-		randomUsername, randomUserID, err := ec.GetRandomTarget(platform)
-		if err != nil {
-			log.Warn("No active targets available for grenade", "error", err)
-			return "", errors.New(ErrMsgNoActiveTargets)
-		}
-
-		// Apply timeout
-		if err := ec.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
-			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", randomUsername)
-			// Continue anyway, as the item was used
-		}
-
-		// Remove from active chatters
-		ec.RemoveActiveChatter(platform, randomUserID)
-		log.Info("Grenade hit target", "target", randomUsername)
-
-		return fmt.Sprintf("%s hit: %s!",
-			username, randomUsername), nil
-	}
-
-	// Special handling for this - targets self
-	if item.InternalName == domain.ItemThis {
-		log.Info("This used, targeting self")
-
-		// Apply timeout to self
-		if err := ec.TimeoutUser(ctx, username, timeout, "Played yourself"); err != nil {
-			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", username)
-		}
-
-		return fmt.Sprintf("%s used %s... Congratulations, you played yourself. Timed out for %v.", username, displayName, timeout), nil
+	// Route to special handlers if applicable
+	switch item.InternalName {
+	case domain.ItemTNT:
+		return handleTNT(ctx, ec, username, platform, timeout, displayName)
+	case domain.ItemGrenade:
+		return handleGrenade(ctx, ec, username, platform, timeout)
+	case domain.ItemThis:
+		return handleThis(ctx, ec, username, timeout, displayName)
 	}
 
 	// Standard weapons require a user-provided target
@@ -305,6 +246,75 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 
 	log.Info(LogMsgWeaponUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
 	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
+}
+
+func handleTNT(ctx context.Context, ec EffectContext, username, platform string, timeout time.Duration, displayName string) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("TNT used, selecting 5-9 random targets")
+
+	// Select 5-9 random targets
+	numTargets := 5 + rand.Intn(5) //nolint:gosec // weak random is fine for games
+	targets, err := ec.GetRandomTargets(platform, numTargets)
+	if err != nil {
+		log.Warn("No active targets available for TNT", "error", err)
+		return "", errors.New(ErrMsgNoActiveTargets)
+	}
+
+	// Apply timeout to all targets and collect names
+	hitUsernames := make([]string, 0, len(targets))
+	for _, target := range targets {
+		if err := ec.TimeoutUser(ctx, target.Username, timeout, MsgBlasterReasonBy+username); err != nil {
+			log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", target.Username)
+			// Continue with other targets even if one fails
+		}
+
+		// Remove from active chatters
+		ec.RemoveActiveChatter(platform, target.UserID)
+		hitUsernames = append(hitUsernames, target.Username)
+	}
+
+	log.Info("TNT hit multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
+
+	// Format message with all hit users
+	targetsStr := FormatTargetList(hitUsernames)
+	return fmt.Sprintf("%s used %s! Hit %d targets: %s! Timed out for %v.",
+		username, displayName, len(hitUsernames), targetsStr, timeout), nil
+}
+
+func handleGrenade(ctx context.Context, ec EffectContext, username, platform string, timeout time.Duration) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("Grenade used, selecting single random target")
+
+	randomUsername, randomUserID, err := ec.GetRandomTarget(platform)
+	if err != nil {
+		log.Warn("No active targets available for grenade", "error", err)
+		return "", errors.New(ErrMsgNoActiveTargets)
+	}
+
+	// Apply timeout
+	if err := ec.TimeoutUser(ctx, randomUsername, timeout, MsgBlasterReasonBy+username); err != nil {
+		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", randomUsername)
+		// Continue anyway, as the item was used
+	}
+
+	// Remove from active chatters
+	ec.RemoveActiveChatter(platform, randomUserID)
+	log.Info("Grenade hit target", "target", randomUsername)
+
+	return fmt.Sprintf("%s hit: %s!",
+		username, randomUsername), nil
+}
+
+func handleThis(ctx context.Context, ec EffectContext, username string, timeout time.Duration, displayName string) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("This used, targeting self")
+
+	// Apply timeout to self
+	if err := ec.TimeoutUser(ctx, username, timeout, "Played yourself"); err != nil {
+		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", username)
+	}
+
+	return fmt.Sprintf("%s used %s... Congratulations, you played yourself. Timed out for %v.", username, displayName, timeout), nil
 }
 
 // FormatTargetList formats a list of usernames for display.

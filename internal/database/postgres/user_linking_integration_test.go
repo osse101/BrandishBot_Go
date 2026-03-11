@@ -58,8 +58,7 @@ func TestUserRepository_MergeUsers_Integration(t *testing.T) {
 		}
 
 		// 4. Execute Merge
-		// If explicit deletes or ON DELETE CASCADEs are missing from any of the seeded tables
-		// (like job_xp_events, stats_events, user_jobs), this transaction will fail with an SQL constraint error.
+		// If explicit deletes or ON DELETE CASCADEs are missing from any of the seeded tables this transaction will fail with an SQL constraint error.
 		err = repo.MergeUsersInTransaction(ctx, primaryID.String(), secondaryID.String(), mergedUser, mergedInventory)
 		if err != nil {
 			t.Fatalf("MergeUsersInTransaction failed on fully seeded user: %v", err)
