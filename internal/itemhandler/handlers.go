@@ -275,8 +275,8 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 		ec.RemoveActiveChatter(platform, randomUserID)
 		log.Info("Grenade hit target", "target", randomUsername)
 
-		return fmt.Sprintf("%s used %s! Hit random target: %s! Timed out for %v.",
-			username, displayName, randomUsername, timeout), nil
+		return fmt.Sprintf("%s hit: %s!",
+			username, randomUsername), nil
 	}
 
 	// Special handling for this - targets self
@@ -592,12 +592,20 @@ func formatTrapResponse(user *domain.User, item *domain.Item, potentialTargets [
 	if trapsPlaced == 0 && itemsConsumed == 0 {
 		return "No targets found."
 	}
+
 	targetMsg := "someone"
-	if len(potentialTargets) == 1 {
-		targetMsg = potentialTargets[0]
-	} else if trapsPlaced > 0 {
-		targetMsg = fmt.Sprintf("%d people", trapsPlaced)
+	// Only show the specific target name if it's NOT a mine
+	if item.InternalName != domain.ItemMine {
+		if len(potentialTargets) == 1 {
+			targetMsg = potentialTargets[0]
+		} else if trapsPlaced > 0 {
+			targetMsg = fmt.Sprintf("%d people", trapsPlaced)
+		}
+	} else if trapsPlaced > 1 {
+		// For multiple mines, use a generic plural
+		targetMsg = "multiple people"
 	}
+
 	return fmt.Sprintf("%s set %d %s for %s!", user.Username, trapsPlaced, item.PublicName, targetMsg)
 }
 

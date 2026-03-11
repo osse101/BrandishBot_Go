@@ -138,6 +138,24 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Format message result to extract specific alerts (like trap triggers)
+        /// </summary>
+        public static string FormatMessage(MessageResult result)
+        {
+            if (result?.Matches == null) return null;
+
+            foreach (var match in result.Matches)
+            {
+                if (match.Code == "trap_triggered")
+                {
+                    return match.Value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Default formatter that extracts and returns just the message field from any JSON response
         /// </summary>
         /// <param name="jsonResponse">JSON object containing a message field</param>

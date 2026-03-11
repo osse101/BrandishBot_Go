@@ -1901,8 +1901,18 @@ public class CPHInline
         try
         {
             var result = client.HandleMessage(platform, platformId, username, message).Result;
+            
+            // Format for Twitch Chat (Traps, etc.)
+            string formatted = ResponseFormatter.FormatMessage(result);
+            if (!string.IsNullOrEmpty(formatted))
+            {
+                CPH.SetArgument("response", formatted);
+            }
+            
+            // Keep full JSON available if needed
             string jsonResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
-            CPH.SetArgument("response", jsonResult);
+            CPH.SetArgument("handleMessageResult", jsonResult);
+            
             return true;
         }
         catch (Exception ex)

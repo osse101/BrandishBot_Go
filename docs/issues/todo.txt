@@ -1,8 +1,3 @@
 Gamble start and join is complicated
-Gamble start doesn't take quantity
-Gamble payout shows internal ID
-Use mine shouldn't tell who mine is on
-Activate mine should publish message to channel
-Grenade message can be shortened.
 Filter item not working
 Client: reduce number of !link commands and sort based on arguments
