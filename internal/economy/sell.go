@@ -40,15 +40,15 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgItemNotInInventoryFmt, itemName, domain.ErrNotInInventory)
 	}
 
-	finalQty := quantity
+	actualQuantity := quantity
 	if slotQuantity < quantity {
-		finalQty = slotQuantity
+		actualQuantity = slotQuantity
 	}
 
 	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
-	moneyGained := finalQty * sellPrice
+	totalMoneyGained := actualQuantity * sellPrice
 
-	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, finalQty, moneyGained)
+	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, actualQuantity, totalMoneyGained)
 
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		return 0, 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
@@ -58,13 +58,13 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		return 0, 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
-	s.finalizeSale(ctx, user.ID, item, finalQty, moneyGained)
+	s.finalizeSale(ctx, user.ID, item, actualQuantity, totalMoneyGained)
 
-	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", finalQty, "moneyGained", moneyGained)
-	return moneyGained, finalQty, nil
+	log.Info(LogMsgItemSold, "username", username, "item", itemName, "quantity", actualQuantity, "totalMoneyGained", totalMoneyGained)
+	return totalMoneyGained, actualQuantity, nil
 }
 
-func (s *service) finalizeSale(ctx context.Context, userID string, item *domain.Item, quantity, moneyGained int) {
+func (s *service) finalizeSale(ctx context.Context, userID string, item *domain.Item, quantity, totalMoneyGained int) {
 	if s.publisher != nil {
 		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
@@ -74,7 +74,7 @@ func (s *service) finalizeSale(ctx context.Context, userID string, item *domain.
 				ItemName:     item.InternalName,
 				ItemCategory: getItemCategory(item),
 				Quantity:     quantity,
-				TotalValue:   moneyGained,
+				TotalValue:   totalMoneyGained,
 				Timestamp:    s.now().Unix(),
 			},
 		})
