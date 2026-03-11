@@ -33,18 +33,18 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, err
 	}
 
-	moneySlotIndex, moneyBalance, err := s.getMoneyBalance(ctx, tx, user.ID)
+	moneySlotIndex, availableMoney, err := s.getMoneyBalance(ctx, tx, user.ID)
 	if err != nil {
 		return 0, err
 	}
 
-	finalQty, cost := s.calculatePurchaseDetails(ctx, item, quantity, moneyBalance)
-	if finalQty == 0 {
-		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, item.InternalName, item.BaseValue, moneyBalance, domain.ErrInsufficientFunds)
+	actualQuantity, totalCost := s.calculatePurchaseDetails(ctx, item, quantity, availableMoney)
+	if actualQuantity == 0 {
+		return 0, fmt.Errorf(ErrMsgInsufficientFundsToBuyOneFmt, item.InternalName, item.BaseValue, availableMoney, domain.ErrInsufficientFunds)
 	}
 
 	inventory, _ := tx.GetInventory(ctx, user.ID)
-	processBuyTransaction(inventory, item.ID, moneySlotIndex, finalQty, cost)
+	processBuyTransaction(inventory, item.ID, moneySlotIndex, actualQuantity, totalCost)
 
 	if err := tx.UpdateInventory(ctx, user.ID, *inventory); err != nil {
 		return 0, fmt.Errorf(ErrMsgUpdateInventoryFailed, err)
@@ -54,13 +54,13 @@ func (s *service) BuyItem(ctx context.Context, platform, platformID, username, i
 		return 0, fmt.Errorf(ErrMsgCommitTransactionFailed, err)
 	}
 
-	s.finalizePurchase(ctx, user.ID, item, finalQty, cost)
+	s.finalizePurchase(ctx, user.ID, item, actualQuantity, totalCost)
 
-	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", finalQty)
-	return finalQty, nil
+	log.Info(LogMsgItemPurchased, "username", username, "item", itemName, "quantity", actualQuantity)
+	return actualQuantity, nil
 }
 
-func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, moneyBalance int) (int, int) {
+func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Item, requestedQuantity, availableMoney int) (int, int) {
 	log := logger.FromContext(ctx)
 	itemCategory := getItemCategory(item)
 	discountedPrice := s.applyWeeklySaleDiscount(ctx, item.BaseValue, itemCategory)
@@ -69,16 +69,16 @@ func (s *service) calculatePurchaseDetails(ctx context.Context, item *domain.Ite
 		log.Info("Weekly sale discount applied", "item", item.InternalName, "category", itemCategory, "original_price", item.BaseValue, "discounted_price", discountedPrice)
 	}
 
-	finalQty, cost := calculateAffordableQuantity(requestedQuantity, discountedPrice, moneyBalance)
+	actualQuantity, totalCost := calculateAffordableQuantity(requestedQuantity, discountedPrice, availableMoney)
 
-	if requestedQuantity > finalQty && finalQty > 0 {
-		log.Info(LogMsgAdjustedPurchaseQty, "requested", requestedQuantity, "actual", finalQty)
+	if requestedQuantity > actualQuantity && actualQuantity > 0 {
+		log.Info(LogMsgAdjustedPurchaseQty, "requested", requestedQuantity, "actual", actualQuantity)
 	}
 
-	return finalQty, cost
+	return actualQuantity, totalCost
 }
 
-func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, cost int) {
+func (s *service) finalizePurchase(ctx context.Context, userID string, item *domain.Item, quantity, totalCost int) {
 	if s.publisher != nil {
 		s.publisher.PublishWithRetry(ctx, event.Event{
 			Version: "1.0",
@@ -88,7 +88,7 @@ func (s *service) finalizePurchase(ctx context.Context, userID string, item *dom
 				ItemName:     item.InternalName,
 				ItemCategory: getItemCategory(item),
 				Quantity:     quantity,
-				TotalValue:   cost,
+				TotalValue:   totalCost,
 				Timestamp:    s.now().Unix(),
 			},
 		})
