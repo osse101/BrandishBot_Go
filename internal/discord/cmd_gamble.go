@@ -39,8 +39,23 @@ func GambleStartCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		user := getInteractionUser(i)
 		options := getOptions(i)
-		itemName := options[0].StringValue()
-		quantity := int(options[1].IntValue())
+
+		var itemName string
+		quantity := 1
+
+		for _, opt := range options {
+			switch opt.Name {
+			case "item":
+				itemName = opt.StringValue()
+			case "quantity":
+				quantity = int(opt.IntValue())
+			}
+		}
+
+		if itemName == "" {
+			respondError(s, i, "Item is required.")
+			return
+		}
 
 		// Ensure user exists
 		_, err := client.RegisterUser(user.Username, user.ID)

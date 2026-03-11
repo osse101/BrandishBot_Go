@@ -49,6 +49,16 @@ func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domai
 		return
 	}
 
-	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount, participants)
+	winnerUsername := ""
+	if result.WinnerID != "" {
+		for _, p := range participants {
+			if p.UserID == result.WinnerID {
+				winnerUsername = p.Username
+				break
+			}
+		}
+	}
+
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, winnerUsername, result.TotalValue, participantCount, participants)
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }

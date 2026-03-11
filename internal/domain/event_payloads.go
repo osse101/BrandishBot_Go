@@ -3,6 +3,7 @@ package domain
 // GambleParticipantOutcome holds per-participant outcome data for gamble events
 type GambleParticipantOutcome struct {
 	UserID         string `json:"user_id"`
+	Username       string `json:"username,omitempty"`
 	Score          int64  `json:"score"`
 	LootboxCount   int    `json:"lootbox_count"`
 	IsWinner       bool   `json:"is_winner"`
@@ -15,6 +16,7 @@ type GambleParticipantOutcome struct {
 type GambleCompletedPayloadV2 struct {
 	GambleID         string                     `json:"gamble_id"`
 	WinnerID         string                     `json:"winner_id"`
+	WinnerUsername   string                     `json:"winner_username,omitempty"`
 	TotalValue       int64                      `json:"total_value"`
 	ParticipantCount int                        `json:"participant_count"`
 	Participants     []GambleParticipantOutcome `json:"participants"`

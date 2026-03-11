@@ -98,6 +98,7 @@ type AllUnlockedPayload struct {
 type GambleCompletedPayload struct {
 	GambleID         string `json:"gamble_id"`
 	WinnerID         string `json:"winner_id"`
+	WinnerUsername   string `json:"winner_username,omitempty"`
 	TotalValue       int64  `json:"total_value"`
 	ParticipantCount int    `json:"participant_count"`
 	IsTest           bool   `json:"is_test,omitempty"`
@@ -364,8 +365,12 @@ func (n *SSENotifier) handleGambleCompleted(event SSEEvent) error {
 	color := 0x9B59B6 // Purple
 
 	if payload.WinnerID != "" {
+		winnerDisplay := payload.WinnerUsername
+		if winnerDisplay == "" {
+			winnerDisplay = payload.WinnerID
+		}
 		description = fmt.Sprintf("The gamble has concluded! **%s** won a total value of **%d** credits from **%d** participants!",
-			payload.WinnerID, payload.TotalValue, payload.ParticipantCount)
+			winnerDisplay, payload.TotalValue, payload.ParticipantCount)
 	} else {
 		title = "Gamble Ended (No Winner)"
 		description = fmt.Sprintf("The gamble has concluded with no winner. Total value was **%d** credits from **%d** participants.",

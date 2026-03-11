@@ -967,7 +967,7 @@ public class CPHInline
         try
         {
             var result = client.GetActiveGamble().Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatGamble(result));
             return true;
         }
         catch (Exception ex)
