@@ -78,6 +78,8 @@ func (c *TestCommand) Run(args []string) error {
 	}
 
 	scanner := bufio.NewScanner(stdoutPipe)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024) // 1MB maximum buffer to handle very large JSON payloads
 
 	var failLogFile *os.File
 
