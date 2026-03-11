@@ -1,38 +1,50 @@
 package progression
 
 import (
+	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUnlockCache_GetSet(t *testing.T) {
-	cache := NewUnlockCache()
+	t.Parallel()
 
-	// Test cache miss
-	_, found := cache.Get("feature_search", 1)
-	if found {
-		t.Error("Expected cache miss for new key")
-	}
+	t.Run("cache miss for new key", func(t *testing.T) {
+		t.Parallel()
+		cache := NewUnlockCache()
+		_, found := cache.Get("feature_search", 1)
+		assert.False(t, found, "Expected cache miss for new key")
+	})
 
-	// Test cache set and hit
-	cache.Set("feature_search", 1, true)
-	unlocked, found := cache.Get("feature_search", 1)
-	if !found {
-		t.Error("Expected cache hit after set")
-	}
-	if !unlocked {
-		t.Error("Expected unlocked=true")
-	}
+	t.Run("cache set and hit", func(t *testing.T) {
+		t.Parallel()
+		cache := NewUnlockCache()
+		cache.Set("feature_search", 1, true)
+		unlocked, found := cache.Get("feature_search", 1)
+		assert.True(t, found, "Expected cache hit after set")
+		assert.True(t, unlocked, "Expected unlocked=true")
+	})
 
-	// Test different levels are separate
-	cache.Set("feature_search", 2, false)
-	unlocked1, _ := cache.Get("feature_search", 1)
-	unlocked2, _ := cache.Get("feature_search", 2)
-	if unlocked1 != true || unlocked2 != false {
-		t.Error("Different levels should have separate cache entries")
-	}
+	t.Run("different levels are separate", func(t *testing.T) {
+		t.Parallel()
+		cache := NewUnlockCache()
+		cache.Set("feature_search", 1, true)
+		cache.Set("feature_search", 2, false)
+
+		unlocked1, found1 := cache.Get("feature_search", 1)
+		assert.True(t, found1)
+		assert.True(t, unlocked1)
+
+		unlocked2, found2 := cache.Get("feature_search", 2)
+		assert.True(t, found2)
+		assert.False(t, unlocked2)
+	})
 }
 
 func TestUnlockCache_InvalidateAll(t *testing.T) {
+	t.Parallel()
+
 	cache := NewUnlockCache()
 
 	// Populate cache
@@ -40,25 +52,21 @@ func TestUnlockCache_InvalidateAll(t *testing.T) {
 	cache.Set("feature_gamble", 1, true)
 	cache.Set("item_money", 1, false)
 
-	if cache.Size() != 3 {
-		t.Errorf("Expected size 3, got %d", cache.Size())
-	}
+	assert.Equal(t, 3, cache.Size(), "Expected size 3 before invalidation")
 
 	// Invalidate all
 	cache.InvalidateAll()
 
-	if cache.Size() != 0 {
-		t.Errorf("Expected size 0 after invalidation, got %d", cache.Size())
-	}
+	assert.Equal(t, 0, cache.Size(), "Expected size 0 after invalidation")
 
 	// Verify cache misses
 	_, found := cache.Get("feature_search", 1)
-	if found {
-		t.Error("Expected cache miss after invalidation")
-	}
+	assert.False(t, found, "Expected cache miss after invalidation")
 }
 
 func TestUnlockCache_KeyFormat(t *testing.T) {
+	t.Parallel()
+
 	cache := NewUnlockCache()
 
 	// Test that key format properly separates node and level
@@ -68,33 +76,56 @@ func TestUnlockCache_KeyFormat(t *testing.T) {
 	val1, found1 := cache.Get("feature", 1)
 	val2, found2 := cache.Get("feature", 2)
 
-	if !found1 || !found2 {
-		t.Error("Both entries should be found")
-	}
-
-	if val1 != true || val2 != false {
-		t.Error("Values should be stored independently")
-	}
+	assert.True(t, found1, "Entry 1 should be found")
+	assert.True(t, found2, "Entry 2 should be found")
+	assert.True(t, val1, "Value 1 should be true")
+	assert.False(t, val2, "Value 2 should be false")
 }
 
 func TestUnlockCache_ConcurrentAccess(t *testing.T) {
-	cache := NewUnlockCache()
+	t.Parallel()
 
-	// Test concurrent writes don't panic
-	done := make(chan bool, 10)
-	for i := 0; i < 10; i++ {
+	cache := NewUnlockCache()
+	var wg sync.WaitGroup
+
+	// Test concurrent writes, reads, size checks, and invalidations don't panic
+	numGoroutines := 50
+
+	wg.Add(numGoroutines * 4) // 4 operations per index
+
+	for i := 0; i < numGoroutines; i++ {
+		// Concurrent Set
 		go func(n int) {
-			cache.Set("concurrent", n, true)
-			done <- true
+			defer wg.Done()
+			cache.Set("concurrent", n, n%2 == 0)
+		}(i)
+
+		// Concurrent Get
+		go func(n int) {
+			defer wg.Done()
+			cache.Get("concurrent", n)
+		}(i)
+
+		// Concurrent Size Check
+		go func() {
+			defer wg.Done()
+			cache.Size()
+		}()
+
+		// Periodic InvalidateAll (less frequent so some entries remain)
+		go func(n int) {
+			defer wg.Done()
+			if n%10 == 0 {
+				cache.InvalidateAll()
+			}
 		}(i)
 	}
 
-	for i := 0; i < 10; i++ {
-		<-done
-	}
+	wg.Wait()
 
-	// Should have entries without panicking
-	if cache.Size() == 0 {
-		t.Error("Expected some cache entries after concurrent writes")
-	}
+	// Test completes without panicking - assert that we can still interact with cache
+	cache.Set("final_test", 1, true)
+	val, found := cache.Get("final_test", 1)
+	assert.True(t, found)
+	assert.True(t, val)
 }
