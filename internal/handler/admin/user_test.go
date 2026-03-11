@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,8 +15,8 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/user"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	repomocks "github.com/osse101/BrandishBot_Go/internal/user/mocks"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
 func TestHandleUserLookup(t *testing.T) {
@@ -382,9 +382,9 @@ func TestHandleGetActiveChatters(t *testing.T) {
 
 	expectedChatters := []user.ActiveChatter{
 		{
-			UserID: "user-1",
-			Platform: "twitch",
-						Username: "user1",
+			UserID:        "user-1",
+			Platform:      "twitch",
+			Username:      "user1",
 			LastMessageAt: time.Now(),
 		},
 	}
