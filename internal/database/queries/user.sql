@@ -20,6 +20,11 @@ INSERT INTO users (username, created_at, updated_at)
 VALUES ($1, NOW(), NOW())
 RETURNING user_id;
 
+-- name: CreateUserWithID :one
+INSERT INTO users (user_id, username, created_at, updated_at)
+VALUES ($1, $2, NOW(), NOW())
+RETURNING user_id;
+
 -- name: UpdateUser :exec
 UPDATE users 
 SET username = $1, updated_at = NOW()

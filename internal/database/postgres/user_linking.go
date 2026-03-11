@@ -199,13 +199,37 @@ func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 	return tx.Commit(ctx)
 }
 
-// DeleteUser deletes a user by ID
+// DeleteUser deletes a user by ID, including related data in a transaction
 func (r *UserRepository) DeleteUser(ctx context.Context, userID string) error {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("invalid user id: %w", err)
 	}
-	return r.q.DeleteUser(ctx, userUUID)
+
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer SafeRollback(ctx, tx)
+
+	q := r.q.WithTx(tx)
+
+	// 1. Delete inventory (explicitly, even if cascade exists, for consistency with Merge)
+	if err := q.DeleteInventory(ctx, userUUID); err != nil {
+		return fmt.Errorf("failed to delete inventory: %w", err)
+	}
+
+	// 2. Delete job xp events (REQUIRED: lacks ON DELETE CASCADE)
+	if err := q.DeleteJobXPEventsByUserID(ctx, userUUID); err != nil {
+		return fmt.Errorf("failed to delete job xp events: %w", err)
+	}
+
+	// 3. Delete user (CASCADE covers other tables)
+	if err := q.DeleteUser(ctx, userUUID); err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 // DeleteInventory deletes a user's inventory

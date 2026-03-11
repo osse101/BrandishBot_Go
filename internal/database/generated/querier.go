@@ -52,6 +52,7 @@ type Querier interface {
 	CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTrap, error)
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
+	CreateUserWithID(ctx context.Context, arg CreateUserWithIDParams) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
 	DeclineDuel(ctx context.Context, id uuid.UUID) error
 	DeleteAllQuests(ctx context.Context) error
