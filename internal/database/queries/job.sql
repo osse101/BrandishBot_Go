@@ -33,6 +33,8 @@ DO UPDATE SET
 INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7);
 
+-- name: DeleteJobXPEventsByUserID :exec
+DELETE FROM job_xp_events WHERE user_id = $1;
 
 -- name: ResetDailyJobXP :execresult
 UPDATE user_jobs

@@ -13,6 +13,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteJobXPEventsByUserID = `-- name: DeleteJobXPEventsByUserID :exec
+DELETE FROM job_xp_events WHERE user_id = $1
+`
+
+func (q *Queries) DeleteJobXPEventsByUserID(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteJobXPEventsByUserID, userID)
+	return err
+}
+
 const getAllJobs = `-- name: GetAllJobs :many
 SELECT id, job_key, display_name, description, associated_features, created_at
 FROM jobs

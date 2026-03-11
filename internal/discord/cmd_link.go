@@ -56,7 +56,8 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Step 3: Confirm link
 			result, err := client.ConfirmLink(user.ID)
 			if err != nil {
-				respondError(s, i, fmt.Sprintf("Failed to confirm link: %v", err))
+				slog.Error("Failed to confirm link", "discord_id", user.ID, "error", err)
+				respondError(s, i, "Failed to confirm link. Please check your setup and try again.")
 				return
 			}
 
@@ -65,7 +66,8 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Step 2: Claim token from another platform
 			result, err := client.ClaimLink(token, user.ID)
 			if err != nil {
-				respondError(s, i, fmt.Sprintf("Failed to claim token: %v", err))
+				slog.Error("Failed to claim token", "discord_id", user.ID, "error", err)
+				respondError(s, i, "Failed to claim token. The token may be invalid or expired.")
 				return
 			}
 
@@ -74,7 +76,8 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Step 1: Generate new token
 			result, err := client.InitiateLink(user.ID)
 			if err != nil {
-				respondError(s, i, fmt.Sprintf("Failed to generate link token: %v", err))
+				slog.Error("Failed to generate link token", "discord_id", user.ID, "error", err)
+				respondError(s, i, "Failed to generate link token. Please try again later.")
 				return
 			}
 
@@ -142,7 +145,8 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Confirm unlink
 			err := client.ConfirmUnlink(user.ID, platform)
 			if err != nil {
-				respondError(s, i, fmt.Sprintf("Failed to unlink: %v", err))
+				slog.Error("Failed to unlink platform", "discord_id", user.ID, "platform", platform, "error", err)
+				respondError(s, i, "Failed to unlink account. Please try again later.")
 				return
 			}
 
@@ -151,7 +155,8 @@ func UnlinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Initiate unlink
 			err := client.InitiateUnlink(user.ID, platform)
 			if err != nil {
-				respondError(s, i, fmt.Sprintf("Failed to initiate unlink: %v", err))
+				slog.Error("Failed to initiate unlink", "discord_id", user.ID, "platform", platform, "error", err)
+				respondError(s, i, "Failed to initiate unlink. Please try again later.")
 				return
 			}
 

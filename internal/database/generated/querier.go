@@ -56,6 +56,7 @@ type Querier interface {
 	DeclineDuel(ctx context.Context, id uuid.UUID) error
 	DeleteAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
+	DeleteJobXPEventsByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error

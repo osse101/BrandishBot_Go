@@ -137,7 +137,12 @@ func (r *UserRepository) MergeUsersInTransaction(ctx context.Context, primaryUse
 		return fmt.Errorf("failed to delete secondary inventory: %w", err)
 	}
 
-	// 2. Delete secondary user (CASCADE removes platform links)
+	// 2. Delete secondary user's job xp events
+	if err := q.DeleteJobXPEventsByUserID(ctx, secUUID); err != nil {
+		return fmt.Errorf("failed to delete secondary job xp events: %w", err)
+	}
+
+	// 3. Delete secondary user (CASCADE removes platform links)
 	if err := q.DeleteUser(ctx, secUUID); err != nil {
 		return fmt.Errorf("failed to delete secondary user: %w", err)
 	}
