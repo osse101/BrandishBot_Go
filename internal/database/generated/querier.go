@@ -57,7 +57,6 @@ type Querier interface {
 	DeclineDuel(ctx context.Context, id uuid.UUID) error
 	DeleteAllQuests(ctx context.Context) error
 	DeleteInventory(ctx context.Context, userID uuid.UUID) error
-	DeleteJobXPEventsByUserID(ctx context.Context, userID uuid.UUID) error
 	DeleteSubscription(ctx context.Context, arg DeleteSubscriptionParams) error
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	DeleteUserPlatformLink(ctx context.Context, arg DeleteUserPlatformLinkParams) error
@@ -221,7 +220,6 @@ type Querier interface {
 	MarkSubscriptionExpired(ctx context.Context, arg MarkSubscriptionExpiredParams) error
 	RecordEngagement(ctx context.Context, arg RecordEngagementParams) error
 	RecordEvent(ctx context.Context, arg RecordEventParams) (RecordEventRow, error)
-	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error
 	RecordReset(ctx context.Context, arg RecordResetParams) error
 	RecordSubscriptionHistory(ctx context.Context, arg RecordSubscriptionHistoryParams) error
 	RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error

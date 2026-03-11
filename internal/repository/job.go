@@ -17,7 +17,6 @@ type Job interface {
 	GetUserJob(ctx context.Context, userID string, jobID int) (*domain.UserJob, error)
 	GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJob, error)
 	UpsertUserJob(ctx context.Context, userJob *domain.UserJob) error
-	RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error
 	ResetDailyJobXP(ctx context.Context) (int64, error)
 	GetLastDailyResetTime(ctx context.Context) (time.Time, int64, error)
 	UpdateDailyResetTime(ctx context.Context, resetTime time.Time, recordsAffected int64) error

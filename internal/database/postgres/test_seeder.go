@@ -71,19 +71,6 @@ func SeedFullyLoadedUser(ctx context.Context, q *generated.Queries, userID uuid.
 		if err != nil {
 			return fmt.Errorf("failed to upsert user job: %w", err)
 		}
-
-		// 5. job_xp_events
-		err = q.RecordJobXPEvent(ctx, generated.RecordJobXPEventParams{
-			ID:         uuid.New(),
-			UserID:     userID,
-			JobID:      jobs[0].ID,
-			XpAmount:   10,
-			SourceType: "test_seed",
-			RecordedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-		})
-		if err != nil {
-			return fmt.Errorf("failed to record job xp event: %w", err)
-		}
 	}
 
 	// 6. stats_events

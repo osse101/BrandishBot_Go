@@ -63,7 +63,6 @@ func TestResilientEvents_Integration(t *testing.T) {
 		repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 			return uj.CurrentLevel == 1 // Leveled up
 		})).Return(nil)
-		repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 		statsSvc.On("RecordUserEvent", ctx, userID, domain.EventTypeJobLevelUp, mock.Anything).Return(nil)
 
 		// Setup bus expectations: Fail once, then succeed
@@ -115,7 +114,6 @@ func TestResilientEvents_Integration(t *testing.T) {
 		repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 			return uj.CurrentLevel == 1
 		})).Return(nil)
-		repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 		statsSvc.On("RecordUserEvent", ctx, userID, domain.EventTypeJobLevelUp, mock.Anything).Return(nil)
 
 		// Setup bus expectations: Fail always (initial + 3 retries = 4 calls)

@@ -13,15 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const deleteJobXPEventsByUserID = `-- name: DeleteJobXPEventsByUserID :exec
-DELETE FROM job_xp_events WHERE user_id = $1
-`
-
-func (q *Queries) DeleteJobXPEventsByUserID(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteJobXPEventsByUserID, userID)
-	return err
-}
-
 const getAllJobs = `-- name: GetAllJobs :many
 SELECT id, job_key, display_name, description, associated_features, created_at
 FROM jobs
@@ -190,34 +181,6 @@ func (q *Queries) GetUserJobsByPlatform(ctx context.Context, arg GetUserJobsByPl
 		return nil, err
 	}
 	return items, nil
-}
-
-const recordJobXPEvent = `-- name: RecordJobXPEvent :exec
-INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-`
-
-type RecordJobXPEventParams struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         uuid.UUID          `json:"user_id"`
-	JobID          int32              `json:"job_id"`
-	XpAmount       int32              `json:"xp_amount"`
-	SourceType     string             `json:"source_type"`
-	SourceMetadata []byte             `json:"source_metadata"`
-	RecordedAt     pgtype.Timestamptz `json:"recorded_at"`
-}
-
-func (q *Queries) RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error {
-	_, err := q.db.Exec(ctx, recordJobXPEvent,
-		arg.ID,
-		arg.UserID,
-		arg.JobID,
-		arg.XpAmount,
-		arg.SourceType,
-		arg.SourceMetadata,
-		arg.RecordedAt,
-	)
-	return err
 }
 
 const resetDailyJobXP = `-- name: ResetDailyJobXP :execresult
