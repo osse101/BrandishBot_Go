@@ -359,6 +359,7 @@ func (s *service) RemoveItemByUsername(ctx context.Context, platform, username, 
 	return s.removeItemFromUserInternal(ctx, user, itemName, quantity)
 }
 
+// GiveItem transfers items from one user to another atomically
 func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName string, quantity int) error {
 	log := logger.FromContext(ctx)
 	log.Info("GiveItem called",
@@ -366,29 +367,34 @@ func (s *service) GiveItem(ctx context.Context, ownerPlatform, ownerPlatformID, 
 		"receiverPlatform", receiverPlatform, "receiverUsername", receiverUsername,
 		"item", itemName, "quantity", quantity)
 
+	// 1. Get or register owner
 	owner, err := s.getUserOrRegister(ctx, ownerPlatform, ownerPlatformID, ownerUsername)
 	if err != nil {
 		log.Error("Failed to get owner", "error", err)
 		return domain.ErrUserNotFound
 	}
 
+	// 2. Validate receiver exists
 	receiver, err := s.GetUserByPlatformUsername(ctx, receiverPlatform, receiverUsername)
 	if err != nil {
 		log.Error("Failed to get receiver", "error", err)
 		return domain.ErrUserNotFound
 	}
 
+	// 3. Validate transfer quantity
 	if quantity <= 0 || quantity > domain.MaxTransactionQuantity {
 		log.Error("Quantity validation failed", "error", domain.ErrInvalidInput)
 		return domain.ErrInvalidInput
 	}
 
+	// 4. Validate item exists
 	item, err := s.validateItem(ctx, itemName)
 	if err != nil {
 		log.Error("Failed to get item", "error", err)
 		return domain.ErrItemNotFound
 	}
 
+	// 5. Execute transfer within transaction
 	return s.executeGiveItemTx(ctx, owner, receiver, item, quantity)
 }
 
@@ -398,18 +404,21 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 	var eventToPublish func()
 
 	err := s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		// 1. Retrieve owner's inventory
 		ownerInventory, err := tx.GetInventory(txCtx, owner.ID)
 		if err != nil {
 			log.Error("Failed to get owner inventory", "error", err)
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Find item in owner's inventory using random selection (in case multiple slots with different quality levels exist)
+		// 2. Find item in owner's inventory using random selection (in case multiple slots with different quality levels exist)
 		ownerSlotIndex, ownerSlotQty := utils.FindRandomSlot(ownerInventory, item.ID, s.rnd)
 		if ownerSlotIndex == -1 {
 			log.Warn("Item not found in owner's inventory", "item", item.InternalName)
 			return domain.ErrNotInInventory
 		}
+
+		// 3. Verify owner has sufficient quantity
 		if ownerSlotQty < quantity {
 			log.Warn("Insufficient quantity in owner's inventory", "item", item.InternalName, "quantity", quantity)
 			return domain.ErrInsufficientQuantity
@@ -418,20 +427,21 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		// Capture the quality level being transferred
 		transferredQuality := ownerInventory.Slots[ownerSlotIndex].QualityLevel
 
+		// 4. Retrieve receiver's inventory
 		receiverInventory, err := tx.GetInventory(txCtx, receiver.ID)
 		if err != nil {
 			log.Error("Failed to get receiver inventory", "error", err)
 			return domain.ErrFailedToGetInventory
 		}
 
-		// Remove from owner
+		// 5. Remove items from owner's inventory
 		if ownerSlotQty == quantity {
 			ownerInventory.Slots = append(ownerInventory.Slots[:ownerSlotIndex], ownerInventory.Slots[ownerSlotIndex+1:]...)
 		} else {
 			ownerInventory.Slots[ownerSlotIndex].Quantity -= quantity
 		}
 
-		// Add to receiver - must match BOTH ItemID and QualityLevel to preserve exact item quality
+		// 6. Add items to receiver's inventory - must match BOTH ItemID and QualityLevel to preserve exact item quality
 		receiverSlotIndex, _ := utils.FindSlotWithQuality(receiverInventory, item.ID, transferredQuality)
 		if receiverSlotIndex != -1 {
 			receiverInventory.Slots[receiverSlotIndex].Quantity += quantity
@@ -443,6 +453,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			})
 		}
 
+		// 7. Persist updated inventories to the database
 		if err := tx.UpdateInventory(txCtx, owner.ID, *ownerInventory); err != nil {
 			log.Error("Failed to update owner inventory", "error", err)
 			return domain.ErrFailedToUpdateInventory
@@ -452,6 +463,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 			return domain.ErrFailedToUpdateInventory
 		}
 
+		// 8. Prepare domain event for successful transfer
 		eventToPublish = func() {
 			if s.publisher != nil {
 				s.publisher.PublishWithRetry(ctx, event.NewItemTransferredEvent(
@@ -467,6 +479,7 @@ func (s *service) executeGiveItemTx(ctx context.Context, owner, receiver *domain
 		return nil
 	})
 
+	// 9. Publish event if transaction succeeded
 	if err == nil && eventToPublish != nil {
 		eventToPublish()
 	}
