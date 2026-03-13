@@ -1384,23 +1384,12 @@ func (c *APIClient) SpinSlots(platform, platformID, username string, betAmount i
 	return &result, nil
 }
 
-// JobProgress represents a user's progress in a job
-type JobProgress struct {
-	JobKey       string    `json:"job_key"`
-	Level        int       `json:"level"`
-	XP           int       `json:"xp"`
-	XPForNext    int       `json:"xp_for_next"`
-	TotalXP      int       `json:"total_xp,omitempty"`
-	DateUnlocked time.Time `json:"date_unlocked"`
-	LastUpdated  time.Time `json:"last_updated"`
-}
-
 // UserJobsResponse represents the response from GetUserJobs
 type UserJobsResponse struct {
-	Platform   string        `json:"platform"`
-	PlatformID string        `json:"platform_id"`
-	PrimaryJob string        `json:"primary_job"`
-	Jobs       []JobProgress `json:"jobs"`
+	Platform   string               `json:"platform"`
+	PlatformID string               `json:"platform_id"`
+	PrimaryJob *domain.UserJobInfo  `json:"primary_job"`
+	Jobs       []domain.UserJobInfo `json:"jobs"`
 }
 
 // AdminUserLookupResult represents the result of a user lookup
