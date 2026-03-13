@@ -442,7 +442,7 @@ func TestSellItem_DatabaseErrors(t *testing.T) {
 				m.On("BeginTx", ctx).Return(mockTx, nil)
 				mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
 				mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).
-					Return(errors.New(domain.ErrMsgDeadlockDetected))
+					Return(domain.ErrDeadlockDetected)
 				mockTx.On("Rollback", ctx).Return(nil).Maybe()
 			},
 			expectErr:     true,
@@ -516,7 +516,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	ctx := context.Background()
 
 	mockRepo.On("GetSellablePrices", ctx).
-		Return(nil, errors.New(domain.ErrMsgConnectionTimeout))
+		Return(nil, domain.ErrConnectionTimeout)
 
 	// ACT
 	items, err := service.GetSellablePrices(ctx)
@@ -524,7 +524,7 @@ func TestGetSellablePrices_DatabaseError(t *testing.T) {
 	// ASSERT
 	require.Error(t, err)
 	assert.Nil(t, items)
-	assert.Contains(t, err.Error(), domain.ErrMsgConnectionTimeout)
+	assert.ErrorIs(t, err, domain.ErrConnectionTimeout)
 }
 
 // =============================================================================
@@ -865,7 +865,7 @@ func TestBuyItem_DatabaseErrors(t *testing.T) {
 				m.On("BeginTx", ctx).Return(mockTx, nil)
 				mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
 				mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).
-					Return(errors.New(domain.ErrMsgDeadlockDetected))
+					Return(domain.ErrDeadlockDetected)
 				mockTx.On("Rollback", ctx).Return(nil).Maybe()
 			},
 			expectErr:     true,
