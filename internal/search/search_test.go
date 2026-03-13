@@ -454,6 +454,7 @@ func createTestUser() *domain.User {
 
 // CASE 1: BEST CASE - Happy path
 func TestHandleSearch_Success(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -489,6 +490,7 @@ func TestHandleSearch_Success(t *testing.T) {
 
 // CASE 2: BOUNDARY CASE - Cooldown timing boundaries
 func TestHandleSearch_CooldownBoundaries(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		minutesAgo     int
@@ -510,7 +512,9 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			svc, repo := createSearchTestService()
 			user := createTestUser()
@@ -543,6 +547,7 @@ func TestHandleSearch_CooldownBoundaries(t *testing.T) {
 
 // CASE 3: EDGE CASE - New user creation
 func TestHandleSearch_NewUserCreation(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 
@@ -584,6 +589,7 @@ func TestHandleSearch_NewUserCreation(t *testing.T) {
 
 // CASE 4: INVALID CASE - Input validation
 func TestHandleSearch_InvalidInputs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		username string
@@ -629,7 +635,9 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// ARRANGE
 			svc, repo := createSearchTestService()
 			tt.setup(repo)
@@ -658,7 +666,9 @@ func TestHandleSearch_InvalidInputs(t *testing.T) {
 
 // CASE 5: HOSTILE CASE - Database failures
 func TestHandleSearch_DatabaseErrors(t *testing.T) {
+	t.Parallel()
 	t.Run("user lookup failure", func(t *testing.T) {
+		t.Parallel()
 		// ARRANGE
 		svc, repo := createSearchTestService()
 		repo.shouldFailGet = true
@@ -674,6 +684,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 
 // CASE 6: NAMING RESOLUTION (UPDATED: Now uses Public Name directly)
 func TestHandleSearch_PublicNameUsage(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -702,7 +713,9 @@ func TestHandleSearch_PublicNameUsage(t *testing.T) {
 // =============================================================================
 
 func TestHandleSearch_CooldownUpdate(t *testing.T) {
+	t.Parallel()
 	t.Run("cooldown updates after successful search", func(t *testing.T) {
+		t.Parallel()
 		// ARRANGE
 		svc, repo := createSearchTestService()
 		user := createTestUser()
@@ -729,6 +742,7 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 	})
 
 	t.Run("cooldown not updated when on cooldown", func(t *testing.T) {
+		t.Parallel()
 		// ARRANGE
 		svc, repo := createSearchTestService()
 		user := createTestUser()
@@ -757,7 +771,9 @@ func TestHandleSearch_CooldownUpdate(t *testing.T) {
 }
 
 func TestHandleSearch_MultipleSearches(t *testing.T) {
+	t.Parallel()
 	t.Run("user can search multiple times after cooldown expires", func(t *testing.T) {
+		t.Parallel()
 		// ARRANGE
 		svc, repo := createSearchTestService()
 		user := createTestUser()
@@ -832,6 +848,7 @@ func (m *mockStatsService) GetSlotsLeaderboardByMegaJackpots(ctx context.Context
 }
 
 func TestHandleSearch_CriticalSuccess(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -861,6 +878,7 @@ func TestHandleSearch_CriticalSuccess(t *testing.T) {
 }
 
 func TestHandleSearch_NormalSuccess(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -889,6 +907,7 @@ func TestHandleSearch_NormalSuccess(t *testing.T) {
 }
 
 func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -918,6 +937,7 @@ func TestHandleSearch_CriticalSuccess_Event(t *testing.T) {
 }
 
 func TestHandleSearch_NearMiss(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -937,6 +957,7 @@ func TestHandleSearch_NearMiss(t *testing.T) {
 }
 
 func TestHandleSearch_DiminishingReturns(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -969,6 +990,7 @@ func TestHandleSearch_DiminishingReturns(t *testing.T) {
 }
 
 func TestHandleSearch_CriticalFail(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -988,6 +1010,7 @@ func TestHandleSearch_CriticalFail(t *testing.T) {
 }
 
 func TestHandleSearch_NormalFailure(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -1018,6 +1041,7 @@ func TestHandleSearch_NormalFailure(t *testing.T) {
 }
 
 func TestHandleSearch_BoundaryConditions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		roll       float64
@@ -1036,7 +1060,9 @@ func TestHandleSearch_BoundaryConditions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			svc, repo := createSearchTestService()
 			user := createTestUser()
 			repo.users[TestUsername] = user
@@ -1067,6 +1093,7 @@ func TestHandleSearch_BoundaryConditions(t *testing.T) {
 
 // Test Job Bonus
 func TestHandleSearch_JobBonus(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService(func(opts *searchTestServiceOpts) {
 		mockJob := opts.jobService.(*mockJobService)
@@ -1087,6 +1114,7 @@ func TestHandleSearch_JobBonus(t *testing.T) {
 
 // Test XP Event
 func TestHandleSearch_XPEvent(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	mockBus := &MockBus{}
 	dlPath := filepath.Join(t.TempDir(), "dead_letter.json")
@@ -1137,6 +1165,7 @@ func TestHandleSearch_XPEvent(t *testing.T) {
 
 // Test Streak Bonus
 func TestHandleSearch_StreakBonus(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
@@ -1159,6 +1188,7 @@ func TestHandleSearch_StreakBonus(t *testing.T) {
 
 // Test Exhausted Message Logic
 func TestHandleSearch_ExhaustedMessage_Logic(t *testing.T) {
+	t.Parallel()
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	user := createTestUser()
