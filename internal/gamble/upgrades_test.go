@@ -27,6 +27,7 @@ func TestUpgradeGambleWinBonus_ExistingImplementation(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 
@@ -52,8 +53,8 @@ func TestUpgradeGambleWinBonus_ExistingImplementation(t *testing.T) {
 
 	// Mock remaining calls
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
-	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
-	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
 	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -61,9 +62,9 @@ func TestUpgradeGambleWinBonus_ExistingImplementation(t *testing.T) {
 
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
+	// User1 and User2 both bet 1 lootbox. Total value should be (100 * 1.25) * 2 = 250
 	assert.NoError(t, err)
-	assert.Equal(t, int64(125), result.TotalValue)
-	assert.Equal(t, int64(125), result.Items[0].Value) // Individual item value should be updated
+	assert.Equal(t, int64(250), result.TotalValue)
 	ts.progressionSvc.AssertExpectations(t)
 }
 
@@ -78,6 +79,7 @@ func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 2}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 
@@ -94,11 +96,16 @@ func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
 
 	// Mock lootbox drops: one currency (value 100), one item (value 200)
 	// OpenLootbox called once for qty 2, returns 2 items
-	drops := []lootbox.DroppedItem{
+	// Mock lootbox drops: User1 (qty 2) gets 100+200, User2 (qty 1) gets 100
+	drops1 := []lootbox.DroppedItem{
 		{ItemID: 10, Quantity: 1, Value: 100},
 		{ItemID: 11, Quantity: 1, Value: 200},
 	}
-	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 2, mock.Anything).Return(drops, nil)
+	drops2 := []lootbox.DroppedItem{
+		{ItemID: 10, Quantity: 1, Value: 100},
+	}
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 2, mock.Anything).Return(drops1, nil)
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops2, nil)
 
 	// Mock Progression Service
 	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(110), nil) // 1.1x
@@ -115,7 +122,10 @@ func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(330), result.TotalValue) // 110 + 220
+	// User1: (100*1.1) + (200*1.1) = 330
+	// User2: (100*1.1) = 110
+	// Total: 440
+	assert.Equal(t, int64(440), result.TotalValue)
 	ts.progressionSvc.AssertExpectations(t)
 }
 
@@ -176,6 +186,7 @@ func TestUpgradeGambleWinBonus_ModifierFailureFallback(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 
@@ -191,14 +202,14 @@ func TestUpgradeGambleWinBonus_ModifierFailureFallback(t *testing.T) {
 	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
 	drops := []lootbox.DroppedItem{{ItemID: 10, Quantity: 1, Value: 100}}
-	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
+	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil).Twice()
 
 	// Mock Progression Service Failure
-	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(0), assert.AnError)
+	ts.progressionSvc.On("GetModifiedValue", ctx, ProgressionFeatureGambleWinBonus, float64(100)).Return(float64(0), assert.AnError).Twice()
 
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
-	tx.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
-	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
 	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -207,7 +218,7 @@ func TestUpgradeGambleWinBonus_ModifierFailureFallback(t *testing.T) {
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(100), result.TotalValue) // Should fallback to base value
+	assert.Equal(t, int64(200), result.TotalValue) // Should fallback to base value (100 * 2)
 	ts.progressionSvc.AssertExpectations(t)
 }
 

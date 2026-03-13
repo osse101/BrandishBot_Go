@@ -416,6 +416,7 @@ func TestExecuteGamble_Success(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 	tx := new(MockTx)
@@ -432,8 +433,8 @@ func TestExecuteGamble_Success(t *testing.T) {
 	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 	ts.lootboxSvc.On("OpenLootbox", ctx, mock.Anything, mock.Anything, mock.Anything).Return(droppedItems, nil)
 	tx.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
-	tx.On("GetInventory", ctx, "user1").Return(winnerInventory, nil)
-	tx.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx.On("GetInventory", ctx, mock.Anything).Return(winnerInventory, nil)
+	tx.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
 	tx.On("CompleteGamble", ctx, mock.Anything).Return(nil)
 	tx.On("Commit", ctx).Return(nil)
 	tx.On("Rollback", ctx).Return(nil).Maybe()
@@ -448,12 +449,61 @@ func TestExecuteGamble_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, "user1", result.WinnerID)
+	assert.NotEmpty(t, result.WinnerID)
 	assert.True(t, result.TotalValue > 0)
 	ts.repo.AssertExpectations(t)
 	tx.AssertExpectations(t)
 	ts.lootboxSvc.AssertExpectations(t)
 	ts.resilientPub.AssertExpectations(t)
+}
+
+func TestExecuteGamble_Refund_OnlyOneParticipant(t *testing.T) {
+	ts := setupService(nil, false)
+	ctx := context.Background()
+	gambleID := uuid.New()
+	gamble := &domain.Gamble{
+		ID:    gambleID,
+		State: domain.GambleStateJoining,
+		Participants: []domain.Participant{
+			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+		},
+	}
+	inventory := &domain.Inventory{Slots: []domain.InventorySlot{{ItemID: 1, Quantity: 9}}}
+	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}
+	tx := new(MockTx)
+
+	ts.repo.On("GetGamble", ctx, gambleID).Return(gamble, nil)
+	ts.repo.On("BeginGambleTx", ctx).Return(tx, nil)
+	tx.On("UpdateGambleStateIfMatches", ctx, gambleID, domain.GambleStateJoining, domain.GambleStateOpening).Return(int64(1), nil)
+
+	// Item resolution
+	ts.namingResolver.On("ResolvePublicName", domain.ItemLootbox1).Return("", false)
+	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
+
+	// Refund mocks
+	tx.On("GetInventory", ctx, "user1").Return(inventory, nil)
+	tx.On("UpdateInventory", ctx, "user1", mock.MatchedBy(func(inv domain.Inventory) bool {
+		return len(inv.Slots) > 0 && inv.Slots[0].Quantity == 10
+	})).Return(nil)
+	tx.On("RefundGamble", ctx, gambleID).Return(nil)
+
+	tx.On("Commit", ctx).Return(nil)
+	tx.On("Rollback", ctx).Return(nil).Maybe()
+
+	// Cancellation event
+	ts.resilientPub.On("PublishWithRetry", ctx, mock.MatchedBy(func(e event.Event) bool {
+		p, ok := e.Payload.(domain.GambleCompletedPayloadV2)
+		return ok && p.WinnerID == "" && p.ParticipantCount == 1 && p.TotalValue == 0
+	})).Return()
+
+	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Empty(t, result.WinnerID)
+	assert.Equal(t, int64(0), result.TotalValue)
+	ts.repo.AssertExpectations(t)
+	tx.AssertExpectations(t)
 }
 
 func TestExecuteGamble_MultipleParticipants(t *testing.T) {
@@ -565,6 +615,7 @@ func TestExecuteGamble_StateUpdateFails(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 
@@ -592,6 +643,7 @@ func TestExecuteGamble_SaveOpenedItemsFails(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 	}
 	lootboxItem := &domain.Item{ID: 1, InternalName: domain.ItemLootbox1}

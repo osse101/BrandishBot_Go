@@ -1,3 +1,6 @@
 Gamble start and join is complicated
 Filter item not working
 Client: reduce number of !link commands and sort based on arguments
+Discord voting end message says Target Auto-Selected when it should show nothing whether it was auto-selected or not.
+Discord jobs command: ❌ failed to decode response: json: cannot unmarshal object into Go struct field UserJobsResponse.primary_job of type string
+!upgrade junkbox finds no recipe?

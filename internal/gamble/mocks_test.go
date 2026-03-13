@@ -64,6 +64,11 @@ func (m *MockRepository) CompleteGamble(ctx context.Context, result *domain.Gamb
 	return args.Error(0)
 }
 
+func (m *MockRepository) RefundGamble(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 func (m *MockRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
@@ -162,6 +167,11 @@ func (m *MockTx) SaveOpenedItems(ctx context.Context, items []domain.GambleOpene
 
 func (m *MockTx) CompleteGamble(ctx context.Context, result *domain.GambleResult) error {
 	args := m.Called(ctx, result)
+	return args.Error(0)
+}
+
+func (m *MockTx) RefundGamble(ctx context.Context, id uuid.UUID) error {
+	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 

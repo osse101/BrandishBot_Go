@@ -17,6 +17,7 @@ type Gamble interface {
 	UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error)
 	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
 	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
+	RefundGamble(ctx context.Context, id uuid.UUID) error
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)
 
 	// Transaction support
@@ -39,6 +40,7 @@ type GambleTx interface {
 	UpdateGambleStateIfMatches(ctx context.Context, id uuid.UUID, expectedState, newState domain.GambleState) (int64, error)
 	SaveOpenedItems(ctx context.Context, items []domain.GambleOpenedItem) error
 	CompleteGamble(ctx context.Context, result *domain.GambleResult) error
+	RefundGamble(ctx context.Context, id uuid.UUID) error
 
 	// Inventory operations within transaction
 	GetInventory(ctx context.Context, userID string) (*domain.Inventory, error)
