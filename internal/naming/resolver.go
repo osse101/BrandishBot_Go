@@ -41,6 +41,9 @@ type Resolver interface {
 
 	// RegisterItem registers an item for name resolution
 	RegisterItem(internalName, publicName string)
+
+	// ResolveInternalName converts an internal name to its primary public name
+	ResolveInternalName(internalName string) (publicName string, ok bool)
 }
 
 type resolver struct {
@@ -99,6 +102,15 @@ func (r *resolver) ResolvePublicName(publicName string) (string, bool) {
 
 	internal, ok := r.publicToInternal[strings.ToLower(publicName)]
 	return internal, ok
+}
+
+// ResolveInternalName converts an internal name to its primary public name
+func (r *resolver) ResolveInternalName(internalName string) (string, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	public, ok := r.internalToPublic[internalName]
+	return public, ok
 }
 
 // GetDisplayName generates a display name with optional quality prefix

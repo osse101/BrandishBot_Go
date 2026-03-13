@@ -140,6 +140,10 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName 
 	return publicName, true
 }
 
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	return internalName, true
+}
+
 func (m *MockNamingResolver) GetActiveTheme() string {
 	return ""
 }

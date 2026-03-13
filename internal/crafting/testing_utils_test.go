@@ -591,11 +591,26 @@ func (m *MockProgressionService) GetModifiedValue(ctx context.Context, userID st
 // MockNamingResolver for testing name resolution
 type MockNamingResolver struct {
 	publicToInternal map[string]string
+	internalToPublic map[string]string
 }
 
 func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName string, ok bool) {
 	internal, ok := m.publicToInternal[publicName]
 	return internal, ok
+}
+
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (publicName string, ok bool) {
+	if m.internalToPublic != nil {
+		if public, ok := m.internalToPublic[internalName]; ok {
+			return public, true
+		}
+	}
+	for p, i := range m.publicToInternal {
+		if i == internalName {
+			return p, true
+		}
+	}
+	return "", false
 }
 
 // Stubs for other naming.Resolver methods
@@ -608,7 +623,11 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 	if m.publicToInternal == nil {
 		m.publicToInternal = make(map[string]string)
 	}
+	if m.internalToPublic == nil {
+		m.internalToPublic = make(map[string]string)
+	}
 	m.publicToInternal[publicName] = internalName
+	m.internalToPublic[internalName] = publicName
 }
 
 // MockJobService for testing job level requirements

@@ -1529,6 +1529,9 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 			publicToInternal: map[string]string{
 				"junkbox": domain.ItemLootbox1,
 			},
+			internalToPublic: map[string]string{
+				domain.ItemLootbox1: "junkbox",
+			},
 		}
 
 		svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil, NewMockJobService()).(*service)
@@ -1544,7 +1547,7 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 		// Act using public name "junkbox"
 		result, err := svc.UpgradeItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", "junkbox", 1)
 		assert.NoError(t, err)
-		assert.Equal(t, domain.ItemLootbox1, result.ItemName)
+		assert.Equal(t, "junkbox", result.ItemName)
 	})
 }
 

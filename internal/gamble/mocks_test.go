@@ -300,6 +300,11 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return args.String(0), args.Bool(1)
 }
 
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	args := m.Called(internalName)
+	return args.String(0), args.Bool(1)
+}
+
 func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	args := m.Called(internalName, qualityLevel)
 	return args.String(0)

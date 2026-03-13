@@ -70,6 +70,7 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", err
 	}
 
+	// Try resolving as a public name ("junkbox")
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return nil, nil, nil, "", err
@@ -80,17 +81,45 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", err
 	}
 
-	item, err := s.validateItem(ctx, resolvedName)
+	// For upgrades, the input item is what we seek a recipe FOR.
+	// We first check if there's a recipe where this item is the source (RecipeKey matches itemName or resolvedName)
+	recipe, err := s.repo.GetCraftingRecipeByKey(ctx, resolvedName)
 	if err != nil {
-		return nil, nil, nil, "", err
+		return nil, nil, nil, "", fmt.Errorf("failed to check recipe by key: %w", err)
 	}
 
-	recipe, err := s.getAndValidateRecipe(ctx, item.ID, user.ID, resolvedName)
-	if err != nil {
-		return nil, nil, nil, "", err
+	// FALLBACK: If no recipe found by key, try looking up by target item ID (legacy/compatible behavior)
+	if recipe == nil {
+		item, err := s.validateItem(ctx, resolvedName)
+		if err != nil {
+			return nil, nil, nil, "", err
+		}
+		recipe, err = s.repo.GetRecipeByTargetItemID(ctx, item.ID)
+		if err != nil {
+			return nil, nil, nil, "", fmt.Errorf("failed to get recipe by target: %w", err)
+		}
 	}
 
-	return user, item, recipe, resolvedName, nil
+	if recipe == nil {
+		return nil, nil, nil, "", fmt.Errorf("no recipe found for '%s' | %w", itemName, domain.ErrRecipeNotFound)
+	}
+
+	// Check if user has unlocked this recipe
+	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+	if err != nil {
+		return nil, nil, nil, "", fmt.Errorf("failed to check recipe unlock: %w", err)
+	}
+	if !unlocked {
+		return nil, nil, nil, "", fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
+	}
+
+	// Get the target item for verification/information
+	targetItem, err := s.repo.GetItemByID(ctx, recipe.TargetItemID)
+	if err != nil {
+		return nil, nil, nil, "", fmt.Errorf("failed to get target item: %w", err)
+	}
+
+	return user, targetItem, recipe, targetItem.InternalName, nil
 }
 
 func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID int, recipe *domain.Recipe, requestedQuantity int, resolvedName string) (*Result, int, error) {
@@ -131,27 +160,9 @@ func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID in
 	return result, actualQuantity, nil
 }
 
-func (s *service) getAndValidateRecipe(ctx context.Context, itemID int, userID string, itemName string) (*domain.Recipe, error) {
-	recipe, err := s.repo.GetRecipeByTargetItemID(ctx, itemID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get recipe: %w", err)
-	}
-	if recipe == nil {
-		return nil, fmt.Errorf("no recipe found for item: %s | %w", itemName, domain.ErrRecipeNotFound)
-	}
+// getAndValidateRecipe is now integrated into validateUpgradeInput to avoid duplicate DB calls
 
-	// Check if user has unlocked this recipe
-	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, recipe.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check recipe unlock: %w", err)
-	}
-	if !unlocked {
-		return nil, fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
-	}
-	return recipe, nil
-}
-
-func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, itemName string, actualQuantity int) *Result {
+func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, internalName string, actualQuantity int) *Result {
 	log := logger.FromContext(ctx)
 
 	outputQuantity := 0
@@ -178,12 +189,19 @@ func (s *service) calculateUpgradeOutput(ctx context.Context, userID string, ite
 
 	masterworkTriggered := masterworkCount > 0
 	if masterworkTriggered {
-		log.Info("Masterwork craft triggered!", "user_id", userID, "item", itemName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
-		// Stats event is now handled by event subscriber
+		log.Info("Masterwork craft triggered!", "user_id", userID, "item", internalName, "count", masterworkCount, "bonus", outputQuantity-actualQuantity)
+	}
+
+	// Resolve internal name to public name for user feedback
+	displayName := internalName
+	if s.namingResolver != nil {
+		if publicName, ok := s.namingResolver.ResolveInternalName(internalName); ok {
+			displayName = publicName
+		}
 	}
 
 	return &Result{
-		ItemName:      itemName,
+		ItemName:      displayName,
 		Quantity:      outputQuantity,
 		IsMasterwork:  masterworkTriggered,
 		BonusQuantity: outputQuantity - actualQuantity,

@@ -23,6 +23,15 @@ func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool)
 	return publicName, true
 }
 
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	if m.DisplayNames != nil {
+		if public, ok := m.DisplayNames[internalName]; ok {
+			return public, true
+		}
+	}
+	return internalName, true
+}
+
 func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	if name, ok := m.DisplayNames[internalName]; ok {
 		return name
