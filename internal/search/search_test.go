@@ -244,7 +244,7 @@ func (m *mockSearchRepo) GetUserByPlatformUsername(ctx context.Context, platform
 
 func (m *mockSearchRepo) GetUserOrRegister(ctx context.Context, platform, platformID, username string) (*domain.User, error) {
 	if m.shouldFailGet {
-		return nil, errors.New(domain.ErrMsgFailedToRegisterUser)
+		return nil, domain.ErrFailedToRegisterUser
 	}
 	user, _ := m.GetUserByPlatformUsername(ctx, platform, username)
 	if user != nil {
@@ -678,7 +678,7 @@ func TestHandleSearch_DatabaseErrors(t *testing.T) {
 
 		// ASSERT
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), domain.ErrMsgFailedToRegisterUser)
+		assert.ErrorIs(t, err, domain.ErrFailedToRegisterUser)
 	})
 }
 
