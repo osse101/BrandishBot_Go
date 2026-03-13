@@ -172,7 +172,7 @@ func (s *service) handleSingleOptionAutoSelect(ctx context.Context, progress *do
 	s.cachedProgressID = progress.ID
 	s.mu.Unlock()
 
-	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID)
+	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID, true)
 
 	log.Info("Auto-selected target set", "nodeKey", node.NodeKey, "targetLevel", targetLevel, "sessionID", sessionID)
 
@@ -284,7 +284,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 			s.cachedProgressID = progress.ID
 			s.mu.Unlock()
 
-			s.publishTargetSetEvent(ctx, winner.NodeDetails, winner.TargetLevel, session.ID)
+			s.publishTargetSetEvent(ctx, winner.NodeDetails, winner.TargetLevel, session.ID, false)
 		}
 	}
 
@@ -629,7 +629,7 @@ func (s *service) setupNewTarget(ctx context.Context, progressID int, node *doma
 	s.cachedProgressID = progressID
 	s.mu.Unlock()
 
-	s.publishTargetSetEvent(ctx, node, level, sessionID)
+	s.publishTargetSetEvent(ctx, node, level, sessionID, false)
 
 	return sessionID, nil
 }
@@ -770,7 +770,7 @@ func (s *service) setInitialTarget(ctx context.Context, available []*domain.Prog
 
 	log.Info("Admin set initial target", "nodeKey", node.NodeKey, "targetLevel", targetLevel)
 	s.publishVotingStartedEvent(ctx, sessionID, []*domain.ProgressionNode{node}, "")
-	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID)
+	s.publishTargetSetEvent(ctx, node, targetLevel, sessionID, true)
 
 	if err := s.repo.EndVotingSession(ctx, sessionID, nil); err != nil {
 		log.Warn("Failed to end placeholder session", "error", err)
@@ -778,9 +778,9 @@ func (s *service) setInitialTarget(ctx context.Context, available []*domain.Prog
 	return nil
 }
 
-func (s *service) publishTargetSetEvent(ctx context.Context, node *domain.ProgressionNode, level, sessionID int) {
+func (s *service) publishTargetSetEvent(ctx context.Context, node *domain.ProgressionNode, level, sessionID int, autoSelected bool) {
 	if s.bus != nil {
-		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, level, true, sessionID)); err != nil {
+		if err := s.bus.Publish(ctx, event.NewProgressionTargetEvent(node.NodeKey, level, autoSelected, sessionID)); err != nil {
 			logger.FromContext(ctx).Error("Failed to publish progression target set event", "error", err)
 		}
 	}

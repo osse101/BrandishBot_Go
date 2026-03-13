@@ -211,12 +211,6 @@ func (n *SSENotifier) handleVotingStarted(event SSEEvent) error {
 		},
 	}
 
-	if payload.AutoSelected {
-		embed.Title = "Target Auto-Selected"
-		embed.Description = fmt.Sprintf("Only one option was available. **%s** has been automatically selected as the next unlock target.", formatNodeKey(payload.NodeKey))
-		embed.Fields = nil // Clear options field
-	}
-
 	targetChannelID := n.notificationChanID
 	if payload.IsTest && n.devChannelID != "" {
 		targetChannelID = n.devChannelID
