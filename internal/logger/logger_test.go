@@ -5,9 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJSONLogging(t *testing.T) {
+	t.Parallel()
+
 	var buf bytes.Buffer
 
 	config := Config{
@@ -26,106 +31,93 @@ func TestJSONLogging(t *testing.T) {
 
 	// Parse JSON output
 	var logEntry map[string]interface{}
-	if err := json.Unmarshal(buf.Bytes(), &logEntry); err != nil {
-		t.Fatalf("Failed to parse JSON log: %v", err)
-	}
+	err := json.Unmarshal(buf.Bytes(), &logEntry)
+	require.NoError(t, err, "Failed to parse JSON log")
 
 	// Verify base attributes
-	if logEntry["service"] != "test-service" {
-		t.Errorf("Expected service=test-service, got %v", logEntry["service"])
-	}
-
-	if logEntry["version"] != "1.0.0" {
-		t.Errorf("Expected version=1.0.0, got %v", logEntry["version"])
-	}
-
-	if logEntry["environment"] != "test" {
-		t.Errorf("Expected environment=test, got %v", logEntry["environment"])
-	}
+	assert.Equal(t, "test-service", logEntry["service"])
+	assert.Equal(t, "1.0.0", logEntry["version"])
+	assert.Equal(t, "test", logEntry["environment"])
 
 	// Verify message
-	if logEntry["msg"] != "test message" {
-		t.Errorf("Expected msg='test message', got %v", logEntry["msg"])
-	}
+	assert.Equal(t, "test message", logEntry["msg"])
 
 	// Verify level
-	if logEntry["level"] != "INFO" {
-		t.Errorf("Expected level=INFO, got %v", logEntry["level"])
-	}
+	assert.Equal(t, "INFO", logEntry["level"])
 
 	// Verify custom attributes
-	if logEntry["key"] != "value" {
-		t.Errorf("Expected key=value, got %v", logEntry["key"])
-	}
-
-	if logEntry["number"] != float64(42) {
-		t.Errorf("Expected number=42, got %v", logEntry["number"])
-	}
+	assert.Equal(t, "value", logEntry["key"])
+	assert.Equal(t, float64(42), logEntry["number"])
 }
 
 func TestRequestIDContext(t *testing.T) {
+	t.Parallel()
+
 	ctx := WithRequestID(context.Background(), "test-req-123")
 
 	requestID := GetRequestID(ctx)
-	if requestID != "test-req-123" {
-		t.Errorf("Expected request_id=test-req-123, got %s", requestID)
-	}
+	assert.Equal(t, "test-req-123", requestID)
 
 	// Test with logger
 	log := FromContext(ctx)
-	if log == nil {
-		t.Error("Expected non-nil logger")
-	}
+	assert.NotNil(t, log)
 }
 
 func TestConfigDefaults(t *testing.T) {
+	t.Parallel()
+
 	config := DefaultConfig()
 
-	if config.ServiceName == "" {
-		t.Error("Expected non-empty service name")
-	}
-
-	if config.Level == "" {
-		t.Error("Expected non-empty log level")
-	}
-
-	if config.Format == "" {
-		t.Error("Expected non-empty format")
-	}
+	assert.NotEmpty(t, config.ServiceName)
+	assert.NotEmpty(t, config.Level)
+	assert.NotEmpty(t, config.Format)
 }
 
 func TestProductionConfig(t *testing.T) {
+	t.Parallel()
+
 	config := ProductionConfig()
 
-	if config.Format != "json" {
-		t.Errorf("Expected JSON format in prod, got %s", config.Format)
-	}
-
-	if config.Level != "info" {
-		t.Errorf("Expected info level in prod, got %s", config.Level)
-	}
-
-	if config.Environment != "prod" {
-		t.Errorf("Expected prod environment, got %s", config.Environment)
-	}
-
-	if config.AddSource {
-		t.Error("Expected AddSource=false in production")
-	}
+	assert.Equal(t, "json", config.Format)
+	assert.Equal(t, "info", config.Level)
+	assert.Equal(t, "prod", config.Environment)
+	assert.False(t, config.AddSource)
 }
 
 func TestDevelopmentConfig(t *testing.T) {
+	t.Parallel()
+
 	config := DevelopmentConfig()
 
-	if config.Format != "text" {
-		t.Errorf("Expected text format in dev, got %s", config.Format)
-	}
+	assert.Equal(t, "text", config.Format)
+	assert.Equal(t, "debug", config.Level)
+	assert.True(t, config.AddSource)
+}
 
-	if config.Level != "debug" {
-		t.Errorf("Expected debug level in dev, got %s", config.Level)
-	}
+func TestGenerateRequestID(t *testing.T) {
+	t.Parallel()
 
-	if !config.AddSource {
-		t.Error("Expected AddSource=true in development")
-	}
+	id := GenerateRequestID()
+	assert.NotEmpty(t, id)
+	// format is UUIDFormatPattern
+	// Should be 36 characters long e.g. "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+	assert.Len(t, id, 36)
+
+	// Test uniqueness
+	id2 := GenerateRequestID()
+	assert.NotEqual(t, id, id2)
+}
+
+func TestWithUser(t *testing.T) {
+	t.Parallel()
+
+	ctx := WithUser(context.Background(), "user123", "testuser")
+
+	userID, username := GetUser(ctx)
+	assert.Equal(t, "user123", userID)
+	assert.Equal(t, "testuser", username)
+
+	// Test with logger
+	log := FromContext(ctx)
+	assert.NotNil(t, log)
 }
