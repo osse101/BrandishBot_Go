@@ -225,7 +225,15 @@ func (s *service) processDisassembleOutputs(ctx context.Context, inventory *doma
 		if !ok {
 			return nil, fmt.Errorf("output item not found: %d | %w", output.ItemID, domain.ErrItemNotFound)
 		}
-		outputMap[outputItem.InternalName] = totalOutput
+
+		// Resolve internal name to public name for result map
+		displayName := outputItem.InternalName
+		if s.namingResolver != nil {
+			if publicName, ok := s.namingResolver.ResolveInternalName(outputItem.InternalName); ok {
+				displayName = publicName
+			}
+		}
+		outputMap[displayName] = totalOutput
 
 		// Prepare for batch add - outputs inherit averaged quality from source items
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{

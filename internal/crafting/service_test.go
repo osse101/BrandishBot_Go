@@ -1551,6 +1551,39 @@ func TestUpgradeItem_WithNamingResolution(t *testing.T) {
 	})
 }
 
+func TestDisassembleItem_WithNamingResolution(t *testing.T) {
+	t.Parallel()
+	repo := NewMockRepository()
+	setupTestData(repo)
+
+	mockNaming := &MockNamingResolver{
+		publicToInternal: map[string]string{
+			"junkbox": domain.ItemLootbox1,
+		},
+		internalToPublic: map[string]string{
+			domain.ItemLootbox1: "junkbox",
+			domain.ItemLootbox0: "rusty_scrap",
+		},
+	}
+
+	svc := NewService(repo, &MockEventPublisher{}, mockNaming, nil, NewMockJobService()).(*service)
+	svc.rnd = func() float64 { return 1.0 } // Prevent perfect salvage
+	ctx := context.Background()
+
+	// Disassemble 1 lootbox1 (junkbox) -> should get 10 lootbox0 (rusty_scrap)
+	repo.UpdateInventory(ctx, "user-alice", domain.Inventory{Slots: []domain.InventorySlot{
+		{ItemID: TestItemID2, Quantity: 1}, // lootbox_tier1
+	}})
+	repo.UnlockRecipe(ctx, "user-alice", 1)
+
+	// Act using public name "junkbox"
+	result, err := svc.DisassembleItem(ctx, domain.PlatformTwitch, "twitch-alice", "alice", "junkbox", 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, result.QuantityProcessed)
+	assert.Contains(t, result.Outputs, "rusty_scrap")
+	assert.Equal(t, 1, result.Outputs["rusty_scrap"])
+}
+
 func TestShutdown_WaitsForAsync(t *testing.T) {
 	t.Parallel()
 	repo := NewMockRepository()
