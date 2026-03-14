@@ -12,12 +12,10 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
-// CooldownService defines the interface for cooldown operations
 type CooldownService interface {
 	EnforceCooldown(ctx context.Context, userID, action string, fn func() error) error
 }
 
-// Service defines the interface for slots operations
 type Service interface {
 	SpinSlots(ctx context.Context, platform, platformID, username string, betAmount int) (*domain.SlotsResult, error)
 	Shutdown(ctx context.Context) error
@@ -30,12 +28,11 @@ type service struct {
 	eventBus           event.Bus
 	resilientPublisher *event.ResilientPublisher
 	namingResolver     naming.Resolver
-	rng                func(int) int // Injectable for testing
+	rng                func(int) int
 	wg                 sync.WaitGroup
 	shutdown           chan struct{}
 }
 
-// NewService creates a new slots service
 func NewService(
 	userRepo repository.User,
 	progressionService progression.Service,
@@ -56,11 +53,9 @@ func NewService(
 	}
 }
 
-// Shutdown gracefully stops the service
 func (s *service) Shutdown(ctx context.Context) error {
 	close(s.shutdown)
 
-	// Wait for all async operations to complete
 	done := make(chan struct{})
 	go func() {
 		s.wg.Wait()

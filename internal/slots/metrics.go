@@ -7,18 +7,15 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
-// recordAllEngagement tracks all relevant engagement metrics
 func (s *service) recordAllEngagement(ctx context.Context, userID string, result *domain.SlotsResult) {
 	defer s.wg.Done()
 
 	log := logger.FromContext(ctx)
 
-	// Always track spin
 	if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsSpin, 1); err != nil {
 		log.Warn("Failed to record slots spin engagement", "error", err)
 	}
 
-	// Track outcome-specific engagement
 	if result.IsWin {
 		if err := s.progressionService.RecordEngagement(ctx, userID, domain.MetricTypeSlotsWin, 1); err != nil {
 			log.Warn("Failed to record slots win engagement", "error", err)
