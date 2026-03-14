@@ -1,3 +1,22 @@
+# Patch Notes (Week of March 13, 2026)
+
+## New Features
+
+- **Duels**: The groundwork for challenging other players to Duels has been laid!
+- **Gamble Updates**: Gamble events now display the winner's username, making it easier to see who won big.
+- **Weapon 'This'**: The `weapon_this` item now correctly targets and times out the user who uses it.
+- **Search Regions**: Added new Search Regions to expand your exploration options.
+
+## System Updates
+
+- **Progression Tiers**: Introduced progression tiers and improved how items unlock as the community progresses.
+- **Item Display**: Fixed how certain items are displayed and added new aliases to make commands easier.
+
+## Bug Fixes
+
+- **General fixes**: Resolved issues with the Disassemble feature, Gamble commands, and Discord job commands.
+- **Account Linking**: Fixed bugs related to linking your accounts.
+
 # Patch Notes (Week of March 6, 2026)
 
 ## New Features
