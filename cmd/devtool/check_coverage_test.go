@@ -54,8 +54,6 @@ func TestIgnoreDirs(t *testing.T) {
 func TestSplitCommaList(t *testing.T) {
 	t.Parallel()
 
-	cmd := &CheckCoverageCommand{}
-
 	tests := []struct {
 		name     string
 		input    string
@@ -92,7 +90,7 @@ func TestSplitCommaList(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := cmd.splitCommaList(tt.input)
+			result := splitCommaList(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

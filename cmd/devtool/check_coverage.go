@@ -113,6 +113,19 @@ func ensureCoverage(file string, runTests bool, packages []string, verbose bool)
 
 	PrintInfo("Running tests with coverage...")
 
+	buf, err := runGoTest(packages, file, verbose)
+	if err != nil {
+		return err
+	}
+
+	// Print package coverage summary
+	printPackageCoverageTable(buf.String())
+
+	PrintSuccess("Tests passed and coverage profile generated.")
+	return nil
+}
+
+func runGoTest(packages []string, file string, verbose bool) (*bytes.Buffer, error) {
 	testArgs := []string{"test"}
 
 	if verbose {
@@ -136,12 +149,8 @@ func ensureCoverage(file string, runTests bool, packages []string, verbose bool)
 	cmd.Stdout = multiWriter
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("tests failed: %w", err)
+		return nil, fmt.Errorf("tests failed: %w", err)
 	}
 
-	// Print package coverage summary
-	printPackageCoverageTable(buf.String())
-
-	PrintSuccess("Tests passed and coverage profile generated.")
-	return nil
+	return &buf, nil
 }

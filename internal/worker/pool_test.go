@@ -167,19 +167,14 @@ func TestPool_EnqueueContext(t *testing.T) {
 		pool.Enqueue(bJob)
 		<-bJob.started // Wait for it to start
 
-		// Stop the pool. The worker is blocked, so wait group will block on Stop()
-		// We can't synchronously pool.Stop() here because the worker is stuck on bJob.block
-		// But Stop() closes pool.quit, which EnqueueContext can see.
-		// Wait... pool.Stop() blocks on p.wg.Wait(), so we do it in a goroutine
+		// Stop pool in goroutine since worker is blocked. Stop() will close quit channel.
 
 		go pool.Stop()
 
 		// Give the pool.Stop() goroutine a tiny moment to close(pool.quit)
 		time.Sleep(10 * time.Millisecond)
 
-		// Now try to enqueue a job
-		// Since queue is 0, and worker is busy, jobQueue is blocked
-		// Since quit is closed, it should select quit channel and return context.Canceled
+		// Select quit channel and return context.Canceled since queue is full and worker busy.
 		job := &testJob{}
 		err := pool.EnqueueContext(context.Background(), job)
 

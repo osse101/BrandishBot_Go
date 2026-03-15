@@ -3,15 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
-	"os/exec"
 )
-
 
 func getCoveragePercent(file string) (float64, error) {
 	// Run go tool cover -func=file

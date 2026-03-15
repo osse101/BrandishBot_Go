@@ -17,7 +17,6 @@ func runWatchMode(config *CoverageConfig) error {
 	}
 	defer watcher.Close()
 
-	// Recursively add directories to watch
 	if err := addRecursiveWatch(watcher, "."); err != nil {
 		return fmt.Errorf("failed to add watch paths: %w", err)
 	}
@@ -25,72 +24,78 @@ func runWatchMode(config *CoverageConfig) error {
 	PrintInfo("Watching for file changes...")
 	PrintInfo("Press Ctrl+C to exit.")
 
-	// Run initial check
 	if err := runCoverageCheck(config); err != nil {
 		PrintError("Initial check failed: %v", err)
 	}
 
-	var debounceTimer *time.Timer
-	debounceDuration := 200 * time.Millisecond
-
-	done := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-
-				// Handle new directories
-				if event.Op&fsnotify.Create == fsnotify.Create {
-					info, err := os.Stat(event.Name)
-					if err == nil && info.IsDir() {
-						if err := addRecursiveWatch(watcher, event.Name); err != nil {
-							PrintWarning("Failed to watch new directory %s: %v", event.Name, err)
-						}
-					}
-				}
-
-				// Filter for interesting events
-				if !strings.HasSuffix(event.Name, ".go") && !strings.HasSuffix(event.Name, ".mod") {
-					continue
-				}
-
-				// Ignore Chmod
-				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					continue
-				}
-
-				// Debounce
-				if debounceTimer != nil {
-					debounceTimer.Stop()
-				}
-
-				debounceTimer = time.AfterFunc(debounceDuration, func() {
-					clearScreen()
-					PrintInfo("Change detected: %s", event.Name)
-					if err := runCoverageCheck(config); err != nil {
-						PrintError("Check failed: %v", err)
-					} else {
-						// Print timestamp of last success
-						PrintSuccess("Last success: %s", time.Now().Format("15:04:05"))
-					}
-					PrintInfo("Watching for file changes...")
-				})
-
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				PrintError("Watcher error: %v", err)
-			}
-		}
-	}()
-
-	<-done
+	watchEvents(watcher, config)
 	return nil
+}
+
+func watchEvents(watcher *fsnotify.Watcher, config *CoverageConfig) {
+	var (
+		debounceTimer *time.Timer
+		debounceDelay = 200 * time.Millisecond
+	)
+
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+
+			if !shouldProcess(event) {
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					handleNewDir(watcher, event.Name)
+				}
+				continue
+			}
+
+			if debounceTimer != nil {
+				debounceTimer.Stop()
+			}
+
+			debounceTimer = time.AfterFunc(debounceDelay, func() {
+				handleChange(event.Name, config)
+			})
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			PrintError("Watcher error: %v", err)
+		}
+	}
+}
+
+func shouldProcess(event fsnotify.Event) bool {
+	if event.Op&fsnotify.Chmod == fsnotify.Chmod {
+		return false
+	}
+
+	ext := filepath.Ext(event.Name)
+	return ext == ".go" || ext == ".mod"
+}
+
+func handleNewDir(watcher *fsnotify.Watcher, name string) {
+	info, err := os.Stat(name)
+	if err == nil && info.IsDir() {
+		if err := addRecursiveWatch(watcher, name); err != nil {
+			PrintWarning("Failed to watch new directory %s: %v", name, err)
+		}
+	}
+}
+
+func handleChange(name string, config *CoverageConfig) {
+	clearScreen()
+	PrintInfo("Change detected: %s", name)
+	if err := runCoverageCheck(config); err != nil {
+		PrintError("Check failed: %v", err)
+	} else {
+		PrintSuccess("Last success: %s", time.Now().Format("15:04:05"))
+	}
+	PrintInfo("Watching for file changes...")
 }
 
 func addRecursiveWatch(watcher *fsnotify.Watcher, root string) error {
