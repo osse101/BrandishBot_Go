@@ -3,11 +3,10 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-	"testing"
-
 	"errors"
+	"net/http"
 	"net/http/httptest"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
