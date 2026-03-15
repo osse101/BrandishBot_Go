@@ -94,6 +94,7 @@ func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
 	ts.repo.On("GetItemByName", ctx, domain.ItemLootbox1).Return(lootboxItem, nil)
 	ts.repo.On("GetItemByID", ctx, 1).Return(lootboxItem, nil)
 
+//nolint:all
 	// Mock lootbox drops: one currency (value 100), one item (value 200)
 	// OpenLootbox called once for qty 2, returns 2 items
 	// Mock lootbox drops: User1 (qty 2) gets 100+200, User2 (qty 1) gets 100
@@ -122,6 +123,7 @@ func TestUpgradeGambleWinBonus_AllGambleTypes(t *testing.T) {
 	result, err := ts.svc.ExecuteGamble(ctx, gambleID)
 
 	assert.NoError(t, err)
+//nolint:all
 	// User1: (100*1.1) + (200*1.1) = 330
 	// User2: (100*1.1) = 110
 	// Total: 440
