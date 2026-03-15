@@ -20,7 +20,7 @@ func TestHandleUseItem(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
-		setupMock      func(*mocks.MockUserService, *mocks.MockEventBus)
+		setupMock      func(*mocks.MockUserService, *mocks.MockProgressionService, *mocks.MockEventBus)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -33,14 +33,19 @@ func TestHandleUseItem(t *testing.T) {
 				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
-			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
+			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+				// Resolve internal name
+				u.On("GetItemByName", mock.Anything, domain.PublicNameMissile).Return(&domain.Item{InternalName: domain.ItemMissile}, nil)
+				// Unlock the feature
+				p.On("IsFeatureUnlocked", mock.Anything, "weapon_missile").Return(true, nil)
 				// Mock should return what the real blaster handler would return
 				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").
 					Return("testuser has BLASTED target 1 times! They are timed out for 1m0s.", nil)
 				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
-				// Expect both engagement and item.used events
+				// Expect ONLY engagement event (item.used is now service-side and not using this mock bus in this test setup)
+				// Wait, the handler STILL publishes engagement if points > 0
 				e.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
-					return evt.Type == "engagement" || evt.Type == "item.used"
+					return evt.Type == "engagement"
 				})).Return(nil).Maybe()
 			},
 			expectedStatus: http.StatusOK,
@@ -55,11 +60,33 @@ func TestHandleUseItem(t *testing.T) {
 				ItemName:   domain.PublicNameMissile,
 				Quantity:   1,
 			},
-			setupMock: func(u *mocks.MockUserService, e *mocks.MockEventBus) {
+			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+				u.On("GetItemByName", mock.Anything, domain.PublicNameMissile).Return(&domain.Item{InternalName: domain.ItemMissile}, nil)
+				p.On("IsFeatureUnlocked", mock.Anything, "weapon_missile").Return(true, nil)
 				u.On("UseItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.PublicNameMissile, 1, "").Return("", errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
+		},
+		{
+			name: "Progression Locked",
+			requestBody: UseItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   "filter", // Public name
+				Quantity:   1,
+			},
+			setupMock: func(u *mocks.MockUserService, p *mocks.MockProgressionService, e *mocks.MockEventBus) {
+				// Resolve internal name
+				u.On("GetItemByName", mock.Anything, "filter").Return(&domain.Item{InternalName: domain.ItemVideoFilter}, nil)
+				// Lock the feature
+				p.On("IsFeatureUnlocked", mock.Anything, "item_video_filter").Return(false, nil)
+				// Mock required nodes for error message
+				p.On("GetRequiredNodes", mock.Anything, "item_video_filter").Return([]*domain.ProgressionNode{}, nil)
+			},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "Feature locked",
 		},
 	}
 
@@ -69,7 +96,7 @@ func TestHandleUseItem(t *testing.T) {
 			mockProg := mocks.NewMockProgressionService(t)
 			mockBus := mocks.NewMockEventBus(t)
 			mockProg.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
-			tt.setupMock(mockUser, mockBus)
+			tt.setupMock(mockUser, mockProg, mockBus)
 
 			handler := HandleUseItem(mockUser, mockProg, mockBus)
 

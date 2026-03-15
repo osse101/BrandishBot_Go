@@ -90,8 +90,14 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 
 		// Check if item is progression-locked
 		if progressionSvc != nil {
+			// Resolve the name to internal name first for progression check
+			internalName := req.ItemName
+			if item, err := svc.GetItemByName(r.Context(), req.ItemName); err == nil && item != nil {
+				internalName = item.InternalName
+			}
+
 			// Map item internal name to progression node key
-			nodeKey := mapItemToProgressionNode(req.ItemName)
+			nodeKey := mapItemToProgressionNode(internalName)
 			if nodeKey != "" {
 				if CheckFeatureLocked(w, r, progressionSvc, nodeKey) {
 					return // CheckFeatureLocked already wrote 403 response
@@ -144,17 +150,6 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 				log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
 				// Don't fail the request
 			}
-		}
-
-		// Publish item.used event
-		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemUsed, map[string]interface{}{
-			"user_id":  metricUserID,
-			"item":     req.ItemName,
-			"quantity": req.Quantity,
-			"target":   req.TargetUser,
-			"result":   message,
-		}); err != nil {
-			_ = err // Error already logged in PublishEvent
 		}
 
 		RespondJSON(w, http.StatusOK, UseItemResponse{
