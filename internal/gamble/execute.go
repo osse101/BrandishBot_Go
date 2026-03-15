@@ -40,8 +40,20 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	if err := s.transitionToOpeningState(ctx, tx, id); err != nil {
+	if err := s.transitionToOpeningState(ctx, tx, id, gamble.State); err != nil {
 		return nil, err
+	}
+
+	// Minimum participant check (2+ required to gamble)
+	if len(gamble.Participants) < 2 {
+		log.Info("Gamble cancelled: not enough participants", "gambleID", id, "count", len(gamble.Participants))
+		if err := s.refundGamble(ctx, tx, gamble); err != nil {
+			return nil, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("%s: %w", ErrContextFailedToCommitTx, err)
+		}
+		return &domain.GambleResult{GambleID: id}, nil
 	}
 
 	userValues, allOpenedItems, totalGambleValue := s.openParticipantsLootboxes(ctx, gamble)
@@ -84,7 +96,11 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	return result, nil
 }
 
-func (s *service) transitionToOpeningState(ctx context.Context, tx repository.GambleTx, id uuid.UUID) error {
+func (s *service) transitionToOpeningState(ctx context.Context, tx repository.GambleTx, id uuid.UUID, currentState domain.GambleState) error {
+	if currentState == domain.GambleStateOpening {
+		// Already in opening state, likely resuming after interruption
+		return nil
+	}
 	rowsAffected, err := tx.UpdateGambleStateIfMatches(ctx, id, domain.GambleStateJoining, domain.GambleStateOpening)
 	if err != nil {
 		return fmt.Errorf("failed to transition gamble state: %w", err)
@@ -92,6 +108,50 @@ func (s *service) transitionToOpeningState(ctx context.Context, tx repository.Ga
 	if rowsAffected == 0 {
 		return errors.New(ErrMsgGambleAlreadyExecuted)
 	}
+	return nil
+}
+
+func (s *service) refundGamble(ctx context.Context, tx repository.GambleTx, gamble *domain.Gamble) error {
+	for _, p := range gamble.Participants {
+		inv, err := tx.GetInventory(ctx, p.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to get inventory for refund (user:%s): %w", p.UserID, err)
+		}
+
+		for _, bet := range p.LootboxBets {
+			// Resolve bet item name to ID
+			itemID, err := s.resolveLootboxBet(ctx, bet)
+			if err != nil {
+				continue
+			}
+
+			// Add items back to inventory
+			found := false
+			for i, slot := range inv.Slots {
+				if slot.ItemID == itemID {
+					inv.Slots[i].Quantity += bet.Quantity
+					found = true
+					break
+				}
+			}
+			if !found {
+				inv.Slots = append(inv.Slots, domain.InventorySlot{
+					ItemID:   itemID,
+					Quantity: bet.Quantity,
+				})
+			}
+		}
+
+		if err := tx.UpdateInventory(ctx, p.UserID, *inv); err != nil {
+			return fmt.Errorf("failed to update inventory for refund (user:%s): %w", p.UserID, err)
+		}
+	}
+
+	if err := tx.RefundGamble(ctx, gamble.ID); err != nil {
+		return fmt.Errorf("failed to mark gamble as refunded: %w", err)
+	}
+
+	s.publishGambleRefundedEvent(ctx, gamble)
 	return nil
 }
 

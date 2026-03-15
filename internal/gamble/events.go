@@ -49,6 +49,35 @@ func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domai
 		return
 	}
 
-	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, result.TotalValue, participantCount, participants)
+	winnerUsername := ""
+	if result.WinnerID != "" {
+		for _, p := range participants {
+			if p.UserID == result.WinnerID {
+				winnerUsername = p.Username
+				break
+			}
+		}
+	}
+
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, winnerUsername, result.TotalValue, participantCount, participants)
+	s.resilientPublisher.PublishWithRetry(ctx, evt)
+}
+
+func (s *service) publishGambleRefundedEvent(ctx context.Context, gamble *domain.Gamble) {
+	if s.resilientPublisher == nil {
+		return
+	}
+
+	// We reuse GambleCompletedEvent but with no winner and 0 value to signify cancellation/refund
+	// In the future, we could add a specific GambleRefunded event, but this is sufficient for now
+
+	evt := event.NewGambleCompletedEvent(
+		gamble.ID.String(),
+		"", // No winner
+		"",
+		0, // 0 value
+		len(gamble.Participants),
+		s.buildParticipantOutcomes(gamble, make(map[string]int64), "", nil, nil, nil),
+	)
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }

@@ -2,8 +2,6 @@ package domain
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // Job represents a profession that users can level up
@@ -56,17 +54,6 @@ type JobXPMetadata struct {
 	JobName          string                 `json:"job_name,omitempty"`
 	XPTotal          int                    `json:"xp_total,omitempty"`
 	Extras           map[string]interface{} `json:"extras,omitempty"` // For remaining unstructured data
-}
-
-// JobXPEvent records an XP gain event for auditing
-type JobXPEvent struct {
-	ID             uuid.UUID     `json:"id"`
-	UserID         string        `json:"user_id"`
-	JobID          int           `json:"job_id"`
-	XPAmount       int           `json:"xp_amount"`
-	SourceType     string        `json:"source_type"`     // "upgrade", "search", "gamble"
-	SourceMetadata JobXPMetadata `json:"source_metadata"` // structured metadata
-	RecordedAt     time.Time     `json:"recorded_at"`
 }
 
 // JobLevelBonus defines bonuses available at certain job levels

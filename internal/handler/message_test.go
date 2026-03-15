@@ -19,7 +19,6 @@ import (
 
 func TestHandleMessageHandler(t *testing.T) {
 	// Initialize validator
-	InitValidator()
 
 	tests := []struct {
 		name           string

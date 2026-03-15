@@ -110,5 +110,6 @@ func (h *UserHandler) HandleGetJobs(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/admin/users/active
 func (h *UserHandler) HandleGetActiveChatters(w http.ResponseWriter, r *http.Request) {
 	chatters := h.userService.GetActiveChatters()
+	// chatters is []user.ActiveChatter, which is aliased to activechatter.Chatter
 	handler.RespondJSON(w, http.StatusOK, chatters)
 }

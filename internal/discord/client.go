@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/osse101/BrandishBot_Go/internal/activechatter"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
@@ -397,6 +398,16 @@ func (c *APIClient) GetProgressionTree() ([]*domain.ProgressionTreeNode, error) 
 	}
 
 	return treeResp.Nodes, nil
+}
+
+// AdminGetActiveChatters retrieves active chatters (admin only)
+func (c *APIClient) AdminGetActiveChatters(minutes int) ([]activechatter.Chatter, error) {
+	var chatters []activechatter.Chatter
+	path := fmt.Sprintf("/api/v1/admin/users/active?minutes=%d", minutes)
+	if err := c.doRequestAndParse(http.MethodGet, path, nil, &chatters); err != nil {
+		return nil, err
+	}
+	return chatters, nil
 }
 
 // BuyItem purchases an item from the shop
@@ -1373,23 +1384,12 @@ func (c *APIClient) SpinSlots(platform, platformID, username string, betAmount i
 	return &result, nil
 }
 
-// JobProgress represents a user's progress in a job
-type JobProgress struct {
-	JobKey       string    `json:"job_key"`
-	Level        int       `json:"level"`
-	XP           int       `json:"xp"`
-	XPForNext    int       `json:"xp_for_next"`
-	TotalXP      int       `json:"total_xp,omitempty"`
-	DateUnlocked time.Time `json:"date_unlocked"`
-	LastUpdated  time.Time `json:"last_updated"`
-}
-
 // UserJobsResponse represents the response from GetUserJobs
 type UserJobsResponse struct {
-	Platform   string        `json:"platform"`
-	PlatformID string        `json:"platform_id"`
-	PrimaryJob string        `json:"primary_job"`
-	Jobs       []JobProgress `json:"jobs"`
+	Platform   string               `json:"platform"`
+	PlatformID string               `json:"platform_id"`
+	PrimaryJob *domain.UserJobInfo  `json:"primary_job"`
+	Jobs       []domain.UserJobInfo `json:"jobs"`
 }
 
 // AdminUserLookupResult represents the result of a user lookup
@@ -1421,19 +1421,6 @@ func (c *APIClient) AdminGetRecentUsers(limit int) ([]domain.User, error) {
 	params.Set("limit", fmt.Sprintf("%d", limit))
 
 	path := fmt.Sprintf("/api/v1/admin/users/recent?%s", params.Encode())
-	var result []domain.User
-	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// AdminGetActiveChatters retrieves active chatters within a time window (admin only)
-func (c *APIClient) AdminGetActiveChatters(minutes int) ([]domain.User, error) {
-	params := url.Values{}
-	params.Set("minutes", fmt.Sprintf("%d", minutes))
-
-	path := fmt.Sprintf("/api/v1/admin/users/active?%s", params.Encode())
 	var result []domain.User
 	if err := c.doRequestAndParse(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err

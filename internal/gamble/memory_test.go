@@ -80,6 +80,7 @@ func TestExecuteGamble_NoGoroutineLeak(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", Username: "player1"},
+			{UserID: "user2", Username: "player2"},
 		},
 	}
 

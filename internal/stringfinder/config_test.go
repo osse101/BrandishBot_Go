@@ -1,4 +1,4 @@
-package user
+package stringfinder
 
 import (
 	"os"
@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStringFinder_DynamicRules(t *testing.T) {
-	sf := NewStringFinder("") // Empty path loads default rules
+func TestFinder_DynamicRules(t *testing.T) {
+	sf := New("") // Empty path loads default rules
 
 	// Test AddRule
 	sf.AddRule("TempRule", "TEMP", 100)
@@ -23,7 +23,7 @@ func TestStringFinder_DynamicRules(t *testing.T) {
 	assert.Empty(t, matches)
 }
 
-func TestStringFinder_LoadRules(t *testing.T) {
+func TestFinder_LoadRules(t *testing.T) {
 	// Create a temporary config file
 	content := `[{"pattern": "TestPattern", "code": "TEST", "priority": 50}]`
 	tmpfile, err := os.CreateTemp("", "rules_*.json")
@@ -36,7 +36,7 @@ func TestStringFinder_LoadRules(t *testing.T) {
 	err = tmpfile.Close()
 	require.NoError(t, err)
 
-	sf := NewStringFinder(tmpfile.Name())
+	sf := New(tmpfile.Name())
 	matches := sf.FindMatches("This is a TestPattern")
 	require.Len(t, matches, 1)
 	assert.Equal(t, "TEST", matches[0].Code)

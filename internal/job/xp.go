@@ -44,7 +44,7 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 		return nil, err
 	}
 
-	s.recordXPAndLevelUpEvents(ctx, userID, metadata.Username, metadata.Platform, jobKey, job.ID, actualAmount, oldLevel, newLevel, source, metadata, &now)
+	s.recordXPAndLevelUpEvents(ctx, userID, metadata.Username, metadata.Platform, jobKey, actualAmount, oldLevel, newLevel, source)
 
 	return &domain.XPAwardResult{
 		JobKey:    jobKey,
@@ -217,24 +217,19 @@ func (s *service) updateUserJobProgress(ctx context.Context, progress *domain.Us
 	return nil
 }
 
-func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, username, platform, jobKey string, jobID int, actualAmount int, oldLevel, newLevel int, source string, metadata domain.JobXPMetadata, now *time.Time) {
+func (s *service) recordXPAndLevelUpEvents(ctx context.Context, userID, username, platform, jobKey string, actualAmount int, oldLevel, newLevel int, source string) {
 	log := logger.FromContext(ctx)
 
-	// Record XP event
-	xpEvent := &domain.JobXPEvent{
-		ID:             uuid.New(),
-		UserID:         userID,
-		JobID:          jobID,
-		XPAmount:       actualAmount,
-		SourceType:     source,
-		SourceMetadata: metadata,
-		RecordedAt:     *now,
-	}
-	if err := s.repo.RecordJobXPEvent(ctx, xpEvent); err != nil {
-		log.Error("Failed to record XP event", "error", err)
-	}
-
-	log.Info("Awarded job XP", "user_id", userID, "job", jobKey, "xp", actualAmount, "new_level", newLevel, "leveled_up", newLevel > oldLevel)
+	log.Info("Awarded job XP",
+		"user_id", userID,
+		"job", jobKey,
+		"xp", actualAmount,
+		"new_level", newLevel,
+		"leveled_up", newLevel > oldLevel,
+		"source", source,
+		"username", username,
+		"platform", platform,
+	)
 
 	if newLevel > oldLevel {
 		s.handleLevelUp(ctx, userID, username, platform, jobKey, oldLevel, newLevel, source)

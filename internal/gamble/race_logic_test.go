@@ -142,6 +142,7 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 		State: domain.GambleStateJoining,
 		Participants: []domain.Participant{
 			{UserID: "user1", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
+			{UserID: "user2", LootboxBets: []domain.LootboxBet{{ItemName: domain.ItemLootbox1, Quantity: 1}}},
 		},
 		JoinDeadline: time.Now().Add(-time.Minute), // Deadline PASSED, ready to execute
 	}
@@ -166,8 +167,8 @@ func TestExecuteGamble_Concurrent_Idempotent(t *testing.T) {
 	ts.lootboxSvc.On("OpenLootbox", ctx, domain.ItemLootbox1, 1, mock.Anything).Return(drops, nil)
 	tx1.On("SaveOpenedItems", ctx, mock.Anything).Return(nil)
 
-	tx1.On("GetInventory", ctx, "user1").Return(&domain.Inventory{}, nil)
-	tx1.On("UpdateInventory", ctx, "user1", mock.Anything).Return(nil)
+	tx1.On("GetInventory", ctx, mock.Anything).Return(&domain.Inventory{}, nil)
+	tx1.On("UpdateInventory", ctx, mock.Anything, mock.Anything).Return(nil)
 	tx1.On("CompleteGamble", ctx, mock.Anything).Return(nil)
 	tx1.On("Commit", ctx).Return(nil)
 	tx1.On("Rollback", ctx).Return(nil).Maybe()

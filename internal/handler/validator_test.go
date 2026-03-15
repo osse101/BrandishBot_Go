@@ -28,7 +28,6 @@ type TestStruct struct {
 // =============================================================================
 
 func TestValidator_PlatformValidation(t *testing.T) {
-	InitValidator()
 	v := GetValidator()
 
 	tests := []struct {
@@ -72,7 +71,6 @@ func TestValidator_PlatformValidation(t *testing.T) {
 }
 
 func TestValidator_UsernameValidation(t *testing.T) {
-	InitValidator()
 	v := GetValidator()
 
 	tests := []struct {
@@ -118,7 +116,6 @@ func TestValidator_UsernameValidation(t *testing.T) {
 }
 
 func TestValidator_QuantityValidation(t *testing.T) {
-	InitValidator()
 	v := GetValidator()
 
 	tests := []struct {
@@ -162,7 +159,6 @@ func TestValidator_QuantityValidation(t *testing.T) {
 }
 
 func TestValidator_MultipleFieldErrors(t *testing.T) {
-	InitValidator()
 	v := GetValidator()
 
 	t.Run("all fields invalid", func(t *testing.T) {

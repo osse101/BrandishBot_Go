@@ -15,6 +15,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/search"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 )
 
@@ -137,6 +138,10 @@ func (m *MockNamingResolver) GetDescription(internalName string) string {
 
 func (m *MockNamingResolver) ResolvePublicName(publicName string) (internalName string, ok bool) {
 	return publicName, true
+}
+
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	return internalName, true
 }
 
 func (m *MockNamingResolver) GetActiveTheme() string {
@@ -357,9 +362,22 @@ func TestUserService_AsyncXPAward_Integration(t *testing.T) {
 
 	start := time.Now()
 
+	searchService := search.New(search.Deps{
+		UserResolver:   svc,
+		ItemLookup:     svc,
+		RewardGranter:  svc,
+		CooldownSvc:    cooldownSvc,
+		StatsSvc:       &MockStatsService{},
+		JobSvc:         &MockJobService{},
+		ProgressionSvc: nil,
+		Publisher:      publisher,
+		Rnd:            func() float64 { return 0.5 },
+		Regions:        []search.Region{{Key: "test", Name: "Test", ItemDrops: []search.RegionDrop{{ItemName: domain.ItemMoney, Weight: 100}}}},
+	})
+
 	triggered := false
 	for i := 0; i < 5; i++ {
-		msg, err := svc.HandleSearch(ctx, domain.PlatformTwitch, userD.TwitchID, userD.Username)
+		msg, err := searchService.HandleSearch(ctx, domain.PlatformTwitch, userD.TwitchID, userD.Username, "")
 		if err == nil && (len(msg) > 0 && msg != domain.MsgSearchNearMiss && msg != domain.MsgSearchCriticalFail) {
 			triggered = true
 		}

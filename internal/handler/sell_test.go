@@ -18,8 +18,7 @@ import (
 )
 
 func TestHandleSellItem(t *testing.T) {
-	InitValidator()
-
+	t.Parallel()
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -153,6 +152,7 @@ func TestHandleSellItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mockEco := mocks.NewMockEconomyService(t)
 			mockProg := mocks.NewMockProgressionService(t)
 			mockBus := mocks.NewMockEventBus(t)

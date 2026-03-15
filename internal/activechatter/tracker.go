@@ -1,18 +1,42 @@
-package user
+package activechatter
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
+// Tracker tracks users who have recently sent messages
+// and are eligible to be targeted by random weapons like grenades and TNT.
+type Tracker struct {
+	mu       sync.RWMutex
+	chatters map[string]*Chatter
+	stopCh   chan struct{}
+}
+
+// NewTracker creates a new tracker and starts the cleanup goroutine
+func NewTracker() *Tracker {
+	tracker := &Tracker{
+		chatters: make(map[string]*Chatter),
+		stopCh:   make(chan struct{}),
+	}
+	go tracker.cleanupLoop()
+	return tracker
+}
+
+// Stop stops the cleanup goroutine (useful for testing and shutdown)
+func (t *Tracker) Stop() {
+	close(t.stopCh)
+}
+
 // Track adds or updates a chatter's last message timestamp
-func (t *ActiveChatterTracker) Track(platform, userID, username string) {
+func (t *Tracker) Track(platform, userID, username string) {
 	key := makeKey(platform, userID)
 
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	t.chatters[key] = &ChatterInfo{
+	t.chatters[key] = &Chatter{
 		UserID:        userID,
 		Username:      username,
 		Platform:      platform,
@@ -21,7 +45,7 @@ func (t *ActiveChatterTracker) Track(platform, userID, username string) {
 }
 
 // Remove removes a chatter from the active list (e.g., when they've been hit)
-func (t *ActiveChatterTracker) Remove(platform, userID string) {
+func (t *Tracker) Remove(platform, userID string) {
 	key := makeKey(platform, userID)
 
 	t.mu.Lock()
@@ -31,7 +55,7 @@ func (t *ActiveChatterTracker) Remove(platform, userID string) {
 }
 
 // cleanupLoop periodically removes expired chatters
-func (t *ActiveChatterTracker) cleanupLoop() {
+func (t *Tracker) cleanupLoop() {
 	ticker := time.NewTicker(CleanupInterval)
 	defer ticker.Stop()
 
@@ -46,12 +70,12 @@ func (t *ActiveChatterTracker) cleanupLoop() {
 }
 
 // cleanup removes all expired chatters
-func (t *ActiveChatterTracker) cleanup() {
+func (t *Tracker) cleanup() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	now := time.Now()
-	expiryThreshold := now.Add(-ChatterExpiryDuration)
+	expiryThreshold := now.Add(-ExpiryDuration)
 
 	for key, info := range t.chatters {
 		if info.LastMessageAt.Before(expiryThreshold) {
@@ -66,12 +90,12 @@ func makeKey(platform, userID string) string {
 }
 
 // GetActiveCount returns the number of active chatters for a platform (for testing/debugging)
-func (t *ActiveChatterTracker) GetActiveCount(platform string) int {
+func (t *Tracker) GetActiveCount(platform string) int {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	now := time.Now()
-	expiryThreshold := now.Add(-ChatterExpiryDuration)
+	expiryThreshold := now.Add(-ExpiryDuration)
 	count := 0
 
 	for _, info := range t.chatters {
@@ -84,14 +108,14 @@ func (t *ActiveChatterTracker) GetActiveCount(platform string) int {
 }
 
 // GetActiveChatters returns all currently active chatters across all platforms
-func (t *ActiveChatterTracker) GetActiveChatters() []ChatterInfo {
+func (t *Tracker) GetActiveChatters() []Chatter {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	now := time.Now()
-	expiryThreshold := now.Add(-ChatterExpiryDuration)
+	expiryThreshold := now.Add(-ExpiryDuration)
 
-	var active []ChatterInfo
+	var active []Chatter
 	for _, info := range t.chatters {
 		if info.LastMessageAt.After(expiryThreshold) {
 			active = append(active, *info)

@@ -25,6 +25,24 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (uuid.UUID, e
 	return user_id, err
 }
 
+const createUserWithID = `-- name: CreateUserWithID :one
+INSERT INTO users (user_id, username, created_at, updated_at)
+VALUES ($1, $2, NOW(), NOW())
+RETURNING user_id
+`
+
+type CreateUserWithIDParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Username string    `json:"username"`
+}
+
+func (q *Queries) CreateUserWithID(ctx context.Context, arg CreateUserWithIDParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createUserWithID, arg.UserID, arg.Username)
+	var user_id uuid.UUID
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const deleteInventory = `-- name: DeleteInventory :exec
 DELETE FROM user_inventory WHERE user_id = $1
 `

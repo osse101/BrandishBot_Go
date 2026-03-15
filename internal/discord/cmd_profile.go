@@ -63,8 +63,8 @@ func ProfileCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 		// Fetch job info to add primary job
 		jobsResp, err := client.GetUserJobs("discord", user.ID)
-		if err == nil && jobsResp.PrimaryJob != "" {
-			primaryJobName := cases.Title(language.English).String(strings.ReplaceAll(jobsResp.PrimaryJob, "_", " "))
+		if err == nil && jobsResp.PrimaryJob != nil {
+			primaryJobName := cases.Title(language.English).String(strings.ReplaceAll(jobsResp.PrimaryJob.JobKey, "_", " "))
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 				Name:   "Primary Job",
 				Value:  primaryJobName,

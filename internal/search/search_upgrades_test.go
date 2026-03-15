@@ -1,4 +1,4 @@
-package user
+package search
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestUpgradeSearchQuality_ModifierApplied(t *testing.T) {
 
 	// Manually inject progression service for test (field is not exported)
 	s := svc
-	s.progressionSvc = mockProg
+	s.deps.ProgressionSvc = mockProg
 
 	user := createTestUser()
 	repo.users[TestUsername] = user
@@ -54,7 +54,7 @@ func TestUpgradeSearchQuality_FallbackOnError(t *testing.T) {
 	mockProg := new(MockProgressionService)
 	svc, repo := createSearchTestService()
 	s := svc
-	s.progressionSvc = mockProg
+	s.deps.ProgressionSvc = mockProg
 
 	user := createTestUser()
 	repo.users[TestUsername] = user
@@ -78,7 +78,7 @@ func TestUpgradeSearchQuality_NilService(t *testing.T) {
 	// ARRANGE
 	svc, repo := createSearchTestService()
 	s := svc
-	s.progressionSvc = nil
+	s.deps.ProgressionSvc = nil
 
 	user := createTestUser()
 	repo.users[TestUsername] = user

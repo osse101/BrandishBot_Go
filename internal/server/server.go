@@ -36,6 +36,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/quest"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/scenario"
+	"github.com/osse101/BrandishBot_Go/internal/search"
 	"github.com/osse101/BrandishBot_Go/internal/slots"
 	"github.com/osse101/BrandishBot_Go/internal/sse"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
@@ -62,13 +63,14 @@ type Server struct {
 	slotsService        slots.Service
 	compostService      compost.Service
 	namingResolver      naming.Resolver
+	searchService       search.Service
 	sseHub              *sse.Hub
 	scenarioEngine      *scenario.Engine
 	eventlogService     eventlog.Service
 }
 
 // NewServer creates a new Server instance
-func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, subscriptionService subscription.Service, slotsService slots.Service, compostService compost.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
+func NewServer(port int, apiKey string, trustedProxies []string, dbPool database.Pool, userService user.Service, economyService economy.Service, craftingService crafting.Service, statsService stats.Service, progressionService progression.Service, searchService search.Service, gambleService gamble.Service, jobService job.Service, linkingService linking.Service, harvestService harvest.Service, predictionService prediction.Service, expeditionService expedition.Service, questService quest.Service, subscriptionService subscription.Service, slotsService slots.Service, compostService compost.Service, namingResolver naming.Resolver, eventBus event.Bus, sseHub *sse.Hub, userRepo repository.User, scenarioEngine *scenario.Engine, eventlogService eventlog.Service) *Server {
 	r := chi.NewRouter()
 
 	// Middleware stack
@@ -105,7 +107,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 			r.Put("/timeout", handler.HandleSetTimeout(userService))
 			r.Get("/inventory", handler.HandleGetInventory(userService, progressionService))
 			r.Get("/inventory-by-username", handler.HandleGetInventoryByUsername(userService, progressionService))
-			r.Post("/search", handler.HandleSearch(userService, progressionService, eventBus))
+			r.Post("/search", handler.HandleSearch(searchService, userService, progressionService, eventBus))
 
 			r.Route("/item", func(r chi.Router) {
 				r.Post("/add", handler.HandleAddItemByUsername(userService))
@@ -339,6 +341,7 @@ func NewServer(port int, apiKey string, trustedProxies []string, dbPool database
 		slotsService:        slotsService,
 		compostService:      compostService,
 		namingResolver:      namingResolver,
+		searchService:       searchService,
 		sseHub:              sseHub,
 		scenarioEngine:      scenarioEngine,
 		eventlogService:     eventlogService,

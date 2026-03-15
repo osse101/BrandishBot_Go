@@ -216,6 +216,11 @@ func (r *GambleRepository) CompleteGamble(ctx context.Context, result *domain.Ga
 	return r.UpdateGambleState(ctx, result.GambleID, domain.GambleStateCompleted)
 }
 
+// RefundGamble marks the gamble as refunded.
+func (r *GambleRepository) RefundGamble(ctx context.Context, id uuid.UUID) error {
+	return r.UpdateGambleState(ctx, id, domain.GambleStateRefunded)
+}
+
 // GetActiveGamble retrieves the current active gamble (Joining or Opening)
 func (r *GambleRepository) GetActiveGamble(ctx context.Context) (*domain.Gamble, error) {
 	g, err := r.q.GetActiveGamble(ctx)
@@ -324,6 +329,19 @@ func (t *gambleTx) CompleteGamble(ctx context.Context, result *domain.GambleResu
 	err := t.q.UpdateGambleState(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to complete gamble: %w", err)
+	}
+	return nil
+}
+
+// RefundGamble marks gamble as refunded within transaction
+func (t *gambleTx) RefundGamble(ctx context.Context, id uuid.UUID) error {
+	params := generated.UpdateGambleStateParams{
+		State: string(domain.GambleStateRefunded),
+		ID:    id,
+	}
+	err := t.q.UpdateGambleState(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to refund gamble: %w", err)
 	}
 	return nil
 }

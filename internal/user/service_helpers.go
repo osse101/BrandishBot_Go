@@ -37,11 +37,21 @@ func (s *service) getItemByNameCached(ctx context.Context, name string) (*domain
 	return item, nil
 }
 
+type txContextKey struct{}
+
 // withTx executes a function within a transaction.
 // It handles begin, commit, and rollback automatically.
 // The operation function receives the transaction and should return an error if it fails.
-func (s *service) withTx(ctx context.Context, operation func(tx repository.UserTx) error) error {
+// It also detects nested transactions and fails fast to prevent deadlocks.
+func (s *service) withTx(ctx context.Context, operation func(txCtx context.Context, tx repository.UserTx) error) error {
 	log := logger.FromContext(ctx)
+
+	// Fail fast if we detect a nested transaction
+	if ctx.Value(txContextKey{}) != nil {
+		err := fmt.Errorf("developer error: nested transactions are not supported and cause deadlocks")
+		log.Error("Nested transaction detected", "error", err)
+		return err
+	}
 
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
@@ -50,7 +60,10 @@ func (s *service) withTx(ctx context.Context, operation func(tx repository.UserT
 	}
 	defer repository.SafeRollback(ctx, tx)
 
-	if err := operation(tx); err != nil {
+	// Create a new context indicating we are inside a transaction
+	txCtx := context.WithValue(ctx, txContextKey{}, true)
+
+	if err := operation(txCtx, tx); err != nil {
 		return err
 	}
 

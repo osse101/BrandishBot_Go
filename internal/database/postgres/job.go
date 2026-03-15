@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -210,36 +209,6 @@ func (r *JobRepository) UpsertUserJob(ctx context.Context, userJob *domain.UserJ
 	err = r.q.UpsertUserJob(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to upsert user job: %w", err)
-	}
-
-	return nil
-}
-
-// RecordJobXPEvent logs an XP gain event
-func (r *JobRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error {
-	metadataJSON, err := json.Marshal(event.SourceMetadata)
-	if err != nil {
-		return fmt.Errorf("failed to marshal metadata: %w", err)
-	}
-
-	userUUID, err := parseUserUUID(event.UserID)
-	if err != nil {
-		return err
-	}
-
-	params := generated.RecordJobXPEventParams{
-		ID:             event.ID,
-		UserID:         userUUID,
-		JobID:          int32(event.JobID),
-		XpAmount:       int32(event.XPAmount),
-		SourceType:     event.SourceType,
-		SourceMetadata: metadataJSON,
-		RecordedAt:     pgtype.Timestamptz{Time: event.RecordedAt, Valid: true},
-	}
-
-	err = r.q.RecordJobXPEvent(ctx, params)
-	if err != nil {
-		return fmt.Errorf("failed to record XP event: %w", err)
 	}
 
 	return nil

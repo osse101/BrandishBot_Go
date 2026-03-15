@@ -406,7 +406,6 @@ func ActiveChattersCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		var sb strings.Builder
-		// Handling []domain.User response
 		for _, u := range users {
 			fmt.Fprintf(&sb, "• %s\n", u.Username)
 		}

@@ -89,6 +89,7 @@ func (s *service) buildParticipantOutcomes(gamble *domain.Gamble, userValues map
 	for _, p := range gamble.Participants {
 		outcomes = append(outcomes, domain.GambleParticipantOutcome{
 			UserID:         p.UserID,
+			Username:       p.Username,
 			Score:          userValues[p.UserID],
 			LootboxCount:   calculateTotalLootboxes(p.LootboxBets),
 			IsWinner:       p.UserID == winnerID,

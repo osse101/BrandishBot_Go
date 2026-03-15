@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -13,24 +14,27 @@ type Validator struct {
 	validate *validator.Validate
 }
 
-// Global validator instance
-var validate *Validator
+var (
+	// Global validator instance
+	validate *Validator
+	once     sync.Once
+)
 
 // InitValidator initializes the global validator
 func InitValidator() {
-	v := validator.New()
+	once.Do(func() {
+		v := validator.New()
 
-	// Register custom validation for platform
-	_ = v.RegisterValidation("platform", validatePlatform)
+		// Register custom validation for platform
+		_ = v.RegisterValidation("platform", validatePlatform)
 
-	validate = &Validator{validate: v}
+		validate = &Validator{validate: v}
+	})
 }
 
 // GetValidator returns the global validator instance
 func GetValidator() *Validator {
-	if validate == nil {
-		InitValidator()
-	}
+	InitValidator()
 	return validate
 }
 

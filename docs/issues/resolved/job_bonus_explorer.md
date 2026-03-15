@@ -4,7 +4,7 @@
 
 The Explorer job affects **search** and **expeditions**. XP is earned through searching and expedition participation.
 
-## Status: Open
+## Status: Resolved
 
 ## Continuous Bonuses
 
@@ -20,16 +20,13 @@ The Explorer job affects **search** and **expeditions**. XP is earned through se
 | ----- | ---------------------------------------------- |
 | 10    | Bonus encounter type in expedition config      |
 | 15    | Guaranteed quality boost on first daily search |
+| \*    | Search Regions unlock based on Explorer level  |
 
 ## Integration Points
 
-### Search (not wired)
+### Search (wired)
 
-`internal/user/search.go` tunable parameters:
-
-- `SearchCriticalRate = 0.05` — `search_crit_chance` would be added to this in `executeSearch`
-- `calculateSearchQuality` — `search_quality_boost` biases the quality roll result
-- User service would need `jobSvc` dependency or `GetJobBonus` call added
+- Search regions are now wired in `internal/user/search.go`. They add level gating based on Explorer level, modifying success rates and determining region-specific item drops.
 
 ### Expeditions (partially wired)
 

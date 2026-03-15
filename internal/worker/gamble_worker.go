@@ -38,7 +38,7 @@ func (w *GambleWorker) Start() {
 		return
 	}
 
-	if active != nil && active.State == domain.GambleStateJoining {
+	if active != nil && (active.State == domain.GambleStateJoining || active.State == domain.GambleStateOpening) {
 		w.scheduleExecution(active)
 	}
 }

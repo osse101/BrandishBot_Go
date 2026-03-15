@@ -54,11 +54,6 @@ func (m *MockRepository) UpsertUserJob(ctx context.Context, userJob *domain.User
 	return args.Error(0)
 }
 
-func (m *MockRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
-
 func (m *MockRepository) GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error) {
 	args := m.Called(ctx, jobID, level)
 	if args.Get(0) == nil {
@@ -290,9 +285,6 @@ func TestAwardXP_Success(t *testing.T) {
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.UserID == userID && uj.CurrentXP == int64(BlacksmithXPPerItem) && uj.CurrentLevel == 0
 	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == BlacksmithXPPerItem
-	})).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
@@ -335,9 +327,6 @@ func TestAwardXP_Epiphany(t *testing.T) {
 	// Expect doubled XP
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.CurrentXP == int64(expectedXP)
-	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == expectedXP
 	})).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
@@ -382,7 +371,6 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.CurrentXP == 150 && uj.CurrentLevel == 1
 	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
@@ -438,9 +426,6 @@ func TestAwardXP_DailyCap(t *testing.T) {
 	// Should clamp to DefaultDailyCap
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.XPGainedToday == int64(DefaultDailyCap) && uj.CurrentXP == int64(DefaultDailyCap)
-	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == DefaultDailyCap
 	})).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
@@ -518,10 +503,6 @@ func TestAwardXP_RareCandy_BypassesDailyCap(t *testing.T) {
 		return uj.XPGainedToday == int64(DefaultDailyCap+rarecandyXP) && uj.CurrentXP == int64(rarecandyXP)
 	})).Return(nil)
 
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
-	})).Return(nil)
-
 	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
@@ -562,10 +543,6 @@ func TestAwardXP_RareCandy_ExceedsNormalCap(t *testing.T) {
 		return uj.XPGainedToday == int64(initialXP+rarecandyXP) && uj.CurrentXP == int64(initialXP+rarecandyXP)
 	})).Return(nil)
 
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == rarecandyXP && e.SourceType == SourceRareCandy
-	})).Return(nil)
-
 	result, err := svc.AwardXP(ctx, userID, jobKey, rarecandyXP, SourceRareCandy, domain.JobXPMetadata{})
 
 	assert.NoError(t, err)
@@ -602,7 +579,6 @@ func TestAwardXP_MaxLevel(t *testing.T) {
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.CurrentLevel == DefaultMaxLevel
 	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
 	prog.On("GetModifiedValue", ctx, "job_level_cap", mock.Anything).Return(float64(DefaultMaxLevel), nil)
@@ -924,9 +900,6 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 	// Try to award 100, but should only get 50
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
 		return uj.XPGainedToday == 250 && uj.CurrentXP == 2050 // 2000 + 50
-	})).Return(nil)
-	repo.On("RecordJobXPEvent", ctx, mock.MatchedBy(func(e *domain.JobXPEvent) bool {
-		return e.XPAmount == 50
 	})).Return(nil)
 
 	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{})

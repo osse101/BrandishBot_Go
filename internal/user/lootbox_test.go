@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/itemhandler"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
+	"github.com/osse101/BrandishBot_Go/internal/utils"
 )
 
 // MockRepo is a minimal mock for the repository needed for lootbox tests
@@ -211,6 +213,7 @@ func createTestService(repo *MockRepo, lootboxSvc *MockLootboxService) *service 
 		repo:           repo,
 		lootboxService: lootboxSvc,
 		namingResolver: namingResolver,
+		rnd:            utils.RandomFloat,
 	}
 }
 
@@ -242,7 +245,7 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Execute
 		// Pass nil user as it's not used in this test path (except for stats which is nil here)
-		msg, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 1)
+		msg, err := itemhandler.ProcessLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 1)
 
 		// Verify
 		assert.NoError(t, err)
@@ -280,7 +283,7 @@ func TestProcessLootbox(t *testing.T) {
 			},
 		}
 
-		_, err := svc.processLootbox(ctx, nil, inventory, lootbox0, 2)
+		_, err := itemhandler.ProcessLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 2)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), domain.ErrMsgNotEnoughItems)
 	})

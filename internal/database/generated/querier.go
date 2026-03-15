@@ -52,6 +52,7 @@ type Querier interface {
 	CreateTrap(ctx context.Context, arg CreateTrapParams) (UserTrap, error)
 	CreateUnlockProgress(ctx context.Context) (int32, error)
 	CreateUser(ctx context.Context, username string) (uuid.UUID, error)
+	CreateUserWithID(ctx context.Context, arg CreateUserWithIDParams) (uuid.UUID, error)
 	CreateVotingSession(ctx context.Context) (int32, error)
 	DeclineDuel(ctx context.Context, id uuid.UUID) error
 	DeleteAllQuests(ctx context.Context) error
@@ -219,7 +220,6 @@ type Querier interface {
 	MarkSubscriptionExpired(ctx context.Context, arg MarkSubscriptionExpiredParams) error
 	RecordEngagement(ctx context.Context, arg RecordEngagementParams) error
 	RecordEvent(ctx context.Context, arg RecordEventParams) (RecordEventRow, error)
-	RecordJobXPEvent(ctx context.Context, arg RecordJobXPEventParams) error
 	RecordReset(ctx context.Context, arg RecordResetParams) error
 	RecordSubscriptionHistory(ctx context.Context, arg RecordSubscriptionHistoryParams) error
 	RecordUserSessionVote(ctx context.Context, arg RecordUserSessionVoteParams) error

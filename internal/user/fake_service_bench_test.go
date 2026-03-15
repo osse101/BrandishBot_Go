@@ -260,6 +260,10 @@ func (f *fakeBenchNamingResolver) ResolvePublicName(publicName string) (string, 
 	return publicName, true
 }
 
+func (f *fakeBenchNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	return internalName, true
+}
+
 func (f *fakeBenchNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
 	return internalName
 }

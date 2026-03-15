@@ -593,6 +593,14 @@ const (
 	SearchFirstDailyGuaranteedRoll = 0.0
 )
 
+// Search Mechanic - Region Constants
+const (
+	// SearchRegionItemDropChance is the probability of getting a region item instead of a lootbox (50%)
+	SearchRegionItemDropChance = 0.5
+	// SearchRegionConfigPath is the default path to the search regions config file
+	SearchRegionConfigPath = "configs/search_regions.json"
+)
+
 // ============================================================================
 // Item Handler Constants (Moved from internal/user/constants.go)
 // ============================================================================

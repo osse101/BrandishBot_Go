@@ -182,6 +182,21 @@
         "chromatic visual modifier",
         "pixelated aesthetic enhancer"
       ]
+    },
+    "weapon_deez": {
+      "default": ["deez", "legendary meme weapon", "dreadful curse"]
+    },
+    "explosive_mine": {
+      "default": ["small land mine", "basic explosive", "hidden mine"]
+    },
+    "explosive_trap": {
+      "default": ["bear trap with explosives", "medium explosive trap", "targetted explosive"]
+    },
+    "explosive_bomb": {
+      "default": ["buried trap with many explosives", "large bomb", "bringer of fear"]
+    },
+    "compost_sludge": {
+      "default": ["clump of foul-smelling sludge", "decomposed compost residue", "useless sludge"]
     }
   }
 }

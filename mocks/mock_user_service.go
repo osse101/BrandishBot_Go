@@ -175,6 +175,53 @@ func (_c *MockUserService_ApplyShield_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// BuildPublicNameIndex provides a mock function with no fields
+func (_m *MockUserService) BuildPublicNameIndex() map[string]string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for BuildPublicNameIndex")
+	}
+
+	var r0 map[string]string
+	if rf, ok := ret.Get(0).(func() map[string]string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	return r0
+}
+
+// MockUserService_BuildPublicNameIndex_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BuildPublicNameIndex'
+type MockUserService_BuildPublicNameIndex_Call struct {
+	*mock.Call
+}
+
+// BuildPublicNameIndex is a helper method to define mock.On call
+func (_e *MockUserService_Expecter) BuildPublicNameIndex() *MockUserService_BuildPublicNameIndex_Call {
+	return &MockUserService_BuildPublicNameIndex_Call{Call: _e.mock.On("BuildPublicNameIndex")}
+}
+
+func (_c *MockUserService_BuildPublicNameIndex_Call) Run(run func()) *MockUserService_BuildPublicNameIndex_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockUserService_BuildPublicNameIndex_Call) Return(_a0 map[string]string) *MockUserService_BuildPublicNameIndex_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_BuildPublicNameIndex_Call) RunAndReturn(run func() map[string]string) *MockUserService_BuildPublicNameIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ClearTimeout provides a mock function with given fields: ctx, platform, username
 func (_m *MockUserService) ClearTimeout(ctx context.Context, platform string, username string) error {
 	ret := _m.Called(ctx, platform, username)
@@ -498,6 +545,65 @@ func (_c *MockUserService_GetInventoryByUsername_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// GetItemByName provides a mock function with given fields: ctx, name
+func (_m *MockUserService) GetItemByName(ctx context.Context, name string) (*domain.Item, error) {
+	ret := _m.Called(ctx, name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetItemByName")
+	}
+
+	var r0 *domain.Item
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*domain.Item, error)); ok {
+		return rf(ctx, name)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *domain.Item); ok {
+		r0 = rf(ctx, name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Item)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, name)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetItemByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItemByName'
+type MockUserService_GetItemByName_Call struct {
+	*mock.Call
+}
+
+// GetItemByName is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+func (_e *MockUserService_Expecter) GetItemByName(ctx interface{}, name interface{}) *MockUserService_GetItemByName_Call {
+	return &MockUserService_GetItemByName_Call{Call: _e.mock.On("GetItemByName", ctx, name)}
+}
+
+func (_c *MockUserService_GetItemByName_Call) Run(run func(ctx context.Context, name string)) *MockUserService_GetItemByName_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetItemByName_Call) Return(_a0 *domain.Item, _a1 error) *MockUserService_GetItemByName_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetItemByName_Call) RunAndReturn(run func(context.Context, string) (*domain.Item, error)) *MockUserService_GetItemByName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLinkedPlatforms provides a mock function with given fields: ctx, platform, platformID
 func (_m *MockUserService) GetLinkedPlatforms(ctx context.Context, platform string, platformID string) ([]string, error) {
 	ret := _m.Called(ctx, platform, platformID)
@@ -791,6 +897,67 @@ func (_c *MockUserService_GetUserIDByPlatformID_Call) RunAndReturn(run func(cont
 	return _c
 }
 
+// GetUserOrRegister provides a mock function with given fields: ctx, platform, platformID, username
+func (_m *MockUserService) GetUserOrRegister(ctx context.Context, platform string, platformID string, username string) (*domain.User, error) {
+	ret := _m.Called(ctx, platform, platformID, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserOrRegister")
+	}
+
+	var r0 *domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*domain.User, error)); ok {
+		return rf(ctx, platform, platformID, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *domain.User); ok {
+		r0 = rf(ctx, platform, platformID, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.User)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
+		r1 = rf(ctx, platform, platformID, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockUserService_GetUserOrRegister_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserOrRegister'
+type MockUserService_GetUserOrRegister_Call struct {
+	*mock.Call
+}
+
+// GetUserOrRegister is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+//   - username string
+func (_e *MockUserService_Expecter) GetUserOrRegister(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockUserService_GetUserOrRegister_Call {
+	return &MockUserService_GetUserOrRegister_Call{Call: _e.mock.On("GetUserOrRegister", ctx, platform, platformID, username)}
+}
+
+func (_c *MockUserService_GetUserOrRegister_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockUserService_GetUserOrRegister_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GetUserOrRegister_Call) Return(_a0 *domain.User, _a1 error) *MockUserService_GetUserOrRegister_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockUserService_GetUserOrRegister_Call) RunAndReturn(run func(context.Context, string, string, string) (*domain.User, error)) *MockUserService_GetUserOrRegister_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GiveItem provides a mock function with given fields: ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity
 func (_m *MockUserService) GiveItem(ctx context.Context, ownerPlatform string, ownerPlatformID string, ownerUsername string, receiverPlatform string, receiverUsername string, itemName string, quantity int) error {
 	ret := _m.Called(ctx, ownerPlatform, ownerPlatformID, ownerUsername, receiverPlatform, receiverUsername, itemName, quantity)
@@ -840,6 +1007,105 @@ func (_c *MockUserService_GiveItem_Call) Return(_a0 error) *MockUserService_Give
 }
 
 func (_c *MockUserService_GiveItem_Call) RunAndReturn(run func(context.Context, string, string, string, string, string, string, int) error) *MockUserService_GiveItem_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GrantItemReward provides a mock function with given fields: ctx, _a1, item, quantity, qualityLevel
+func (_m *MockUserService) GrantItemReward(ctx context.Context, _a1 *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel) error {
+	ret := _m.Called(ctx, _a1, item, quantity, qualityLevel)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GrantItemReward")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, *domain.Item, int, domain.QualityLevel) error); ok {
+		r0 = rf(ctx, _a1, item, quantity, qualityLevel)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_GrantItemReward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GrantItemReward'
+type MockUserService_GrantItemReward_Call struct {
+	*mock.Call
+}
+
+// GrantItemReward is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 *domain.User
+//   - item *domain.Item
+//   - quantity int
+//   - qualityLevel domain.QualityLevel
+func (_e *MockUserService_Expecter) GrantItemReward(ctx interface{}, _a1 interface{}, item interface{}, quantity interface{}, qualityLevel interface{}) *MockUserService_GrantItemReward_Call {
+	return &MockUserService_GrantItemReward_Call{Call: _e.mock.On("GrantItemReward", ctx, _a1, item, quantity, qualityLevel)}
+}
+
+func (_c *MockUserService_GrantItemReward_Call) Run(run func(ctx context.Context, _a1 *domain.User, item *domain.Item, quantity int, qualityLevel domain.QualityLevel)) *MockUserService_GrantItemReward_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.User), args[2].(*domain.Item), args[3].(int), args[4].(domain.QualityLevel))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GrantItemReward_Call) Return(_a0 error) *MockUserService_GrantItemReward_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_GrantItemReward_Call) RunAndReturn(run func(context.Context, *domain.User, *domain.Item, int, domain.QualityLevel) error) *MockUserService_GrantItemReward_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GrantSearchReward provides a mock function with given fields: ctx, _a1, quantity, qualityLevel
+func (_m *MockUserService) GrantSearchReward(ctx context.Context, _a1 *domain.User, quantity int, qualityLevel domain.QualityLevel) error {
+	ret := _m.Called(ctx, _a1, quantity, qualityLevel)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GrantSearchReward")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.User, int, domain.QualityLevel) error); ok {
+		r0 = rf(ctx, _a1, quantity, qualityLevel)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockUserService_GrantSearchReward_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GrantSearchReward'
+type MockUserService_GrantSearchReward_Call struct {
+	*mock.Call
+}
+
+// GrantSearchReward is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 *domain.User
+//   - quantity int
+//   - qualityLevel domain.QualityLevel
+func (_e *MockUserService_Expecter) GrantSearchReward(ctx interface{}, _a1 interface{}, quantity interface{}, qualityLevel interface{}) *MockUserService_GrantSearchReward_Call {
+	return &MockUserService_GrantSearchReward_Call{Call: _e.mock.On("GrantSearchReward", ctx, _a1, quantity, qualityLevel)}
+}
+
+func (_c *MockUserService_GrantSearchReward_Call) Run(run func(ctx context.Context, _a1 *domain.User, quantity int, qualityLevel domain.QualityLevel)) *MockUserService_GrantSearchReward_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*domain.User), args[2].(int), args[3].(domain.QualityLevel))
+	})
+	return _c
+}
+
+func (_c *MockUserService_GrantSearchReward_Call) Return(_a0 error) *MockUserService_GrantSearchReward_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUserService_GrantSearchReward_Call) RunAndReturn(run func(context.Context, *domain.User, int, domain.QualityLevel) error) *MockUserService_GrantSearchReward_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -902,65 +1168,6 @@ func (_c *MockUserService_HandleIncomingMessage_Call) Return(_a0 *domain.Message
 }
 
 func (_c *MockUserService_HandleIncomingMessage_Call) RunAndReturn(run func(context.Context, string, string, string, string) (*domain.MessageResult, error)) *MockUserService_HandleIncomingMessage_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// HandleSearch provides a mock function with given fields: ctx, platform, platformID, username
-func (_m *MockUserService) HandleSearch(ctx context.Context, platform string, platformID string, username string) (string, error) {
-	ret := _m.Called(ctx, platform, platformID, username)
-
-	if len(ret) == 0 {
-		panic("no return value specified for HandleSearch")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (string, error)); ok {
-		return rf(ctx, platform, platformID, username)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) string); ok {
-		r0 = rf(ctx, platform, platformID, username)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, platform, platformID, username)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockUserService_HandleSearch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HandleSearch'
-type MockUserService_HandleSearch_Call struct {
-	*mock.Call
-}
-
-// HandleSearch is a helper method to define mock.On call
-//   - ctx context.Context
-//   - platform string
-//   - platformID string
-//   - username string
-func (_e *MockUserService_Expecter) HandleSearch(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockUserService_HandleSearch_Call {
-	return &MockUserService_HandleSearch_Call{Call: _e.mock.On("HandleSearch", ctx, platform, platformID, username)}
-}
-
-func (_c *MockUserService_HandleSearch_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockUserService_HandleSearch_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
-	})
-	return _c
-}
-
-func (_c *MockUserService_HandleSearch_Call) Return(_a0 string, _a1 error) *MockUserService_HandleSearch_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockUserService_HandleSearch_Call) RunAndReturn(run func(context.Context, string, string, string) (string, error)) *MockUserService_HandleSearch_Call {
 	_c.Call.Return(run)
 	return _c
 }

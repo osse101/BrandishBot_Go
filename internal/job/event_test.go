@@ -56,10 +56,6 @@ func (m *MockRepo) UpsertUserJob(ctx context.Context, userJob *domain.UserJob) e
 	args := m.Called(ctx, userJob)
 	return args.Error(0)
 }
-func (m *MockRepo) RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
 func (m *MockRepo) GetJobLevelBonuses(ctx context.Context, jobID int, level int) ([]domain.JobLevelBonus, error) {
 	return nil, nil
 }
@@ -202,7 +198,6 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	mockRepo.On("GetJobByKey", ctx, "explorer").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user123", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
-	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 	// No level-up expected due to daily cap
 
 	// Mock progression service for default values
@@ -267,7 +262,6 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	mockRepo.On("GetJobByKey", ctx, "warrior").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_crit", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
-	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
 	// Mock progression service for default values
 	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)
@@ -326,7 +320,6 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	mockRepo.On("GetJobByKey", ctx, "mage").Return(job, nil)
 	mockRepo.On("GetUserJob", ctx, "user_nocrit", 1).Return(userJob, nil)
 	mockRepo.On("UpsertUserJob", ctx, mock.Anything).Return(nil)
-	mockRepo.On("RecordJobXPEvent", ctx, mock.Anything).Return(nil)
 
 	// Mock progression service for default values
 	mockProg.On("GetModifiedValue", mock.Anything, "job_xp_multiplier", mock.Anything).Return(1.0, nil)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/internal/itemhandler"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 	"github.com/osse101/BrandishBot_Go/internal/utils"
@@ -27,8 +28,8 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 	var message string
 	var eventToPublish func()
 
-	err = s.withTx(ctx, func(tx repository.UserTx) error {
-		inventory, err := tx.GetInventory(ctx, user.ID)
+	err = s.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		inventory, err := tx.GetInventory(txCtx, user.ID)
 		if err != nil {
 			log.Error("Failed to get inventory", "error", err, "userID", user.ID)
 			return domain.ErrFailedToGetInventory
@@ -50,7 +51,7 @@ func (s *service) useItemInternal(ctx context.Context, user *domain.User, platfo
 			return domain.ErrItemNotHandled
 		}
 
-		handlerArgs := ItemHandlerArgs{
+		handlerArgs := itemhandler.HandlerArgs{
 			Username: user.Username,
 			Platform: platform,
 		}

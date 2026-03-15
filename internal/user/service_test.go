@@ -11,6 +11,7 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/job"
 	"github.com/osse101/BrandishBot_Go/internal/lootbox"
+	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
 // MockNamingResolver implements naming.Resolver interface for testing
@@ -20,6 +21,15 @@ type MockNamingResolver struct {
 
 func (m *MockNamingResolver) ResolvePublicName(publicName string) (string, bool) {
 	return publicName, true
+}
+
+func (m *MockNamingResolver) ResolveInternalName(internalName string) (string, bool) {
+	if m.DisplayNames != nil {
+		if public, ok := m.DisplayNames[internalName]; ok {
+			return public, true
+		}
+	}
+	return internalName, true
 }
 
 func (m *MockNamingResolver) GetDisplayName(internalName string, qualityLevel domain.QualityLevel) string {
@@ -607,6 +617,49 @@ func TestUseItem_Blaster(t *testing.T) {
 	})
 }
 
+func TestUseItem_This(t *testing.T) {
+	repo := NewFakeRepository()
+	setupTestData(repo)
+
+	// Add weapon_this to repo
+	repo.items[domain.ItemThis] = &domain.Item{
+		ID:           6,
+		InternalName: domain.ItemThis,
+		PublicName:   "this",
+		Description:  "A meme weapon",
+		BaseValue:    101,
+	}
+
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false)
+	ctx := context.Background()
+	alice := domain.User{
+		ID:        "user-alice",
+		Username:  "alice",
+		TwitchID:  "alice123",
+		DiscordID: "alice456",
+	}
+
+	// Setup: Give alice the 'this' weapon
+	_, err := svc.RegisterUser(ctx, alice)
+	require.NoError(t, err)
+
+	err = svc.AddItemByUsername(ctx, domain.PlatformTwitch, alice.Username, domain.ItemThis, 2)
+	require.NoError(t, err)
+
+	t.Run("use this weapon targets self", func(t *testing.T) {
+		message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemThis, 1, "")
+		require.NoError(t, err, "UseItem failed")
+
+		expectedMsg := "alice used weapon_this... Congratulations, you played yourself. Timed out for 1m41s."
+		assert.Equal(t, expectedMsg, message)
+
+		// Verify inventory
+		inv, err := repo.GetInventory(ctx, alice.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, inv.Slots[0].Quantity, "Expected 1 left")
+	})
+}
+
 func TestUseItem_RareCandy(t *testing.T) {
 	repo := NewFakeRepository()
 	setupTestData(repo)
@@ -820,4 +873,24 @@ func TestUseItem_Lootbox2(t *testing.T) {
 		assert.Equal(t, 1, inv.Slots[0].ItemID, "Expected lootbox1 (ID 1)")
 		assert.Equal(t, 1, inv.Slots[0].Quantity, "Expected quantity 1")
 	})
+}
+
+func TestWithTx_NestedTransactionDetection(t *testing.T) {
+	repo := NewFakeRepository()
+	setupTestData(repo)
+	svc := NewService(repo, repo, nil, nil, nil, NewMockNamingResolver(), nil, nil, nil, nil, false).(*service)
+	ctx := context.Background()
+
+	err := svc.withTx(ctx, func(txCtx context.Context, tx repository.UserTx) error {
+		// Attempt to start a nested transaction using the new txCtx
+		nestedErr := svc.withTx(txCtx, func(nestedCtx context.Context, nestedTx repository.UserTx) error {
+			return nil
+		})
+
+		require.Error(t, nestedErr)
+		assert.Contains(t, nestedErr.Error(), "developer error: nested transactions are not supported and cause deadlocks")
+		return nil
+	})
+
+	require.NoError(t, err, "Outer transaction should succeed")
 }

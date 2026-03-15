@@ -503,53 +503,6 @@ func (_c *MockRepository_GetUserJobsByPlatform_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// RecordJobXPEvent provides a mock function with given fields: ctx, event
-func (_m *MockRepository) RecordJobXPEvent(ctx context.Context, event *domain.JobXPEvent) error {
-	ret := _m.Called(ctx, event)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RecordJobXPEvent")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *domain.JobXPEvent) error); ok {
-		r0 = rf(ctx, event)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockRepository_RecordJobXPEvent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordJobXPEvent'
-type MockRepository_RecordJobXPEvent_Call struct {
-	*mock.Call
-}
-
-// RecordJobXPEvent is a helper method to define mock.On call
-//   - ctx context.Context
-//   - event *domain.JobXPEvent
-func (_e *MockRepository_Expecter) RecordJobXPEvent(ctx interface{}, event interface{}) *MockRepository_RecordJobXPEvent_Call {
-	return &MockRepository_RecordJobXPEvent_Call{Call: _e.mock.On("RecordJobXPEvent", ctx, event)}
-}
-
-func (_c *MockRepository_RecordJobXPEvent_Call) Run(run func(ctx context.Context, event *domain.JobXPEvent)) *MockRepository_RecordJobXPEvent_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*domain.JobXPEvent))
-	})
-	return _c
-}
-
-func (_c *MockRepository_RecordJobXPEvent_Call) Return(_a0 error) *MockRepository_RecordJobXPEvent_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockRepository_RecordJobXPEvent_Call) RunAndReturn(run func(context.Context, *domain.JobXPEvent) error) *MockRepository_RecordJobXPEvent_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ResetDailyJobXP provides a mock function with given fields: ctx
 func (_m *MockRepository) ResetDailyJobXP(ctx context.Context) (int64, error) {
 	ret := _m.Called(ctx)

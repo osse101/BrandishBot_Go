@@ -138,6 +138,24 @@ namespace BrandishBot.Client
         }
 
         /// <summary>
+        /// Format message result to extract specific alerts (like trap triggers)
+        /// </summary>
+        public static string FormatMessage(MessageResult result)
+        {
+            if (result?.Matches == null) return null;
+
+            foreach (var match in result.Matches)
+            {
+                if (match.Code == "trap_triggered")
+                {
+                    return match.Value;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Default formatter that extracts and returns just the message field from any JSON response
         /// </summary>
         /// <param name="jsonResponse">JSON object containing a message field</param>
@@ -522,6 +540,60 @@ namespace BrandishBot.Client
             if (!string.IsNullOrEmpty(response.Message))
                 msg += $": {response.Message}";
             return "Server Status: " + msg;
+        }
+
+        /// <summary>
+        /// Format active gamble details
+        /// </summary>
+        public static string FormatGamble(Gamble gamble)
+        {
+            if (gamble == null) return "No active gamble.";
+
+            string state = gamble.State ?? "unknown";
+            int participantCount = gamble.Participants?.Count ?? 0;
+            string details = $"Gamble {gamble.Id.Substring(0, 8)} [{state}] | Participants: {participantCount}";
+
+            if (state == "open")
+            {
+                TimeSpan timeLeft = gamble.JoinDeadline - DateTime.UtcNow;
+                if (timeLeft.TotalSeconds > 0)
+                {
+                    details += $" | Join time left: {(int)timeLeft.TotalSeconds}s";
+                }
+                else
+                {
+                    details += " | Joining ended";
+                }
+            }
+            else if (state == "completed")
+            {
+                string winner = !string.IsNullOrEmpty(gamble.WinnerUsername) ? gamble.WinnerUsername : gamble.WinnerId;
+                details += $" | Winner: {winner} | Total Value: {gamble.TotalValue}";
+            }
+
+            return details;
+        }
+
+        /// <summary>
+        /// Format gamble result details
+        /// </summary>
+        public static string FormatGambleResult(GambleResult result)
+        {
+            if (result == null) return "Gamble details unavailable.";
+
+            string winner = !string.IsNullOrEmpty(result.WinnerUsername) ? result.WinnerUsername : result.WinnerId;
+            return $"🏆 Gamble Winner: {winner} | Total Value: {result.TotalValue} | Items: {result.Items?.Count ?? 0}";
+        }
+
+        /// <summary>
+        /// Format gamble completed payload V2
+        /// </summary>
+        public static string FormatGambleCompleted(GambleCompletedPayloadV2 payload)
+        {
+            if (payload == null) return "Gamble completed.";
+
+            string winner = !string.IsNullOrEmpty(payload.WinnerUsername) ? payload.WinnerUsername : payload.WinnerId;
+            return $"🏆 {winner} won the gamble! Total value: {payload.TotalValue}. Participants: {payload.ParticipantCount}";
         }
     }
 }

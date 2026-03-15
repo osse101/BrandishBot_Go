@@ -71,8 +71,8 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			displayName := cases.Title(language.English).String(strings.ReplaceAll(jobKey, "_", " "))
 
 			level := float64(job.Level)
-			currentXP := float64(job.XP)
-			xpToNext := float64(job.XPForNext)
+			currentXP := float64(job.CurrentXP)
+			xpToNext := float64(job.XPToNextLevel)
 
 			// Calculate progress percentage
 			progressPct := 0.0
@@ -82,7 +82,7 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 
 			// Add star emoji for primary job
 			nameDisplay := displayName
-			if jobKey == primaryJob {
+			if primaryJob != nil && jobKey == primaryJob.JobKey {
 				nameDisplay = "⭐ " + displayName
 			}
 

@@ -717,6 +717,7 @@ public class CPHInline
     /// <summary>
     /// Search for items (opens random lootboxes based on engagement)
     /// Uses: userType, userId, userName (from streamer.bot context)
+    /// Optional: input0 = item name to target a specific search region
     /// </summary>
     public bool Search()
     {
@@ -726,9 +727,14 @@ public class CPHInline
         if (!CPH.TryGetArg("userId", out string platformId)) return false;
         if (!CPH.TryGetArg("userName", out string username)) return false;
 
+        // Optional: read item hint from command input (e.g. "!search mine")
+        string itemHint = null;
+        if (CPH.TryGetArg("input0", out string hint) && !string.IsNullOrWhiteSpace(hint))
+            itemHint = hint.Trim();
+
         try
         {
-            var result = client.Search(platform, platformId, username).Result;
+            var result = client.Search(platform, platformId, username, itemHint).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;
@@ -961,7 +967,7 @@ public class CPHInline
         try
         {
             var result = client.GetActiveGamble().Result;
-            CPH.SetArgument("response", result);
+            CPH.SetArgument("response", ResponseFormatter.FormatGamble(result));
             return true;
         }
         catch (Exception ex)
@@ -1895,8 +1901,18 @@ public class CPHInline
         try
         {
             var result = client.HandleMessage(platform, platformId, username, message).Result;
+            
+            // Format for Twitch Chat (Traps, etc.)
+            string formatted = ResponseFormatter.FormatMessage(result);
+            if (!string.IsNullOrEmpty(formatted))
+            {
+                CPH.SetArgument("response", formatted);
+            }
+            
+            // Keep full JSON available if needed
             string jsonResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
-            CPH.SetArgument("response", jsonResult);
+            CPH.SetArgument("handleMessageResult", jsonResult);
+            
             return true;
         }
         catch (Exception ex)

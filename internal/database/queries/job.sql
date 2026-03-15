@@ -29,10 +29,6 @@ DO UPDATE SET
     xp_gained_today = EXCLUDED.xp_gained_today,
     last_xp_gain = EXCLUDED.last_xp_gain;
 
--- name: RecordJobXPEvent :exec
-INSERT INTO job_xp_events (id, user_id, job_id, xp_amount, source_type, source_metadata, recorded_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
-
 
 -- name: ResetDailyJobXP :execresult
 UPDATE user_jobs

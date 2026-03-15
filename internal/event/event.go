@@ -421,13 +421,14 @@ func NewTimeoutClearedEvent(platform, username string) Event {
 }
 
 // NewGambleCompletedEvent creates a new gamble completed event with type-safe payload
-func NewGambleCompletedEvent(gambleID, winnerID string, totalValue int64, participantCount int, participants []domain.GambleParticipantOutcome) Event {
+func NewGambleCompletedEvent(gambleID, winnerID, winnerUsername string, totalValue int64, participantCount int, participants []domain.GambleParticipantOutcome) Event {
 	return Event{
 		Version: EventSchemaVersion,
 		Type:    "GambleCompleted",
 		Payload: domain.GambleCompletedPayloadV2{
 			GambleID:         gambleID,
 			WinnerID:         winnerID,
+			WinnerUsername:   winnerUsername,
 			TotalValue:       totalValue,
 			ParticipantCount: participantCount,
 			Participants:     participants,

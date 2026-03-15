@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -108,6 +109,9 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 	// Track this user as an active chatter for random targeting
 	s.activeChatterTracker.Track(platform, user.ID, username)
 
+	// Find matches in message
+	matches := s.stringFinder.FindMatches(message)
+
 	// Check for active trap on this user and trigger if it exists
 	if s.trapRepo != nil {
 		userUUID, _ := uuid.Parse(user.ID)
@@ -124,11 +128,14 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 					log.Error(LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
 				}
 			}()
+
+			// Add trap trigger to matches so client can display it
+			matches = append(matches, domain.FoundString{
+				Code:  "trap_triggered",
+				Value: fmt.Sprintf("%s stepped on a trap!", username),
+			})
 		}
 	}
-
-	// Find matches in message
-	matches := s.stringFinder.FindMatches(message)
 
 	result := &domain.MessageResult{
 		User:    *user,

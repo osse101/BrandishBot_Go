@@ -1,4 +1,4 @@
-package user
+package activechatter
 
 import (
 	"fmt"
@@ -8,15 +8,15 @@ import (
 
 // GetRandomTarget returns a random active chatter for the given platform
 // Returns username and userID, or an error if no active chatters are available
-func (t *ActiveChatterTracker) GetRandomTarget(platform string) (username string, userID string, err error) {
+func (t *Tracker) GetRandomTarget(platform string) (username string, userID string, err error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	now := time.Now()
-	expiryThreshold := now.Add(-ChatterExpiryDuration)
+	expiryThreshold := now.Add(-ExpiryDuration)
 
 	// Collect all active (non-expired) chatters for this platform
-	var activeChatters []*ChatterInfo
+	var activeChatters []*Chatter
 	for _, info := range t.chatters {
 		if info.Platform == platform && info.LastMessageAt.After(expiryThreshold) {
 			activeChatters = append(activeChatters, info)
@@ -35,15 +35,15 @@ func (t *ActiveChatterTracker) GetRandomTarget(platform string) (username string
 // GetRandomTargets returns multiple random active chatters for the given platform
 // count specifies how many targets to select (will return fewer if not enough active chatters)
 // Returns slice of TargetInfo or an error if no active chatters are available
-func (t *ActiveChatterTracker) GetRandomTargets(platform string, count int) ([]TargetInfo, error) {
+func (t *Tracker) GetRandomTargets(platform string, count int) ([]TargetInfo, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	now := time.Now()
-	expiryThreshold := now.Add(-ChatterExpiryDuration)
+	expiryThreshold := now.Add(-ExpiryDuration)
 
 	// Collect all active (non-expired) chatters for this platform
-	var activeChatters []*ChatterInfo
+	var activeChatters []*Chatter
 	for _, info := range t.chatters {
 		if info.Platform == platform && info.LastMessageAt.After(expiryThreshold) {
 			activeChatters = append(activeChatters, info)

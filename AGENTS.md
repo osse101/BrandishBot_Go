@@ -208,13 +208,29 @@ make check-db           # Ensure database is running
 
 ## ⚡ AI Agent Best Practices
 
+### 🚨 Prevention of Silent Hangs (> 1 minute)
+
+> [!CAUTION]
+> **Agents frequently cause silent hangs by blocked `run_command` calls.**
+> The UI can fail to show approval prompts for `run_command`, causing the agent to lock up indefinitely.
+>
+> 1. **Prioritize Native Tools**: NEVER use `run_command` for tasks that native tools can handle. Use `list_dir` for `ls`, `grep_search` for `grep`, `view_file` for `cat`, etc.
+> 2. **Never Wait Synchronously**: When you MUST run a build/test command, `WaitMsBeforeAsync` MUST be exceptionally short (e.g., `500`). NEVER block the main agent loop.
+> 3. **Avoid Unnecessary Approvals**: Read `.agent/rules/prevent-agent-hangs.md` and follow it strictly to prevent wasting user time.
+
 ### Process Management
 
-When running background commands:
+Background commands can silently hang or crash. You must actively manage their lifecycle:
 
 1. **Track command IDs** returned by `run_command`
-2. **Terminate with IDs** using `send_command_input(..., Terminate: true)`
-3. **Clean up at session end** - terminate ALL background processes
+2. **Set generous but firm timeouts**: Do not wait indefinitely for background tasks.
+   - `make test` / `go test`: 15-30 seconds (Wait > 2 mins = Hung)
+   - `make lint`: 30 seconds (Wait > 1 mins = Hung)
+   - `make build`: 30-60 seconds (Wait > 2 mins = Hung)
+   - `docker build`: 2-5 minutes (Wait > 7 mins = Hung)
+3. **Detect Hung Processes**: If a command exceeds its generous time estimate AND `command_status` produces no output delta over multiple checks, consider the process **hung**.
+4. **Terminate and Reattempt**: You MUST terminate hung or stuck processes using `send_command_input(..., Terminate: true)`. Afterward, reattempt the command with verbose logging (e.g., `-v`) or output redirection (`> out.log 2>&1`) to diagnose the freeze.
+5. **Clean up at session end**: Terminate ALL background processes spawned during your task before finalizing.
 
 ```MD
 ❌ AVOID: Searching for processes by port (unreliable)

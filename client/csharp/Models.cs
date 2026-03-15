@@ -325,6 +325,9 @@ namespace BrandishBot.Client
         [JsonProperty("winner_id")]
         public string WinnerId { get; set; }
 
+        [JsonProperty("winner_username")]
+        public string WinnerUsername { get; set; }
+
         [JsonProperty("total_value")]
         public long TotalValue { get; set; }
     }
@@ -358,6 +361,9 @@ namespace BrandishBot.Client
         [JsonProperty("winner_id")]
         public string WinnerId { get; set; }
 
+        [JsonProperty("winner_username")]
+        public string WinnerUsername { get; set; }
+
         [JsonProperty("total_value")]
         public long TotalValue { get; set; }
 
@@ -378,6 +384,57 @@ namespace BrandishBot.Client
 
         [JsonProperty("value")]
         public long Value { get; set; }
+    }
+
+    public class GambleParticipantOutcome
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("score")]
+        public long Score { get; set; }
+
+        [JsonProperty("lootbox_count")]
+        public int LootboxCount { get; set; }
+
+        [JsonProperty("is_winner")]
+        public bool IsWinner { get; set; }
+
+        [JsonProperty("is_near_miss")]
+        public bool IsNearMiss { get; set; }
+
+        [JsonProperty("is_crit_fail")]
+        public bool IsCritFail { get; set; }
+
+        [JsonProperty("is_tie_break_lost")]
+        public bool IsTieBreakLost { get; set; }
+    }
+
+    public class GambleCompletedPayloadV2
+    {
+        [JsonProperty("gamble_id")]
+        public string GambleId { get; set; }
+
+        [JsonProperty("winner_id")]
+        public string WinnerId { get; set; }
+
+        [JsonProperty("winner_username")]
+        public string WinnerUsername { get; set; }
+
+        [JsonProperty("total_value")]
+        public long TotalValue { get; set; }
+
+        [JsonProperty("participant_count")]
+        public int ParticipantCount { get; set; }
+
+        [JsonProperty("participants")]
+        public List<GambleParticipantOutcome> Participants { get; set; }
+
+        [JsonProperty("timestamp")]
+        public long Timestamp { get; set; }
     }
 
     public class Recipe

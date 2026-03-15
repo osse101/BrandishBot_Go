@@ -220,16 +220,6 @@ type JobUnlockConfig struct {
 	RequiredLevel int32  `json:"required_level"`
 }
 
-type JobXpEvent struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         uuid.UUID          `json:"user_id"`
-	JobID          int32              `json:"job_id"`
-	XpAmount       int32              `json:"xp_amount"`
-	SourceType     string             `json:"source_type"`
-	SourceMetadata []byte             `json:"source_metadata"`
-	RecordedAt     pgtype.Timestamptz `json:"recorded_at"`
-}
-
 type LinkToken struct {
 	Token            string             `json:"token"`
 	SourcePlatform   string             `json:"source_platform"`

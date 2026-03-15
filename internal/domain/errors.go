@@ -91,6 +91,9 @@ const (
 	ErrMsgCompostNotCompostable   = "item is not compostable"
 	ErrMsgCompostMustHarvest      = "bin is ready, harvest before depositing"
 	ErrMsgCompostNothingToHarvest = "nothing to harvest"
+
+	// Search region errors
+	ErrMsgRegionLocked = "region locked: explorer level too low"
 )
 
 // Common domain errors
@@ -181,4 +184,7 @@ var (
 	ErrCompostNotCompostable   = errors.New(ErrMsgCompostNotCompostable)
 	ErrCompostMustHarvest      = errors.New(ErrMsgCompostMustHarvest)
 	ErrCompostNothingToHarvest = errors.New(ErrMsgCompostNothingToHarvest)
+
+	// Search region errors
+	ErrRegionLocked = errors.New(ErrMsgRegionLocked)
 )
