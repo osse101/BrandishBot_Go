@@ -74,9 +74,16 @@ func (h *ExpeditionHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expeditionID, ok := h.parseExpeditionID(w, r)
-	if !ok {
-		return
+	// Expedition ID is now optional; if missing, service joins active one
+	var expeditionID uuid.UUID
+	idStr := GetOptionalQueryParam(r, "id", "")
+	if idStr != "" {
+		var err error
+		expeditionID, err = uuid.Parse(idStr)
+		if err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid expedition ID")
+			return
+		}
 	}
 
 	var req JoinExpeditionRequest

@@ -1,5 +1,3 @@
 Gamble start and join is complicated
 Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
-Expeditions should be able to be joined without the ID.
-Expeditions should have 10 minute global cooldown, cost 500 money to start, and require explorer level 5.

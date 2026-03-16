@@ -95,7 +95,8 @@ const (
 	ErrMsgCompostNothingToHarvest = "nothing to harvest"
 
 	// Search region errors
-	ErrMsgRegionLocked = "region locked: explorer level too low"
+	ErrMsgRegionLocked       = "region locked: explorer level too low"
+	ErrMsgNoActiveExpedition = "no active expedition found"
 )
 
 // Common domain errors
@@ -190,5 +191,6 @@ var (
 	ErrCompostNothingToHarvest = errors.New(ErrMsgCompostNothingToHarvest)
 
 	// Search region errors
-	ErrRegionLocked = errors.New(ErrMsgRegionLocked)
+	ErrRegionLocked       = errors.New(ErrMsgRegionLocked)
+	ErrNoActiveExpedition = errors.New(ErrMsgNoActiveExpedition)
 )

@@ -135,6 +135,18 @@ func (s *service) checkConstraints(ctx context.Context, initiator *domain.User, 
 
 // JoinExpedition adds a user to an expedition
 func (s *service) JoinExpedition(ctx context.Context, platform, platformID, username string, expeditionID uuid.UUID) error {
+	// If ID is nil, try to join the currently active expedition
+	if expeditionID == uuid.Nil {
+		active, err := s.repo.GetActiveExpedition(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to check for active expedition: %w", err)
+		}
+		if active == nil {
+			return domain.ErrNoActiveExpedition
+		}
+		expeditionID = active.Expedition.ID
+	}
+
 	// Get user
 	user, err := s.repo.GetUserByPlatformID(ctx, platform, platformID)
 	if err != nil {

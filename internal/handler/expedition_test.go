@@ -27,13 +27,15 @@ func setupExpeditionTest(t *testing.T) (*ExpeditionHandler, *mocks.MockExpeditio
 
 // createTestExpeditionRequest Helper function to create a new HTTP request with JSON body
 func createTestExpeditionRequest(method, url string, body interface{}) (*http.Request, error) {
-	var buf bytes.Buffer
+	var bodyBytes []byte
 	if body != nil {
-		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+		var err error
+		bodyBytes, err = json.Marshal(body)
+		if err != nil {
 			return nil, err
 		}
 	}
-	req, err := http.NewRequest(method, url, &buf)
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -567,7 +569,7 @@ func TestHandleJoinExpedition(t *testing.T) {
 			expectedError: "progression_locked",
 		},
 		{
-			name: "Missing ID",
+			name: "Success (Active Default)",
 			requestBody: JoinExpeditionRequest{
 				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
@@ -577,9 +579,10 @@ func TestHandleJoinExpedition(t *testing.T) {
 			setupMocks: func(mockExp *mocks.MockExpeditionService, mockProg *mocks.MockProgressionService) {
 				mockProg.On("IsFeatureUnlocked", mock.Anything, "feature_expedition").
 					Return(true, nil)
+				mockExp.On("JoinExpedition", mock.Anything, domain.PlatformDiscord, "user2", "testuser2", uuid.Nil).
+					Return(nil)
 			},
-			expectedCode:  http.StatusBadRequest,
-			expectedError: "Missing id query parameter",
+			expectedCode: http.StatusOK,
 		},
 		{
 			name: "Invalid ID",
