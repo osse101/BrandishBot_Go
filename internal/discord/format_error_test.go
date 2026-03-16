@@ -32,6 +32,16 @@ func TestFormatFriendlyError(t *testing.T) {
 			input:    "some random error",
 			expected: "❌ some random error",
 		},
+		{
+			name:     "Insufficient Level",
+			input:    "api error: insufficient level: requires Explorer level 5",
+			expected: MsgInsufficientLevel + "\nrequires Explorer level 5",
+		},
+		{
+			name:     "Invalid Type",
+			input:    "api error: invalid expedition type: boss",
+			expected: MsgInvalidExpeditionType + "\nType: **boss**",
+		},
 	}
 
 	for _, tt := range tests {

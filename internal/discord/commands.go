@@ -371,7 +371,7 @@ func respondFriendlyError(s *discordgo.Session, i *discordgo.InteractionCreate, 
 // formatFriendlyError cleans up technical error messages
 func formatFriendlyError(msg string) string {
 	// Remove "API error: " prefix if present (from client.go)
-	if len(msg) > 11 && msg[:11] == "API error: " {
+	if strings.HasPrefix(strings.ToLower(msg), "api error: ") {
 		msg = msg[11:]
 	}
 
@@ -398,6 +398,16 @@ func formatFriendlyError(msg string) string {
 		return MsgCooldownActive
 	case strings.Contains(msg, domain.ErrMsgNotEnoughItems):
 		return MsgNotEnoughItems
+	case strings.Contains(msg, domain.ErrMsgInsufficientLevel):
+		if parts := strings.Split(msg, ": "); len(parts) > 1 {
+			return fmt.Sprintf("%s\n%s", MsgInsufficientLevel, parts[1])
+		}
+		return MsgInsufficientLevel
+	case strings.Contains(msg, domain.ErrMsgInvalidExpeditionType):
+		if parts := strings.Split(msg, ": "); len(parts) > 1 {
+			return fmt.Sprintf("%s\nType: **%s**", MsgInvalidExpeditionType, parts[1])
+		}
+		return MsgInvalidExpeditionType
 	default:
 		// If it looks like a sentence, just return it, otherwise wrap it slightly
 		return "❌ " + msg

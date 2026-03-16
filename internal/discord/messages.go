@@ -11,7 +11,9 @@ const (
 	MsgNotEnoughItems = "🎒 **Not Enough Items**\nYou don't have enough of that item."
 
 	// User
-	MsgUserNotFound = "👤 **User Not Found**\nHave they registered yet?"
+	MsgUserNotFound          = "👤 **User Not Found**\nHave they registered yet?"
+	MsgInsufficientLevel     = "🔒 **Level Too Low**"
+	MsgInvalidExpeditionType = "❓ **Invalid Expedition Type**"
 
 	// Cooldowns
 	MsgCooldownActive = "⏳ **Whoa there!**\nYou need to wait a bit before doing that again."

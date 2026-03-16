@@ -42,7 +42,7 @@ type StartExpeditionResponse struct {
 func (h *ExpeditionHandler) HandleStart(w http.ResponseWriter, r *http.Request) {
 	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureExpedition, "Start expedition",
 		func(ctx context.Context, req StartExpeditionRequest) (*domain.Expedition, error) {
-			exp, err := h.service.StartExpedition(ctx, req.Platform, req.PlatformID, req.Username, req.ExpeditionType)
+			exp, err := h.service.StartExpedition(ctx, req.Platform, req.PlatformID, req.Username, domain.ExpeditionType(req.ExpeditionType))
 			if err == nil {
 				recordEngagement(r, h.progressionSvc, req.Username, "expedition_started", 2)
 			}

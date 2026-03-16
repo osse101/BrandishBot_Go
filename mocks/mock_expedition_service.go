@@ -403,7 +403,7 @@ func (_c *MockExpeditionService_Shutdown_Call) RunAndReturn(run func(context.Con
 }
 
 // StartExpedition provides a mock function with given fields: ctx, platform, platformID, username, expeditionType
-func (_m *MockExpeditionService) StartExpedition(ctx context.Context, platform string, platformID string, username string, expeditionType string) (*domain.Expedition, error) {
+func (_m *MockExpeditionService) StartExpedition(ctx context.Context, platform string, platformID string, username string, expeditionType domain.ExpeditionType) (*domain.Expedition, error) {
 	ret := _m.Called(ctx, platform, platformID, username, expeditionType)
 
 	if len(ret) == 0 {
@@ -412,10 +412,10 @@ func (_m *MockExpeditionService) StartExpedition(ctx context.Context, platform s
 
 	var r0 *domain.Expedition
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) (*domain.Expedition, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, domain.ExpeditionType) (*domain.Expedition, error)); ok {
 		return rf(ctx, platform, platformID, username, expeditionType)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) *domain.Expedition); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, domain.ExpeditionType) *domain.Expedition); ok {
 		r0 = rf(ctx, platform, platformID, username, expeditionType)
 	} else {
 		if ret.Get(0) != nil {
@@ -423,7 +423,7 @@ func (_m *MockExpeditionService) StartExpedition(ctx context.Context, platform s
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, domain.ExpeditionType) error); ok {
 		r1 = rf(ctx, platform, platformID, username, expeditionType)
 	} else {
 		r1 = ret.Error(1)
@@ -442,14 +442,14 @@ type MockExpeditionService_StartExpedition_Call struct {
 //   - platform string
 //   - platformID string
 //   - username string
-//   - expeditionType string
+//   - expeditionType domain.ExpeditionType
 func (_e *MockExpeditionService_Expecter) StartExpedition(ctx interface{}, platform interface{}, platformID interface{}, username interface{}, expeditionType interface{}) *MockExpeditionService_StartExpedition_Call {
 	return &MockExpeditionService_StartExpedition_Call{Call: _e.mock.On("StartExpedition", ctx, platform, platformID, username, expeditionType)}
 }
 
-func (_c *MockExpeditionService_StartExpedition_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, expeditionType string)) *MockExpeditionService_StartExpedition_Call {
+func (_c *MockExpeditionService_StartExpedition_Call) Run(run func(ctx context.Context, platform string, platformID string, username string, expeditionType domain.ExpeditionType)) *MockExpeditionService_StartExpedition_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(domain.ExpeditionType))
 	})
 	return _c
 }
@@ -459,7 +459,7 @@ func (_c *MockExpeditionService_StartExpedition_Call) Return(_a0 *domain.Expedit
 	return _c
 }
 
-func (_c *MockExpeditionService_StartExpedition_Call) RunAndReturn(run func(context.Context, string, string, string, string) (*domain.Expedition, error)) *MockExpeditionService_StartExpedition_Call {
+func (_c *MockExpeditionService_StartExpedition_Call) RunAndReturn(run func(context.Context, string, string, string, domain.ExpeditionType) (*domain.Expedition, error)) *MockExpeditionService_StartExpedition_Call {
 	_c.Call.Return(run)
 	return _c
 }

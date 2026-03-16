@@ -1145,7 +1145,7 @@ func (c *APIClient) SetUserTimeout(platform, username string, durationSeconds in
 }
 
 // StartExpedition starts a new expedition
-func (c *APIClient) StartExpedition(platform, platformID, username, expeditionType string) (string, string, error) {
+func (c *APIClient) StartExpedition(platform, platformID, username string, expeditionType domain.ExpeditionType) (string, string, error) {
 	req := map[string]interface{}{
 		"platform":        platform,
 		"platform_id":     platformID,

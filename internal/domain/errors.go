@@ -45,7 +45,9 @@ const (
 	ErrMsgFailedToRegisterUser = "failed to register user"
 
 	// Job errors
-	ErrMsgDailyCapReached = "daily XP cap reached"
+	ErrMsgDailyCapReached       = "daily XP cap reached"
+	ErrMsgInsufficientLevel     = "insufficient level"
+	ErrMsgInvalidExpeditionType = "invalid expedition type"
 
 	// Database/System errors
 	ErrMsgConnectionTimeout       = "connection timeout"
@@ -132,7 +134,9 @@ var (
 	ErrFailedToRegisterUser = errors.New(ErrMsgFailedToRegisterUser)
 
 	// Job errors
-	ErrDailyCapReached = errors.New(ErrMsgDailyCapReached)
+	ErrDailyCapReached       = errors.New(ErrMsgDailyCapReached)
+	ErrInsufficientLevel     = errors.New(ErrMsgInsufficientLevel)
+	ErrInvalidExpeditionType = errors.New(ErrMsgInvalidExpeditionType)
 
 	// Database/System errors
 	ErrConnectionTimeout       = errors.New(ErrMsgConnectionTimeout)
