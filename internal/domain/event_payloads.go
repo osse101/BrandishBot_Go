@@ -12,7 +12,13 @@ type GambleParticipantOutcome struct {
 	IsTieBreakLost bool   `json:"is_tie_break_lost"`
 }
 
-// GambleCompletedPayloadV2 enriches V1 with per-participant outcome data
+// GambleItemSummary represents a summary of items opened in a gamble, grouped by name
+type GambleItemSummary struct {
+	ItemName string `json:"item_name"`
+	Quantity int    `json:"quantity"`
+}
+
+// GambleCompletedPayloadV2 enriches V1 with per-participant outcome data and opened items
 type GambleCompletedPayloadV2 struct {
 	GambleID         string                     `json:"gamble_id"`
 	WinnerID         string                     `json:"winner_id"`
@@ -20,6 +26,8 @@ type GambleCompletedPayloadV2 struct {
 	TotalValue       int64                      `json:"total_value"`
 	ParticipantCount int                        `json:"participant_count"`
 	Participants     []GambleParticipantOutcome `json:"participants"`
+	OpenedItems      []GambleOpenedItem         `json:"opened_items"`
+	GroupedItems     []GambleItemSummary        `json:"grouped_items"`
 	Timestamp        int64                      `json:"timestamp"`
 }
 

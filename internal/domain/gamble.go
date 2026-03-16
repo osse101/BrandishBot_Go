@@ -38,6 +38,7 @@ type GambleOpenedItem struct {
 	GambleID     uuid.UUID    `json:"gamble_id"`
 	UserID       string       `json:"user_id"`
 	ItemID       int          `json:"item_id"`
+	ItemName     string       `json:"item_name,omitempty"`
 	Quantity     int          `json:"quantity"`
 	Value        int64        `json:"value"`
 	QualityLevel QualityLevel `json:"quality_level,omitempty"`

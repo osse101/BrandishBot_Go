@@ -160,6 +160,9 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 	var allOpenedItems []domain.GambleOpenedItem
 	var totalGambleValue int64
 
+	// Cache item names to avoid redundant DB lookups
+	itemNameCache := make(map[int]string)
+
 	for _, p := range gamble.Participants {
 		for _, bet := range p.LootboxBets {
 			// Resolve bet item name to ID to get lootbox item
@@ -187,10 +190,23 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 					}
 				}
 
+				itemName := itemNameCache[drop.ItemID]
+				if itemName == "" {
+					item, err := s.repo.GetItemByID(ctx, drop.ItemID)
+					if err == nil && item != nil {
+						itemName = item.PublicName
+						if itemName == "" {
+							itemName = item.InternalName
+						}
+						itemNameCache[drop.ItemID] = itemName
+					}
+				}
+
 				allOpenedItems = append(allOpenedItems, domain.GambleOpenedItem{
 					GambleID:     gamble.ID,
 					UserID:       p.UserID,
 					ItemID:       drop.ItemID,
+					ItemName:     itemName,
 					Quantity:     drop.Quantity,
 					Value:        totalValue,
 					QualityLevel: drop.QualityLevel,

@@ -59,7 +59,7 @@ func (s *service) publishGambleCompletedEvent(ctx context.Context, result *domai
 		}
 	}
 
-	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, winnerUsername, result.TotalValue, participantCount, participants)
+	evt := event.NewGambleCompletedEvent(result.GambleID.String(), result.WinnerID, winnerUsername, result.TotalValue, participantCount, participants, result.Items)
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }
 
@@ -78,6 +78,7 @@ func (s *service) publishGambleRefundedEvent(ctx context.Context, gamble *domain
 		0, // 0 value
 		len(gamble.Participants),
 		s.buildParticipantOutcomes(gamble, make(map[string]int64), "", nil, nil, nil),
+		nil,
 	)
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 }
