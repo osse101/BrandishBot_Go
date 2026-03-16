@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
@@ -169,9 +172,7 @@ func TestConcurrency_RecordUserEvent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			err := svc.RecordUserEvent(ctx, "user-concurrent", domain.StatsEventItemAdded, nil)
-			if err != nil {
-				t.Errorf("RecordUserEvent failed: %v", err)
-			}
+			assert.NoError(t, err, "RecordUserEvent failed")
 		}()
 	}
 
@@ -179,21 +180,14 @@ func TestConcurrency_RecordUserEvent(t *testing.T) {
 
 	// Verify total events
 	counts, err := repo.GetEventCounts(ctx, time.Now().Add(-1*time.Hour), time.Now().Add(1*time.Hour))
-	if err != nil {
-		t.Fatalf("Failed to get counts: %v", err)
-	}
+	require.NoError(t, err, "Failed to get counts")
 
-	if counts[domain.StatsEventItemAdded] != concurrency {
-		t.Errorf("Expected %d item_added events, got %d", concurrency, counts[domain.StatsEventItemAdded])
-	}
+	assert.Equal(t, concurrency, counts[domain.StatsEventItemAdded], "Expected %d item_added events", concurrency)
 
 	// We expect at least 'concurrency' events (activity events)
 	// There might be additional 'daily_streak' events due to the side effect
 	totalCount, err := repo.GetTotalEventCount(ctx, time.Now().Add(-1*time.Hour), time.Now().Add(1*time.Hour))
-	if err != nil {
-		t.Fatalf("Failed to get total count: %v", err)
-	}
-	if totalCount < concurrency {
-		t.Errorf("Expected at least %d events, got %d", concurrency, totalCount)
-	}
+	require.NoError(t, err, "Failed to get total count")
+
+	assert.GreaterOrEqual(t, totalCount, concurrency, "Expected at least %d events", concurrency)
 }
