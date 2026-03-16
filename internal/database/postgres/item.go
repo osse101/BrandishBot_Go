@@ -194,7 +194,7 @@ func (r *ItemRepository) GetSyncMetadata(ctx context.Context, configName string)
 	row, err := r.q.GetSyncMetadata(ctx, configName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errors.New(ErrMsgSyncMetadataNotFound)
+			return nil, fmt.Errorf("%w: sync metadata not found", domain.ErrItemNotFound)
 		}
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)
 	}

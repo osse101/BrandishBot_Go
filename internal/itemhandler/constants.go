@@ -10,17 +10,6 @@ import (
 // Error Messages
 // ============================================================================
 
-const (
-	ErrMsgInvalidQuantity              = "invalid quantity"
-	ErrMsgItemNotFoundInInventory      = "item not found in inventory"
-	ErrMsgNotEnoughItemsInInventory    = "not enough items in inventory"
-	ErrMsgTargetUsernameRequired       = "target username is required for weapon"
-	ErrMsgTargetUsernameRequiredRevive = "target username is required for revive"
-	ErrMsgJobNameRequired              = "job name is required for rare candy"
-	ErrMsgFailedToApplyShield          = "failed to apply shield"
-	ErrMsgNoActiveTargets              = "no active users to target"
-)
-
 // ============================================================================
 // Log Messages
 // ============================================================================
