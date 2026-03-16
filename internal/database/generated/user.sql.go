@@ -148,7 +148,7 @@ func (q *Queries) GetAllItems(ctx context.Context) ([]GetAllItemsRow, error) {
 }
 
 const getAllRecipes = `-- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level, r.is_auto_unlock
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name
@@ -159,6 +159,7 @@ type GetAllRecipesRow struct {
 	ItemID           int32       `json:"item_id"`
 	ItemDescription  pgtype.Text `json:"item_description"`
 	RequiredJobLevel int32       `json:"required_job_level"`
+	IsAutoUnlock     bool        `json:"is_auto_unlock"`
 }
 
 func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error) {
@@ -175,6 +176,7 @@ func (q *Queries) GetAllRecipes(ctx context.Context) ([]GetAllRecipesRow, error)
 			&i.ItemID,
 			&i.ItemDescription,
 			&i.RequiredJobLevel,
+			&i.IsAutoUnlock,
 		); err != nil {
 			return nil, err
 		}
@@ -603,14 +605,19 @@ func (q *Queries) GetPlatformID(ctx context.Context, name string) (int32, error)
 }
 
 const getRecipeByTargetItemID = `-- name: GetRecipeByTargetItemID :one
-SELECT recipe_id, target_item_id, base_cost, created_at FROM crafting_recipes WHERE target_item_id = $1
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level, is_auto_unlock 
+FROM crafting_recipes 
+WHERE target_item_id = $1
 `
 
 type GetRecipeByTargetItemIDRow struct {
-	RecipeID     int32            `json:"recipe_id"`
-	TargetItemID int32            `json:"target_item_id"`
-	BaseCost     []byte           `json:"base_cost"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	RecipeID         int32            `json:"recipe_id"`
+	RecipeKey        string           `json:"recipe_key"`
+	TargetItemID     int32            `json:"target_item_id"`
+	BaseCost         []byte           `json:"base_cost"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	RequiredJobLevel int32            `json:"required_job_level"`
+	IsAutoUnlock     bool             `json:"is_auto_unlock"`
 }
 
 func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int32) (GetRecipeByTargetItemIDRow, error) {
@@ -618,9 +625,12 @@ func (q *Queries) GetRecipeByTargetItemID(ctx context.Context, targetItemID int3
 	var i GetRecipeByTargetItemIDRow
 	err := row.Scan(
 		&i.RecipeID,
+		&i.RecipeKey,
 		&i.TargetItemID,
 		&i.BaseCost,
 		&i.CreatedAt,
+		&i.RequiredJobLevel,
+		&i.IsAutoUnlock,
 	)
 	return i, err
 }
@@ -822,7 +832,11 @@ func (q *Queries) IsItemBuyable(ctx context.Context, internalName string) (bool,
 }
 
 const isRecipeUnlocked = `-- name: IsRecipeUnlocked :one
-SELECT EXISTS (SELECT 1 FROM recipe_unlocks WHERE user_id = $1 AND recipe_id = $2)
+SELECT EXISTS (
+    SELECT 1 FROM public.recipe_unlocks ru WHERE ru.user_id = $1 AND ru.recipe_id = $2
+) OR EXISTS (
+    SELECT 1 FROM public.crafting_recipes cr WHERE cr.recipe_id = $2 AND cr.is_auto_unlock = TRUE
+)
 `
 
 type IsRecipeUnlockedParams struct {
@@ -830,11 +844,11 @@ type IsRecipeUnlockedParams struct {
 	RecipeID int32     `json:"recipe_id"`
 }
 
-func (q *Queries) IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (bool, error) {
+func (q *Queries) IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (pgtype.Bool, error) {
 	row := q.db.QueryRow(ctx, isRecipeUnlocked, arg.UserID, arg.RecipeID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
+	var column_1 pgtype.Bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const unlockRecipe = `-- name: UnlockRecipe :exec

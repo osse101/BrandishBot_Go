@@ -145,10 +145,16 @@ SELECT EXISTS (
 );
 
 -- name: GetRecipeByTargetItemID :one
-SELECT recipe_id, target_item_id, base_cost, created_at FROM crafting_recipes WHERE target_item_id = $1;
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level, is_auto_unlock 
+FROM crafting_recipes 
+WHERE target_item_id = $1;
 
 -- name: IsRecipeUnlocked :one
-SELECT EXISTS (SELECT 1 FROM recipe_unlocks WHERE user_id = $1 AND recipe_id = $2);
+SELECT EXISTS (
+    SELECT 1 FROM public.recipe_unlocks ru WHERE ru.user_id = $1 AND ru.recipe_id = $2
+) OR EXISTS (
+    SELECT 1 FROM public.crafting_recipes cr WHERE cr.recipe_id = $2 AND cr.is_auto_unlock = TRUE
+);
 
 -- name: UnlockRecipe :exec
 INSERT INTO recipe_unlocks (user_id, recipe_id, unlocked_at)
@@ -164,7 +170,7 @@ WHERE ru.user_id = $1
 ORDER BY i.internal_name;
 
 -- name: GetAllRecipes :many
-SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level
+SELECT i.internal_name AS item_name, r.target_item_id AS item_id, i.item_description, r.required_job_level, r.is_auto_unlock
 FROM crafting_recipes r
 JOIN items i ON r.target_item_id = i.item_id
 ORDER BY i.internal_name;

@@ -3,6 +3,4 @@ Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
 Expeditions should be able to be joined without the ID.
 Expeditions should have 10 minute global cooldown, cost 500 money to start, and require explorer level 5.
-Upgrade junkbox returns message saying feature not unlocked
 /Engagement returns all 0's on discord
-Job Progress shows strange XP values for each job; non uniform.  And shows 295/34 868% for Job Explorer Level 1.

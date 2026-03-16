@@ -48,6 +48,7 @@ type RecipeDef struct {
 	TargetItem       string       `json:"target_item"`
 	Costs            []RecipeCost `json:"costs"`
 	RequiredJobLevel int          `json:"required_job_level,omitempty"`
+	IsAutoUnlock     bool         `json:"is_auto_unlock"`
 }
 
 // DisassembleRecipeDef represents a single disassemble recipe in the JSON
@@ -296,7 +297,8 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 			// Recipe exists - check if update needed
 			needsUpdate := existingRecipe.TargetItemID != targetItemID ||
 				!costsEqual(existingRecipe.BaseCost, costs) ||
-				existingRecipe.RequiredJobLevel != recipeDef.RequiredJobLevel
+				existingRecipe.RequiredJobLevel != recipeDef.RequiredJobLevel ||
+				existingRecipe.IsAutoUnlock != recipeDef.IsAutoUnlock
 
 			if needsUpdate {
 				// Update existing recipe
@@ -305,6 +307,7 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 					TargetItemID:     targetItemID,
 					BaseCost:         costs,
 					RequiredJobLevel: recipeDef.RequiredJobLevel,
+					IsAutoUnlock:     recipeDef.IsAutoUnlock,
 				}); err != nil {
 					return nil, fmt.Errorf("failed to update crafting recipe '%s': %w", recipeDef.RecipeKey, err)
 				}
@@ -320,6 +323,7 @@ func (l *recipeLoader) syncCraftingRecipes(ctx context.Context, config *UpgradeC
 				TargetItemID:     targetItemID,
 				BaseCost:         costs,
 				RequiredJobLevel: recipeDef.RequiredJobLevel,
+				IsAutoUnlock:     recipeDef.IsAutoUnlock,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to insert crafting recipe '%s': %w", recipeDef.RecipeKey, err)

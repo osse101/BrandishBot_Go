@@ -168,6 +168,12 @@ func (m *MockRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int
 func (m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
 	m.RLock()
 	defer m.RUnlock()
+
+	// Check if recipe is auto-unlocked
+	if recipe, ok := m.recipes[recipeID]; ok && recipe.IsAutoUnlock {
+		return true, nil
+	}
+
 	if m.unlockedRecipes[userID] == nil {
 		return false, nil
 	}
@@ -632,14 +638,16 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 
 // MockJobService for testing job level requirements
 type MockJobService struct {
-	mu          sync.Mutex
-	levels      map[string]map[string]int // userID -> jobKey -> level
-	returnError error
+	mu               sync.Mutex
+	levels           map[string]map[string]int  // userID -> jobKey -> level
+	unlockedFeatures map[string]map[string]bool // userID -> featureKey -> unlocked
+	returnError      error
 }
 
 func NewMockJobService() *MockJobService {
 	return &MockJobService{
-		levels: make(map[string]map[string]int),
+		levels:           make(map[string]map[string]int),
+		unlockedFeatures: make(map[string]map[string]bool),
 	}
 }
 
@@ -658,7 +666,30 @@ func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string)
 }
 
 func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.returnError != nil {
+		return false, m.returnError
+	}
+
+	if userFeatures, ok := m.unlockedFeatures[userID]; ok {
+		if unlocked, ok := userFeatures[featureKey]; ok {
+			return unlocked, nil
+		}
+	}
+	// Default to true for existing tests
 	return true, nil
+}
+
+func (m *MockJobService) SetFeatureUnlocked(userID, featureKey string, unlocked bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.unlockedFeatures[userID] == nil {
+		m.unlockedFeatures[userID] = make(map[string]bool)
+	}
+	m.unlockedFeatures[userID][featureKey] = unlocked
 }
 
 func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {

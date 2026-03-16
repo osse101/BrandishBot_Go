@@ -52,6 +52,7 @@ type CraftingRecipe struct {
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
 	RecipeKey        string           `json:"recipe_key"`
 	RequiredJobLevel int32            `json:"required_job_level"`
+	IsAutoUnlock     bool             `json:"is_auto_unlock"`
 }
 
 type DailyResetState struct {

@@ -213,7 +213,7 @@ type Querier interface {
 	InvalidateTokensForSource(ctx context.Context, arg InvalidateTokensForSourceParams) error
 	IsItemBuyable(ctx context.Context, internalName string) (bool, error)
 	IsNodeUnlocked(ctx context.Context, arg IsNodeUnlockedParams) (bool, error)
-	IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (bool, error)
+	IsRecipeUnlocked(ctx context.Context, arg IsRecipeUnlockedParams) (pgtype.Bool, error)
 	IsUserProgressionUnlocked(ctx context.Context, arg IsUserProgressionUnlockedParams) (bool, error)
 	JoinGamble(ctx context.Context, arg JoinGambleParams) error
 	LogEvent(ctx context.Context, arg LogEventParams) error

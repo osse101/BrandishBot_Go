@@ -123,9 +123,12 @@ func (r *CraftingRepository) GetRecipeByTargetItemID(ctx context.Context, itemID
 	}
 
 	recipe := domain.Recipe{
-		ID:           int(row.RecipeID),
-		TargetItemID: int(row.TargetItemID),
-		CreatedAt:    row.CreatedAt.Time,
+		ID:               int(row.RecipeID),
+		RecipeKey:        row.RecipeKey, // Added RecipeKey to mapping if available, although row might not have it depending on the query
+		TargetItemID:     int(row.TargetItemID),
+		RequiredJobLevel: int(row.RequiredJobLevel),
+		IsAutoUnlock:     row.IsAutoUnlock,
+		CreatedAt:        row.CreatedAt.Time,
 	}
 
 	if len(row.BaseCost) > 0 {
@@ -145,10 +148,14 @@ func (r *CraftingRepository) IsRecipeUnlocked(ctx context.Context, userID string
 	if err != nil {
 		return false, fmt.Errorf("invalid user id: %w", err)
 	}
-	return r.q.IsRecipeUnlocked(ctx, generated.IsRecipeUnlockedParams{
+	res, err := r.q.IsRecipeUnlocked(ctx, generated.IsRecipeUnlockedParams{
 		UserID:   userUUID,
 		RecipeID: int32(recipeID),
 	})
+	if err != nil {
+		return false, err
+	}
+	return res.Bool, nil
 }
 
 // UnlockRecipe unlocks a recipe for a user
@@ -266,6 +273,7 @@ func (r *CraftingRepository) GetAllCraftingRecipes(ctx context.Context) ([]domai
 			RecipeKey:        row.RecipeKey,
 			TargetItemID:     int(row.TargetItemID),
 			RequiredJobLevel: int(row.RequiredJobLevel),
+			IsAutoUnlock:     row.IsAutoUnlock,
 			CreatedAt:        row.CreatedAt.Time,
 		}
 
@@ -334,6 +342,7 @@ func (r *CraftingRepository) GetCraftingRecipeByKey(ctx context.Context, recipeK
 		RecipeKey:        row.RecipeKey,
 		TargetItemID:     int(row.TargetItemID),
 		RequiredJobLevel: int(row.RequiredJobLevel),
+		IsAutoUnlock:     row.IsAutoUnlock,
 		CreatedAt:        row.CreatedAt.Time,
 	}
 
@@ -394,6 +403,7 @@ func (r *CraftingRepository) InsertCraftingRecipe(ctx context.Context, recipe *d
 		TargetItemID:     int32(recipe.TargetItemID),
 		BaseCost:         baseCostJSON,
 		RequiredJobLevel: int32(recipe.RequiredJobLevel),
+		IsAutoUnlock:     recipe.IsAutoUnlock,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to insert crafting recipe: %w", err)
@@ -428,6 +438,7 @@ func (r *CraftingRepository) UpdateCraftingRecipe(ctx context.Context, recipeID 
 		TargetItemID:     int32(recipe.TargetItemID),
 		BaseCost:         baseCostJSON,
 		RequiredJobLevel: int32(recipe.RequiredJobLevel),
+		IsAutoUnlock:     recipe.IsAutoUnlock,
 		RecipeID:         int32(recipeID),
 	})
 	if err != nil {

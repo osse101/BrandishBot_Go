@@ -81,6 +81,14 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", err
 	}
 
+	// 1c. Check if Upgrade Item feature is unlocked globally for this user
+	if s.jobService != nil {
+		jobUnlocked, err := s.jobService.IsJobFeatureUnlocked(ctx, user.ID, "feature_upgrade")
+		if err == nil && !jobUnlocked {
+			return nil, nil, nil, "", fmt.Errorf("upgrade requires job progression: %w", domain.ErrFeatureLocked)
+		}
+	}
+
 	// For upgrades, the input item is what we seek a recipe FOR.
 	// We first check if there's a recipe where this item is the source (RecipeKey matches itemName or resolvedName)
 	recipe, err := s.repo.GetCraftingRecipeByKey(ctx, resolvedName)
@@ -104,13 +112,15 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", fmt.Errorf("no recipe found for '%s' | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
-	// Check if user has unlocked this recipe
-	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
-	if err != nil {
-		return nil, nil, nil, "", fmt.Errorf("failed to check recipe unlock: %w", err)
-	}
-	if !unlocked {
-		return nil, nil, nil, "", fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
+	// Check if user has unlocked this recipe (or if it's auto-unlocked)
+	if !recipe.IsAutoUnlock {
+		unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
+		if err != nil {
+			return nil, nil, nil, "", fmt.Errorf("failed to check recipe unlock: %w", err)
+		}
+		if !unlocked {
+			return nil, nil, nil, "", fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
+		}
 	}
 
 	// Get the target item for verification/information
