@@ -42,7 +42,7 @@ type Service interface {
 	GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error)
 	CalculateLevel(totalXP int64) int
 	GetXPForLevel(level int) int64
-	GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64)
+	GetXPProgress(currentXP int64) (currentLevel int, levelXP int64, levelRequirement int64, xpToNext int64)
 	Shutdown(ctx context.Context) error
 }
 

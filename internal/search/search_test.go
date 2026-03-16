@@ -87,8 +87,8 @@ func (m *mockJobService) GetUserByPlatformID(ctx context.Context, platform, plat
 }
 func (m *mockJobService) CalculateLevel(totalXP int64) int { return 0 }
 func (m *mockJobService) GetXPForLevel(level int) int64    { return 0 }
-func (m *mockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
-	return 0, 0
+func (m *mockJobService) GetXPProgress(currentXP int64) (int, int64, int64, int64) {
+	return 0, 0, 0, 0
 }
 func (m *mockJobService) Shutdown(ctx context.Context) error { return nil }
 

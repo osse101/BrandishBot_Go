@@ -74,8 +74,8 @@ func (m *MockJobService) GetXPForLevel(level int) int64 {
 	return 1000
 }
 
-func (m *MockJobService) GetXPProgress(currentXP int64) (currentLevel int, xpToNext int64) {
-	return 1, 1000
+func (m *MockJobService) GetXPProgress(currentXP int64) (int, int64, int64, int64) {
+	return 1, 0, 1000, 1000
 }
 
 func (m *MockJobService) Shutdown(ctx context.Context) error {

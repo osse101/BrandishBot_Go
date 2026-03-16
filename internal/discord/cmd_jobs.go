@@ -70,14 +70,10 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Let's Capitalize JobKey for display
 			displayName := cases.Title(language.English).String(strings.ReplaceAll(jobKey, "_", " "))
 
-			level := float64(job.Level)
-			currentXP := float64(job.CurrentXP)
-			xpToNext := float64(job.XPToNextLevel)
-
-			// Calculate progress percentage
+			// Calculate progress percentage using level-relative XP
 			progressPct := 0.0
-			if xpToNext > 0 {
-				progressPct = (currentXP / xpToNext) * 100
+			if job.LevelRequirement > 0 {
+				progressPct = (float64(job.LevelXP) / float64(job.LevelRequirement)) * 100
 			}
 
 			// Add star emoji for primary job
@@ -89,12 +85,12 @@ func JobProgressCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			// Create progress bar
 			progressBar := createProgressBar(progressPct)
 
-			fieldValue := fmt.Sprintf("Level %d\n%s `%.0f%%`\nXP: %.0f / %.0f",
-				int(level),
+			fieldValue := fmt.Sprintf("Level %d\n%s `%.0f%%`\nXP: %d / %d",
+				job.Level,
 				progressBar,
 				progressPct,
-				currentXP,
-				xpToNext,
+				job.LevelXP,
+				job.LevelRequirement,
 			)
 
 			fields = append(fields, &discordgo.MessageEmbedField{

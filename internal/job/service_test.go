@@ -688,6 +688,8 @@ func TestGetUserJobs_NoProgress(t *testing.T) {
 	assert.Len(t, result, 1)
 	assert.Equal(t, 0, result[0].Level)
 	assert.Equal(t, int64(0), result[0].CurrentXP)
+	assert.Equal(t, int64(0), result[0].LevelXP)
+	assert.Equal(t, int64(BaseXP), result[0].LevelRequirement)
 	assert.Equal(t, int64(BaseXP), result[0].XPToNextLevel) // XP to level 1
 }
 

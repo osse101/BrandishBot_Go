@@ -656,7 +656,7 @@ func (_c *MockJobService_GetXPForLevel_Call) RunAndReturn(run func(int) int64) *
 }
 
 // GetXPProgress provides a mock function with given fields: currentXP
-func (_m *MockJobService) GetXPProgress(currentXP int64) (int, int64) {
+func (_m *MockJobService) GetXPProgress(currentXP int64) (int, int64, int64, int64) {
 	ret := _m.Called(currentXP)
 
 	if len(ret) == 0 {
@@ -665,7 +665,9 @@ func (_m *MockJobService) GetXPProgress(currentXP int64) (int, int64) {
 
 	var r0 int
 	var r1 int64
-	if rf, ok := ret.Get(0).(func(int64) (int, int64)); ok {
+	var r2 int64
+	var r3 int64
+	if rf, ok := ret.Get(0).(func(int64) (int, int64, int64, int64)); ok {
 		return rf(currentXP)
 	}
 	if rf, ok := ret.Get(0).(func(int64) int); ok {
@@ -680,7 +682,19 @@ func (_m *MockJobService) GetXPProgress(currentXP int64) (int, int64) {
 		r1 = ret.Get(1).(int64)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(int64) int64); ok {
+		r2 = rf(currentXP)
+	} else {
+		r2 = ret.Get(2).(int64)
+	}
+
+	if rf, ok := ret.Get(3).(func(int64) int64); ok {
+		r3 = rf(currentXP)
+	} else {
+		r3 = ret.Get(3).(int64)
+	}
+
+	return r0, r1, r2, r3
 }
 
 // MockJobService_GetXPProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetXPProgress'
@@ -701,12 +715,12 @@ func (_c *MockJobService_GetXPProgress_Call) Run(run func(currentXP int64)) *Moc
 	return _c
 }
 
-func (_c *MockJobService_GetXPProgress_Call) Return(currentLevel int, xpToNext int64) *MockJobService_GetXPProgress_Call {
-	_c.Call.Return(currentLevel, xpToNext)
+func (_c *MockJobService_GetXPProgress_Call) Return(currentLevel int, levelXP int64, levelRequirement int64, xpToNext int64) *MockJobService_GetXPProgress_Call {
+	_c.Call.Return(currentLevel, levelXP, levelRequirement, xpToNext)
 	return _c
 }
 
-func (_c *MockJobService_GetXPProgress_Call) RunAndReturn(run func(int64) (int, int64)) *MockJobService_GetXPProgress_Call {
+func (_c *MockJobService_GetXPProgress_Call) RunAndReturn(run func(int64) (int, int64, int64, int64)) *MockJobService_GetXPProgress_Call {
 	_c.Call.Return(run)
 	return _c
 }
