@@ -144,14 +144,6 @@ func HandleUseItem(svc user.Service, progressionSvc progression.Service, eventBu
 			"quantity", req.Quantity,
 			"message", message)
 
-		// Record contribution for item usage
-		if engagementPoints > 0 {
-			if err := progressionSvc.RecordEngagement(r.Context(), metricUserID, domain.MetricTypeItemUsed, engagementPoints); err != nil {
-				log.Error("Failed to record use engagement", "error", err, "user_id", metricUserID)
-				// Don't fail the request
-			}
-		}
-
 		RespondJSON(w, http.StatusOK, UseItemResponse{
 			Message: message,
 		})

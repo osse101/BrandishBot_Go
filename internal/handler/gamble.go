@@ -61,8 +61,6 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	log := logger.FromContext(r.Context())
-
 	// Track engagement for gamble start
 	if userID, err := h.userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
 		middleware.TrackEngagementFromContext(
@@ -71,12 +69,6 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 			domain.MetricTypeGambleStarted,
 			1,
 		)
-	}
-
-	// Record contribution for gamble start (higher value)
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeGambleStarted, 3); err != nil {
-		log.Error("Failed to record gamble start engagement", "error", err)
-		// Don't fail the request
 	}
 
 	response := StartGambleResponse{
@@ -115,8 +107,6 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log := logger.FromContext(r.Context())
-
 	// Track engagement for gamble join
 	if userID, err := h.userSvc.GetUserIDByPlatformID(r.Context(), req.Platform, req.PlatformID); err == nil && userID != "" {
 		middleware.TrackEngagementFromContext(
@@ -125,12 +115,6 @@ func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request)
 			domain.MetricTypeGambleJoined,
 			1,
 		)
-	}
-
-	// Record contribution for gamble join
-	if err := h.progressionSvc.RecordEngagement(r.Context(), req.Username, domain.MetricTypeGambleJoined, 2); err != nil {
-		log.Error("Failed to record gamble join engagement", "error", err)
-		// Don't fail the request
 	}
 
 	RespondJSON(w, http.StatusOK, map[string]string{"message": MsgJoinedGambleSuccess})

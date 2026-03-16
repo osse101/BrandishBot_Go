@@ -131,6 +131,7 @@ func NewService(repo repository.Progression, userRepo repository.User, bus event
 	if bus != nil {
 		bus.Subscribe(event.ProgressionNodeUnlocked, svc.handleNodeUnlocked)
 		bus.Subscribe(event.ProgressionNodeRelocked, svc.handleNodeRelocked)
+		bus.Subscribe(domain.EventTypeEngagement, svc.handleEngagement)
 	}
 
 	return svc

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
@@ -57,41 +58,56 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 
 	// If we have a weight, calculate score
 	if weight > 0 {
-		baseScore := float64(value) * weight
-
-		// Apply progression rate modifier (stacks multiplicatively across all three upgrades)
-		// upgrade_progression_basic, upgrade_progression_two, upgrade_progression_three
-		modifiedScore, err := s.GetModifiedValue(ctx, "", "progression_rate", baseScore)
-		if err != nil {
-			// Log warning but continue with base score if modifier fails
-			logger.FromContext(ctx).Warn("Failed to apply progression_rate modifier, using base score", "error", err)
-			modifiedScore = baseScore
-		}
-
-		// Apply Scholar bonus (per-user contribution multiplier)
-		scholarMultiplier, err := s.GetModifiedValue(ctx, userID, "engagement_contribution_multiplier", 1.0)
-		if err != nil {
-			logger.FromContext(ctx).Warn("Failed to apply engagement_contribution_multiplier", "error", err)
-			scholarMultiplier = 1.0
-		}
-
-		if scholarMultiplier > 1.0 {
-			log := logger.FromContext(ctx)
-			log.Info("Applying Scholar bonus",
-				"user_id", userID,
-				"base_score", modifiedScore,
-				"multiplier", scholarMultiplier)
-			modifiedScore = modifiedScore * scholarMultiplier
-		}
-
-		score := int(modifiedScore)
-		if score > 0 {
-			if err := s.AddContribution(ctx, score); err != nil {
-				logger.FromContext(ctx).Warn("Failed to add contribution from engagement", "error", err)
-			}
+		if err := s.calculateAndAddScore(ctx, userID, value, weight); err != nil {
+			logger.FromContext(ctx).Warn("Failed to calculate and add score", "error", err)
 		}
 	}
 
+	// Publish recorded event so other systems (like Scholar XP) can react
+	if s.publisher != nil {
+		s.publisher.PublishWithRetry(ctx, event.Event{
+			Version: "1.0", // Standard version
+			Type:    domain.EventTypeEngagement,
+			Payload: metric,
+			Metadata: map[string]interface{}{
+				domain.MetadataKeyRecorded: true,
+			},
+		})
+	}
+
+	return nil
+}
+
+// calculateAndAddScore handles the score calculation logic for engagement
+func (s *service) calculateAndAddScore(ctx context.Context, userID string, value int, weight float64) error {
+	baseScore := float64(value) * weight
+
+	// Apply progression rate modifier
+	modifiedScore, err := s.GetModifiedValue(ctx, "", "progression_rate", baseScore)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to apply progression_rate modifier", "error", err)
+		modifiedScore = baseScore
+	}
+
+	// Apply Scholar bonus
+	scholarMultiplier, err := s.GetModifiedValue(ctx, userID, "engagement_contribution_multiplier", 1.0)
+	if err != nil {
+		logger.FromContext(ctx).Warn("Failed to apply scholar multiplier", "error", err)
+		scholarMultiplier = 1.0
+	}
+
+	if scholarMultiplier > 1.0 {
+		logger.FromContext(ctx).Info("Applying Scholar bonus",
+			"user_id", userID,
+			"base_score", modifiedScore,
+			"multiplier", scholarMultiplier)
+		modifiedScore *= scholarMultiplier
+	}
+
+	score := int(modifiedScore)
+	if score > 0 {
+		return s.AddContribution(ctx, score)
+	}
 	return nil
 }
 
