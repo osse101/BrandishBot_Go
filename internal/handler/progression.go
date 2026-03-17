@@ -251,7 +251,7 @@ func (h *ProgressionHandlers) HandleGetEstimate() http.HandlerFunc {
 func (h *ProgressionHandlers) HandleAdminUnlock() http.HandlerFunc {
 	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
 		return h.service.AdminUnlock(ctx, nodeKey, level)
-	}, "Admin unlocked node", MsgNodeUnlockedSuccess)
+	}, MsgNodeUnlockedSuccess)
 }
 
 // HandleAdminRelock admin relocks a node
@@ -259,7 +259,7 @@ func (h *ProgressionHandlers) HandleAdminUnlock() http.HandlerFunc {
 func (h *ProgressionHandlers) HandleAdminRelock() http.HandlerFunc {
 	return h.handleAdminNodeAction(func(ctx context.Context, nodeKey string, level int) error {
 		return h.service.AdminRelock(ctx, nodeKey, level)
-	}, "Admin relocked node", MsgNodeRelockedSuccess)
+	}, MsgNodeRelockedSuccess)
 }
 
 // HandleAdminUnlockAll admin unlocks all nodes at max level (DEBUG)
@@ -285,7 +285,7 @@ func (h *ProgressionHandlers) HandleAdminUnlockAll() http.HandlerFunc {
 	}
 }
 
-func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, logMsg, successMsg string) http.HandlerFunc {
+func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context, string, int) error, successMsg string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// We use a shared struct for validation since both use same fields
 		var req struct {
@@ -304,7 +304,6 @@ func (h *ProgressionHandlers) handleAdminNodeAction(action func(context.Context,
 			return
 		}
 
-		log.Info(logMsg, "nodeKey", req.NodeKey, "level", req.Level)
 		RespondJSON(w, http.StatusOK, SuccessResponse{Message: successMsg})
 	}
 }
