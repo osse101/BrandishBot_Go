@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,4 +72,47 @@ func TestGetDBURL(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestRotateBackups(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "backup_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create some dummy backup files
+	// Naming: backup_env_YYYYMMDD_HHMMSS.sql
+	backups := []string{
+		"backup_staging_20240101_120000.sql",
+		"backup_staging_20240102_120000.sql",
+		"backup_staging_20240103_120000.sql",
+		"backup_staging_20240104_120000.sql",
+		"backup_staging_20240105_120000.sql",
+		"backup_staging_20240106_120000.sql", // 6th backup, oldest should be removed
+	}
+
+	for _, b := range backups {
+		err := os.WriteFile(filepath.Join(tmpDir, b), []byte("test"), 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Rotate backups, keep 5
+	err = RotateBackups(tmpDir, "backup_", 5)
+	assert.NoError(t, err)
+
+	// Verify files
+	files, err := os.ReadDir(tmpDir)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, len(files))
+
+	// Oldest (20240101) should be gone
+	_, err = os.Stat(filepath.Join(tmpDir, "backup_staging_20240101_120000.sql"))
+	assert.True(t, os.IsNotExist(err))
+
+	// Newest (20240106) should remain
+	_, err = os.Stat(filepath.Join(tmpDir, "backup_staging_20240106_120000.sql"))
+	assert.NoError(t, err)
 }

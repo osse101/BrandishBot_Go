@@ -308,6 +308,16 @@ func backupDatabase(env, composeFile string) error {
 	}
 
 	cmd := exec.Command("docker", "exec", out, "pg_dump", "-U", dbUser, "-d", dbName)
+
+	// Pass password if available
+	dbPass := os.Getenv("DB_PASSWORD")
+	if dbPass != "" {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", dbPass))
+	}
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -316,9 +326,15 @@ func backupDatabase(env, composeFile string) error {
 	cmd.Stdout = outfile
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("pg_dump failed: %w\nStderr: %s", err, stderr.String())
 	}
 	PrintSuccess("Database backup created: %s", filename)
+
+	// Rotate backups - keep last 5
+	if err := RotateBackups("backups", "backup_", 5); err != nil {
+		PrintWarning("Failed to rotate backups: %v", err)
+	}
+
 	return nil
 }
 

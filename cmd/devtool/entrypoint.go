@@ -26,10 +26,7 @@ func (c *EntrypointCommand) Run(args []string) error {
 		return err
 	}
 
-	// 2. Backup if needed
-	c.backupIfNeeded()
-
-	// 3. Migrate
+	// 2. Migrate
 	if err := c.migrateWithRetries(); err != nil {
 		return err
 	}
@@ -51,47 +48,6 @@ func (c *EntrypointCommand) waitForDB() error {
 		return fmt.Errorf("wait-for-db failed: %w", err)
 	}
 	return nil
-}
-
-func (c *EntrypointCommand) backupIfNeeded() {
-	environment := os.Getenv("ENVIRONMENT")
-	createBackup := os.Getenv("CREATE_BACKUP")
-	if environment != "production" && createBackup != "true" {
-		return
-	}
-
-	PrintHeader("Creating pre-migration backup...")
-
-	// Check if pg_dump is available
-	if _, err := exec.LookPath("pg_dump"); err != nil {
-		PrintWarning("pg_dump not found, skipping backup")
-		return
-	}
-
-	timestamp := time.Now().Format("20060102_150405")
-	backupFile := fmt.Sprintf("/tmp/backup_%s.sql", timestamp)
-
-	dbUser := os.Getenv("DB_USER")
-	dbName := os.Getenv("DB_NAME")
-	dbHost := os.Getenv("DB_HOST")
-
-	f, err := os.Create(backupFile)
-	if err != nil {
-		PrintWarning("Could not create backup file: %v", err)
-		return
-	}
-	defer f.Close()
-
-	cmd := exec.Command("pg_dump", "-h", dbHost, "-U", dbUser, "-d", dbName)
-	cmd.Stdout = f
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		PrintWarning("Backup failed: %v", err)
-		// Don't fail the entrypoint, just warn, as per script behavior
-	} else {
-		PrintSuccess("Backup created: %s", backupFile)
-	}
 }
 
 func (c *EntrypointCommand) migrateWithRetries() error {
