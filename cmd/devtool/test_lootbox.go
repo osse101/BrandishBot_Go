@@ -1,12 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
 )
 
 type TestLootboxCommand struct{}
@@ -22,10 +17,8 @@ func (c *TestLootboxCommand) Description() string {
 func (c *TestLootboxCommand) Run(args []string) error {
 	PrintHeader("Testing Lootbox1 Repro")
 
-	baseURL := os.Getenv("API_URL")
-	if baseURL == "" {
-		baseURL = defaultAPIURL
-	}
+	baseURL := getAPIURL()
+	apiKey := getAPIKey()
 
 	username := "debug_user"
 	platform := "twitch"
@@ -38,7 +31,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"platform":    platform,
 		"platform_id": platformID,
 	}
-	if err := c.postJSON(baseURL+"/message/handle", msgPayload); err != nil {
+	if err := postJSON(baseURL+"/message/handle", msgPayload, apiKey, nil); err != nil {
 		return fmt.Errorf("failed to register user: %w", err)
 	}
 
@@ -50,7 +43,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"itemName": "lootbox1",
 		"quantity": 1,
 	}
-	if err := c.postJSON(baseURL+"/user/item/add", addPayload); err != nil {
+	if err := postJSON(baseURL+"/user/item/add", addPayload, apiKey, nil); err != nil {
 		return fmt.Errorf("failed to give lootbox1: %w", err)
 	}
 
@@ -62,7 +55,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"itemName": "lootbox1",
 		"quantity": 1,
 	}
-	respStr, err := c.postJSONStr(baseURL+"/user/item/use", usePayload)
+	respStr, err := postJSONStr(baseURL+"/user/item/use", usePayload, apiKey)
 	if err != nil {
 		PrintError("Error using item: %v", err)
 		return fmt.Errorf("failed to use lootbox1: %w", err)
@@ -71,7 +64,8 @@ func (c *TestLootboxCommand) Run(args []string) error {
 
 	// 4. Check Inventory
 	PrintInfo("Checking inventory...")
-	inv, err := c.getJSON(fmt.Sprintf("%s/user/inventory?username=%s", baseURL, username))
+	var inv interface{}
+	err = getJSON(fmt.Sprintf("%s/user/inventory?username=%s", baseURL, username), apiKey, &inv)
 	if err != nil {
 		return fmt.Errorf("failed to check inventory: %w", err)
 	}
@@ -96,67 +90,4 @@ func (c *TestLootboxCommand) Run(args []string) error {
 	}
 
 	return nil
-}
-
-func (c *TestLootboxCommand) postJSON(url string, payload interface{}) error {
-	_, err := c.postJSONStr(url, payload)
-	return err
-}
-
-func (c *TestLootboxCommand) postJSONStr(url string, payload interface{}) (string, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(bodyBytes), nil
-}
-
-func (c *TestLootboxCommand) getJSON(url string) (interface{}, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var result interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
