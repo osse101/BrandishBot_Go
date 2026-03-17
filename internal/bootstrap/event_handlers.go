@@ -34,10 +34,6 @@ type EventHandlerDependencies struct {
 // - Quest event handler (for quest progress from crafting)
 // - Stats event handler (for stats recording from crafting)
 func RegisterEventHandlers(deps EventHandlerDependencies) error {
-	// Register progression handler
-	progressionHandler := progression.NewEventHandler(deps.ProgressionService)
-	progressionHandler.Register(deps.EventBus)
-
 	// Register Metrics Collector
 	metricsCollector := metrics.NewEventMetricsCollector()
 	if err := metricsCollector.Register(deps.EventBus); err != nil {
