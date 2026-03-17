@@ -98,12 +98,12 @@ func TestAddTimeout_Concurrency(t *testing.T) {
 	concurrency := 50
 
 	for i := 0; i < concurrency; i++ {
-		go func(id int) {
+		go func() {
 			_ = svc.AddTimeout(ctx, domain.PlatformTwitch, "concurrent_user", 100*time.Millisecond, "concurrent")
 			_, _ = svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
 			_ = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user", 50*time.Millisecond)
 			done <- true
-		}(i)
+		}()
 	}
 
 	for i := 0; i < concurrency; i++ {
@@ -227,11 +227,11 @@ func TestReduceTimeout(t *testing.T) {
 			expectedDurExact: 0, // Reduces it entirely
 		},
 		{
-			name:             "Boundary Case - Negative Reduction",
-			initialTimeout:   5 * time.Second,
-			reduction:        -2 * time.Second, // Essentially increases timeout
-			expectedMinDur:   6 * time.Second,
-			expectedMaxDur:   7 * time.Second,
+			name:           "Boundary Case - Negative Reduction",
+			initialTimeout: 5 * time.Second,
+			reduction:      -2 * time.Second, // Essentially increases timeout
+			expectedMinDur: 6 * time.Second,
+			expectedMaxDur: 7 * time.Second,
 		},
 		{
 			name:             "Invalid Case - Reduce Non-existent",

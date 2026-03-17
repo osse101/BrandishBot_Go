@@ -142,4 +142,3 @@ func (c *ScenarioCommand) printExecutionResult(result scenario.ExecutionResult) 
 		}
 	}
 }
-
