@@ -892,7 +892,7 @@ func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, si
 func (r *progressionRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New(ErrMsgSyncMetadataNotFound)
+		return nil, fmt.Errorf("%w: sync metadata not found", domain.ErrItemNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)

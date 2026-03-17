@@ -33,14 +33,14 @@ func TestUtilityHandler(t *testing.T) {
 			itemInSlot:    2,
 			quantity:      3,
 			wantError:     true,
-			errorContains: ErrMsgNotEnoughItemsInInventory,
+			errorContains: domain.ErrMsgInsufficientQuantity,
 		},
 		{
 			name:          "No sticks in inventory",
 			itemInSlot:    0,
 			quantity:      1,
 			wantError:     true,
-			errorContains: ErrMsgItemNotFoundInInventory,
+			errorContains: domain.ErrMsgNotInInventory,
 		},
 	}
 
@@ -426,7 +426,7 @@ func TestVideoFilterHandler(t *testing.T) {
 			quantity:      2,
 			filterTarget:  "matrix",
 			wantError:     true,
-			errorContains: ErrMsgNotEnoughItemsInInventory,
+			errorContains: domain.ErrMsgInsufficientQuantity,
 		},
 		{
 			name:          "Item not in inventory",
@@ -434,7 +434,7 @@ func TestVideoFilterHandler(t *testing.T) {
 			quantity:      1,
 			filterTarget:  "gameboy",
 			wantError:     true,
-			errorContains: ErrMsgItemNotFoundInInventory,
+			errorContains: domain.ErrMsgNotInInventory,
 		},
 	}
 

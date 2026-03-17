@@ -1,6 +1,9 @@
 package linking
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // ============================================================================
 // Token Configuration
@@ -164,4 +167,14 @@ const (
 
 	// LogKeyError is the log key for error values
 	LogKeyError = "error"
+)
+
+var (
+	ErrTokenNotFound         = errors.New(ErrMsgTokenNotFound)
+	ErrTokenAlreadyUsed      = errors.New(ErrMsgTokenAlreadyUsed)
+	ErrTokenExpired          = errors.New(ErrMsgTokenExpired)
+	ErrCannotLinkSameAccount = errors.New(ErrMsgCannotLinkSameAccount)
+	ErrNoPendingLink         = errors.New(ErrMsgNoPendingLink)
+	ErrLinkTokenExpired      = errors.New(ErrMsgLinkTokenExpired)
+	ErrNoPendingUnlink       = errors.New(ErrMsgNoPendingUnlink)
 )
