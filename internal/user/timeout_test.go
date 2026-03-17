@@ -21,51 +21,99 @@ func setupTimeoutService() Service {
 }
 
 func TestAddTimeout(t *testing.T) {
-	t.Run("Best Case - New Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+	tests := []struct {
+		name             string
+		initialTimeouts  []time.Duration // Initial timeouts to add sequentially
+		newTimeout       time.Duration   // The timeout to add in the test
+		expectedMinDur   time.Duration   // Expected minimum duration
+		expectedMaxDur   time.Duration   // Expected maximum duration
+		expectedDurExact time.Duration   // Expected exact duration (if > 0, overrides min/max)
+	}{
+		{
+			name:           "Best Case - New Timeout",
+			newTimeout:     5 * time.Second,
+			expectedMinDur: 4 * time.Second, // Account for minor timing differences
+			expectedMaxDur: 5 * time.Second,
+		},
+		{
+			name:            "Edge Case - Accumulate Timeout",
+			initialTimeouts: []time.Duration{2 * time.Second},
+			newTimeout:      3 * time.Second,
+			expectedMinDur:  4 * time.Second,
+			expectedMaxDur:  5 * time.Second,
+		},
+		{
+			name:             "Invalid Case - Zero Duration",
+			newTimeout:       0,
+			expectedDurExact: 0,
+		},
+		{
+			name:             "Boundary Case - Negative Duration",
+			newTimeout:       -5 * time.Second,
+			expectedDurExact: 0,
+		},
+		{
+			name:           "Boundary Case - Large Duration",
+			newTimeout:     24 * time.Hour,
+			expectedMinDur: 23*time.Hour + 59*time.Minute,
+			expectedMaxDur: 24 * time.Hour,
+		},
+	}
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "alice", 5*time.Second, "Test reason")
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := setupTimeoutService()
+			ctx := context.Background()
+			username := "test_user"
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "alice")
-		require.NoError(t, err)
-		assert.Greater(t, timeout, time.Duration(0))
-		assert.LessOrEqual(t, timeout, 5*time.Second)
-	})
+			// Setup initial timeouts
+			for i, dur := range tt.initialTimeouts {
+				err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, dur, "Initial setup")
+				require.NoError(t, err, "Failed to setup initial timeout %d", i)
+			}
 
-	t.Run("Edge Case - Accumulate Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+			// Add the new timeout
+			err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, tt.newTimeout, "Test reason")
+			require.NoError(t, err)
 
-		// First timeout
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "bob", 2*time.Second, "First")
-		require.NoError(t, err)
+			timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+			require.NoError(t, err)
 
-		// Second timeout should accumulate
-		err = svc.AddTimeout(ctx, domain.PlatformTwitch, "bob", 3*time.Second, "Second")
-		require.NoError(t, err)
+			if tt.expectedDurExact == 0 && tt.expectedMaxDur > 0 {
+				assert.GreaterOrEqual(t, timeout, tt.expectedMinDur)
+				assert.LessOrEqual(t, timeout, tt.expectedMaxDur)
+			} else {
+				assert.Equal(t, tt.expectedDurExact, timeout)
+			}
+		})
+	}
+}
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "bob")
-		require.NoError(t, err)
-		// Should be > 2s and <= 5s
-		assert.Greater(t, timeout, 2*time.Second)
-		assert.LessOrEqual(t, timeout, 5*time.Second)
-	})
+func TestAddTimeout_Concurrency(t *testing.T) {
+	svc := setupTimeoutService()
+	ctx := context.Background()
 
-	t.Run("Invalid Case - Zero Duration", func(t *testing.T) {
-		// Zero duration adds a timeout that expires immediately.
-		// Testing boundary/invalid logic.
-		svc := setupTimeoutService()
-		ctx := context.Background()
+	// Try to add many timeouts concurrently to check for map panics
+	done := make(chan bool)
+	concurrency := 50
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "charlie", 0, "Zero")
-		require.NoError(t, err)
+	for i := 0; i < concurrency; i++ {
+		go func(id int) {
+			_ = svc.AddTimeout(ctx, domain.PlatformTwitch, "concurrent_user", 100*time.Millisecond, "concurrent")
+			_, _ = svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
+			_ = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user", 50*time.Millisecond)
+			done <- true
+		}(i)
+	}
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "charlie")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
+	for i := 0; i < concurrency; i++ {
+		<-done
+	}
+
+	// Simply surviving without panic proves thread-safety
+	timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, timeout, time.Duration(0))
 }
 
 func TestTimeoutUser(t *testing.T) {
@@ -151,51 +199,73 @@ func TestGetTimeout(t *testing.T) {
 }
 
 func TestReduceTimeout(t *testing.T) {
-	t.Run("Best Case - Partial Reduction", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+	tests := []struct {
+		name             string
+		initialTimeout   time.Duration
+		reduction        time.Duration
+		expectedMinDur   time.Duration
+		expectedMaxDur   time.Duration
+		expectedDurExact time.Duration
+	}{
+		{
+			name:           "Best Case - Partial Reduction",
+			initialTimeout: 10 * time.Second,
+			reduction:      4 * time.Second,
+			expectedMinDur: 5 * time.Second, // Account for minor timing differences
+			expectedMaxDur: 6 * time.Second,
+		},
+		{
+			name:             "Boundary Case - Full Reduction",
+			initialTimeout:   5 * time.Second,
+			reduction:        10 * time.Second,
+			expectedDurExact: 0,
+		},
+		{
+			name:             "Boundary Case - Exact Reduction",
+			initialTimeout:   5 * time.Second,
+			reduction:        5 * time.Second,
+			expectedDurExact: 0, // Reduces it entirely
+		},
+		{
+			name:             "Boundary Case - Negative Reduction",
+			initialTimeout:   5 * time.Second,
+			reduction:        -2 * time.Second, // Essentially increases timeout
+			expectedMinDur:   6 * time.Second,
+			expectedMaxDur:   7 * time.Second,
+		},
+		{
+			name:             "Invalid Case - Reduce Non-existent",
+			initialTimeout:   0,
+			reduction:        5 * time.Second,
+			expectedDurExact: 0,
+		},
+	}
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "judy", 10*time.Second, "Full")
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := setupTimeoutService()
+			ctx := context.Background()
+			username := "test_user"
 
-		err = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "judy", 4*time.Second)
-		require.NoError(t, err)
+			if tt.initialTimeout > 0 {
+				err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, tt.initialTimeout, "Initial")
+				require.NoError(t, err)
+			}
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "judy")
-		require.NoError(t, err)
-		assert.Greater(t, timeout, time.Duration(0))
-		// Should be roughly 6 seconds left
-		assert.LessOrEqual(t, timeout, 6*time.Second)
-	})
+			err := svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, tt.reduction)
+			require.NoError(t, err)
 
-	t.Run("Boundary Case - Full Reduction", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+			timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+			require.NoError(t, err)
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "karl", 5*time.Second, "Short")
-		require.NoError(t, err)
-
-		// Reduce by more than remaining
-		err = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "karl", 10*time.Second)
-		require.NoError(t, err)
-
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "karl")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
-
-	t.Run("Invalid Case - Reduce Non-existent", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
-
-		// Should not error
-		err := svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "leo", 5*time.Second)
-		require.NoError(t, err)
-
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "leo")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
+			if tt.expectedDurExact == 0 && tt.expectedMaxDur > 0 {
+				assert.GreaterOrEqual(t, timeout, tt.expectedMinDur)
+				assert.LessOrEqual(t, timeout, tt.expectedMaxDur)
+			} else {
+				assert.Equal(t, tt.expectedDurExact, timeout)
+			}
+		})
+	}
 
 	t.Run("Legacy Wrapper - ReduceTimeout", func(t *testing.T) {
 		svc := setupTimeoutService()
