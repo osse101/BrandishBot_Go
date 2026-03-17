@@ -286,13 +286,6 @@ func waitForHealth(env string, timeout time.Duration) error {
 }
 
 func backupDatabase(env, composeFile string) error {
-	// Check if DB is up
-	//nolint:forbidigo
-	out, err := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db") // #nosec G204
-	if err != nil || out == "" {
-		return fmt.Errorf("database container not found or not running")
-	}
-
 	if err := os.MkdirAll("backups", 0755); err != nil {
 		return err
 	}
@@ -306,8 +299,19 @@ func backupDatabase(env, composeFile string) error {
 	if dbName == "" {
 		dbName = appName
 	}
+	// Ensure DB is running before backup
+	PrintInfo("Ensuring database service is running...")
+	//nolint:forbidigo
+	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil {
+		return fmt.Errorf("failed to start database service: %w", err)
+	}
 
-	cmd := exec.Command("docker", "exec", out, "pg_dump", "-U", dbUser, "-d", dbName)
+	// Wait for DB to be ready
+	PrintInfo("Waiting for database to be ready...")
+	time.Sleep(5 * time.Second)
+
+	// Use docker compose exec which is more robust than finding IDs
+	cmd := exec.Command("docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName)
 
 	// Pass password if available
 	dbPass := os.Getenv("DB_PASSWORD")
@@ -326,7 +330,7 @@ func backupDatabase(env, composeFile string) error {
 	cmd.Stdout = outfile
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump failed: %w\nStderr: %s", err, stderr.String())
+		return fmt.Errorf("pg_dump failed: %v\nStderr: %s", err, stderr.String())
 	}
 	PrintSuccess("Database backup created: %s", filename)
 
