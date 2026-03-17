@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 )
 
 type TestSSECommand struct{}
@@ -21,11 +18,8 @@ func (c *TestSSECommand) Description() string {
 func (c *TestSSECommand) Run(args []string) error {
 	PrintHeader("Testing SSE Events...")
 
-	apiURL := os.Getenv("API_URL")
-	if apiURL == "" {
-		apiURL = "http://localhost:8080"
-	}
-	apiKey := os.Getenv("API_KEY")
+	apiURL := getAPIURL()
+	apiKey := getAPIKey()
 
 	eventType := "job.level_up"
 	if len(args) > 0 {
@@ -67,27 +61,13 @@ func (c *TestSSECommand) Run(args []string) error {
 		}
 	}
 
-	data, err := json.Marshal(map[string]interface{}{
+	body := map[string]interface{}{
 		"type":    eventType,
 		"payload": payload,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/api/v1/admin/sse/broadcast", apiURL)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := makeHTTPRequest("POST", url, body, apiKey)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
