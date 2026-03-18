@@ -22,6 +22,7 @@ func TestAutoUnlockRecipe(t *testing.T) {
 	}
 
 	svc := NewService(repo, &MockEventPublisher{}, mockNaming, mockProg, mockJobs).(*service)
+	svc.rnd = func() float64 { return 0.5 } // Set predictable RNG (greater than 0.10 MasterworkChance)
 	ctx := context.Background()
 
 	// 1. Setup Tier 0 Item (Junkbox)
