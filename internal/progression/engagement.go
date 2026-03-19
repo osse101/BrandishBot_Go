@@ -235,7 +235,7 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 		return nil, fmt.Errorf("failed to get node: %w", err)
 	}
 	if node == nil {
-		return nil, fmt.Errorf("node not found: %s", nodeKey)
+		return nil, fmt.Errorf("%w: %s", domain.ErrNodeNotFound, nodeKey)
 	}
 
 	// Get current velocity (7 days default)

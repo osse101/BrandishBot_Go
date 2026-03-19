@@ -14,9 +14,9 @@ import (
 // RegisterUser registers a new user
 func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.User, error) {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgRegisterUserCalled, "username", user.Username)
+	log.Info(domain.LogMsgRegisterUserCalled, "username", user.Username)
 	if err := s.repo.UpsertUser(ctx, &user); err != nil {
-		log.Error(LogErrFailedToUpsertUser, "error", err, "username", user.Username)
+		log.Error(domain.LogErrFailedToUpsertUser, "error", err, "username", user.Username)
 		return domain.User{}, err
 	}
 
@@ -26,7 +26,7 @@ func (s *service) RegisterUser(ctx context.Context, user domain.User) (domain.Us
 		s.userCache.Set(platform, platformID, &user)
 	}
 
-	log.Info(LogMsgUserRegistered, "user_id", user.ID, "username", user.Username)
+	log.Info(domain.LogMsgUserRegistered, "user_id", user.ID, "username", user.Username)
 	return user, nil
 }
 
@@ -125,7 +125,7 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 				defer s.wg.Done()
 				asyncCtx := context.Background() // New context for async operation
 				if err := s.triggerTrap(asyncCtx, trap, user); err != nil {
-					log.Error(LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
+					log.Error(domain.LogMsgTrapTriggered, "trap_id", trap.ID, "error", err)
 				}
 			}()
 

@@ -32,7 +32,7 @@ func (s *service) ExecuteExpedition(ctx context.Context, expeditionID uuid.UUID)
 		return fmt.Errorf("failed to get expedition: %w", err)
 	}
 	if details == nil {
-		return fmt.Errorf("expedition not found: %s", expeditionID)
+		return fmt.Errorf("%w: %s", domain.ErrNoActiveExpedition, expeditionID)
 	}
 
 	log.Info("Executing expedition", "expeditionID", expeditionID, "participants", len(details.Participants))

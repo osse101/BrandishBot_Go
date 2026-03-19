@@ -18,8 +18,8 @@ type CacheConfig struct {
 // DefaultCacheConfig returns the default cache configuration
 func DefaultCacheConfig() CacheConfig {
 	return CacheConfig{
-		Size: DefaultCacheSize,
-		TTL:  DefaultCacheTTL,
+		Size: domain.DefaultCacheSize,
+		TTL:  domain.DefaultCacheTTL,
 	}
 }
 
@@ -73,7 +73,7 @@ func (c *userCache) Get(platform, platformID string) (*domain.User, bool) {
 	}
 
 	// Check version - auto-invalidate if mismatch
-	if entry.Version != CacheSchemaVersion {
+	if entry.Version != domain.CacheSchemaVersion {
 		c.lru.Remove(key)
 		c.misses.Add(1) // Treat version mismatch as a miss (and forced eviction)
 		return nil, false
@@ -87,7 +87,7 @@ func (c *userCache) Get(platform, platformID string) (*domain.User, bool) {
 func (c *userCache) Set(platform, platformID string, user *domain.User) {
 	key := platform + ":" + platformID
 	entry := &cachedUserEntry{
-		Version:  CacheSchemaVersion,
+		Version:  domain.CacheSchemaVersion,
 		User:     user,
 		CachedAt: time.Now(),
 	}
