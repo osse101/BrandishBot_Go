@@ -219,6 +219,16 @@ func (m *MockRepository) UnlockNode(ctx context.Context, nodeID int, level int, 
 	return nil
 }
 
+func (m *MockRepository) UpdateNodeCost(ctx context.Context, nodeID int, cost int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if node, ok := m.nodes[nodeID]; ok {
+		node.UnlockCost = cost
+		return nil
+	}
+	return domain.ErrNodeNotFound
+}
+
 func (m *MockRepository) RelockNode(ctx context.Context, nodeID int, level int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

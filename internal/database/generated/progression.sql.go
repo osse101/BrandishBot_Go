@@ -1625,6 +1625,22 @@ func (q *Queries) UpdateNode(ctx context.Context, arg UpdateNodeParams) error {
 	return err
 }
 
+const updateNodeCost = `-- name: UpdateNodeCost :exec
+UPDATE progression_nodes
+SET unlock_cost = $2
+WHERE id = $1
+`
+
+type UpdateNodeCostParams struct {
+	ID         int32       `json:"id"`
+	UnlockCost pgtype.Int4 `json:"unlock_cost"`
+}
+
+func (q *Queries) UpdateNodeCost(ctx context.Context, arg UpdateNodeCostParams) error {
+	_, err := q.db.Exec(ctx, updateNodeCost, arg.ID, arg.UnlockCost)
+	return err
+}
+
 const updateNodeDynamicPrerequisites = `-- name: UpdateNodeDynamicPrerequisites :exec
 UPDATE progression_nodes
 SET dynamic_prerequisites = $2

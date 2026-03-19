@@ -244,7 +244,7 @@ swagger:
 	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
-generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy
+generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy format 
 
 generate-swagger: swagger
 

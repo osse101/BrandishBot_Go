@@ -330,7 +330,7 @@ func backupDatabase(env, composeFile string) error {
 	cmd.Stdout = outfile
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump failed: %v\nStderr: %s", err, stderr.String())
+		return fmt.Errorf("pg_dump failed: %w\nStderr: %s", err, stderr.String())
 	}
 	PrintSuccess("Database backup created: %s", filename)
 

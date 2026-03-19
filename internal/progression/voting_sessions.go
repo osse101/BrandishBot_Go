@@ -279,11 +279,7 @@ func (s *service) EndVoting(ctx context.Context) (*domain.ProgressionVotingOptio
 		if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID); err != nil {
 			log.Warn("Failed to set unlock target", "error", err)
 		} else if winner.NodeDetails != nil {
-			s.mu.Lock()
-			s.cachedTargetCost = winner.NodeDetails.UnlockCost
-			s.cachedProgressID = progress.ID
-			s.mu.Unlock()
-
+			s.updateLiveNodeCostAndCache(ctx, winner.NodeDetails, progress.ID)
 			s.publishTargetSetEvent(ctx, winner.NodeDetails, winner.TargetLevel, session.ID, false)
 		}
 	}

@@ -265,7 +265,16 @@ func (s *service) EstimateUnlockTime(ctx context.Context, nodeKey string) (*doma
 		}, nil
 	}
 
-	required := node.UnlockCost - currentProgress
+	log := logger.FromContext(ctx)
+
+	// Get live recalculated cost for accurate estimation
+	unlockCost, err := CalculateUnlockCost(node.Tier, NodeSize(node.Size))
+	if err != nil {
+		log.Warn("Failed to calculate live unlock cost for estimate, using persisted", "error", err)
+		unlockCost = node.UnlockCost
+	}
+
+	required := unlockCost - currentProgress
 	if required <= 0 {
 		required = 0
 	}

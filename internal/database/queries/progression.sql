@@ -28,6 +28,11 @@ SET node_type = $2, display_name = $3, description = $4,
     max_level = $5, unlock_cost = $6, tier = $7, size = $8, category = $9, sort_order = $10
 WHERE id = $1;
 
+-- name: UpdateNodeCost :exec
+UPDATE progression_nodes
+SET unlock_cost = $2
+WHERE id = $1;
+
 -- name: GetUnlock :one
 SELECT id, node_id, current_level, unlocked_at, unlocked_by, engagement_score
 FROM progression_unlocks

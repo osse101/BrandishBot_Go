@@ -252,6 +252,7 @@ type Querier interface {
 	UpdateInventory(ctx context.Context, arg UpdateInventoryParams) error
 	UpdateItem(ctx context.Context, arg UpdateItemParams) error
 	UpdateNode(ctx context.Context, arg UpdateNodeParams) error
+	UpdateNodeCost(ctx context.Context, arg UpdateNodeCostParams) error
 	UpdateNodeDynamicPrerequisites(ctx context.Context, arg UpdateNodeDynamicPrerequisitesParams) error
 	UpdateOptionLastHighest(ctx context.Context, id int32) error
 	UpdateToken(ctx context.Context, arg UpdateTokenParams) error
