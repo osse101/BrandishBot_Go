@@ -150,6 +150,8 @@ lint-fix:
 format:
 	@echo "Formatting with Prettier..."
 	@npm run format
+	@echo "Formatting Go code..."
+	@go fmt ./...
 
 format-check:
 	@echo "Checking formatting with Prettier..."
