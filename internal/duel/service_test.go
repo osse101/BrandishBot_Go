@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/repository"
@@ -154,6 +155,7 @@ func (m *mockUserRepo) MergeUsersInTransaction(ctx context.Context, primaryUserI
 }
 
 func TestService_Accept(t *testing.T) {
+	t.Parallel()
 	// A bit tricky because of rand.Seed being global and we can't easily mock rand natively without refactoring code.
 	// But it handles a random 50/50 so tests might have to mock BOTH AddItem or AddTimeout depending on luck, or we just mock 'Anything'
 	ctx := context.Background()
@@ -186,6 +188,7 @@ func TestService_Accept(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		repo := new(mockDuelRepo)
 		tx := new(mockDuelTx)
 		userRepo := new(mockUserRepo)
@@ -210,11 +213,12 @@ func TestService_Accept(t *testing.T) {
 		svc := NewService(repo, userRepo, eventBus, progSvc, userSvc, 5*time.Minute)
 		result, err := svc.Accept(ctx, "twitch", "123", duelID)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, result)
 	})
 
 	t.Run("expired duel", func(t *testing.T) {
+		t.Parallel()
 		repo := new(mockDuelRepo)
 		tx := new(mockDuelTx)
 
@@ -235,12 +239,13 @@ func TestService_Accept(t *testing.T) {
 		svc := NewService(repo, nil, nil, nil, nil, 5*time.Minute)
 		result, err := svc.Accept(ctx, "twitch", "123", duelID)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "expired")
+		require.ErrorIs(t, err, domain.ErrDuelExpired)
 	})
 
 	t.Run("unauthorized user", func(t *testing.T) {
+		t.Parallel()
 		repo := new(mockDuelRepo)
 		tx := new(mockDuelTx)
 		userSvc := new(mockUserService)
@@ -259,12 +264,13 @@ func TestService_Accept(t *testing.T) {
 		svc := NewService(repo, nil, nil, nil, userSvc, 5*time.Minute)
 		result, err := svc.Accept(ctx, "twitch", "wrong_id", duelID)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "unauthorized")
+		require.ErrorIs(t, err, domain.ErrDuelUnauthorized)
 	})
 
 	t.Run("not pending", func(t *testing.T) {
+		t.Parallel()
 		repo := new(mockDuelRepo)
 		tx := new(mockDuelTx)
 
@@ -283,8 +289,8 @@ func TestService_Accept(t *testing.T) {
 		svc := NewService(repo, nil, nil, nil, nil, 5*time.Minute)
 		result, err := svc.Accept(ctx, "twitch", "123", duelID)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "not pending")
+		require.ErrorIs(t, err, domain.ErrDuelNotPending)
 	})
 }
