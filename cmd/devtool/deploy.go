@@ -344,7 +344,6 @@ func backupDatabase(env, composeFile string) error {
 
 func runSmokeTests(port string) error {
 	apiKey := os.Getenv("API_KEY")
-	client := &http.Client{Timeout: 5 * time.Second}
 
 	testCases := []struct {
 		url          string
@@ -356,17 +355,12 @@ func runSmokeTests(port string) error {
 	}
 
 	for _, tc := range testCases {
-		req, err := http.NewRequest("GET", tc.url, nil)
-		if err != nil {
-			PrintWarning("Failed to create request for %s: %v", tc.url, err)
-			continue
+		key := ""
+		if tc.needsAuth {
+			key = apiKey
 		}
 
-		if tc.needsAuth && apiKey != "" {
-			req.Header.Set("X-API-Key", apiKey)
-		}
-
-		resp, err := client.Do(req)
+		resp, err := makeHTTPRequest("GET", tc.url, nil, key)
 		if err != nil {
 			PrintWarning("Smoke test failed for %s: %v", tc.url, err)
 			continue

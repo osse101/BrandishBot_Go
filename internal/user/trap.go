@@ -48,7 +48,7 @@ func (s *service) triggerTrap(ctx context.Context, trap *domain.Trap, victim *do
 		}
 	}
 
-	log.Info(LogMsgTrapTriggered,
+	log.Info(domain.LogMsgTrapTriggered,
 		"victim", victim.Username,
 		"timeout", timeout.Seconds(),
 		"trap_id", trap.ID)

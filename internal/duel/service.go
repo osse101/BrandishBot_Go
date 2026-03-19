@@ -142,13 +142,13 @@ func (s *service) validateAndGetDuel(ctx context.Context, tx repository.DuelTx, 
 	}
 
 	if duel.State != domain.DuelStatePending {
-		return nil, nil, fmt.Errorf("duel is not pending")
+		return nil, nil, fmt.Errorf("duel is not pending: %w", domain.ErrDuelNotPending)
 	}
 
 	if duel.ExpiresAt.Before(time.Now()) {
 		_ = tx.UpdateDuelState(ctx, duelID, domain.DuelStateExpired)
 		_ = tx.Commit(ctx)
-		return nil, nil, fmt.Errorf("duel has expired")
+		return nil, nil, fmt.Errorf("duel has expired: %w", domain.ErrDuelExpired)
 	}
 
 	// Verify accept caller is the opponent
@@ -158,7 +158,7 @@ func (s *service) validateAndGetDuel(ctx context.Context, tx repository.DuelTx, 
 	}
 
 	if duel.OpponentID == nil || opponent.ID != duel.OpponentID.String() {
-		return nil, nil, fmt.Errorf("unauthorized to accept this duel")
+		return nil, nil, fmt.Errorf("unauthorized to accept this duel: %w", domain.ErrDuelUnauthorized)
 	}
 
 	return duel, opponent, nil

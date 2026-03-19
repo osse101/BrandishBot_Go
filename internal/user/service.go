@@ -95,13 +95,13 @@ func setPlatformInfo(user *domain.User, platform, platformID, platformUsername s
 func loadCacheConfig() CacheConfig {
 	config := DefaultCacheConfig()
 
-	if val := os.Getenv(EnvUserCacheSize); val != "" {
+	if val := os.Getenv(domain.EnvUserCacheSize); val != "" {
 		if size, err := strconv.Atoi(val); err == nil && size > 0 {
 			config.Size = size
 		}
 	}
 
-	if val := os.Getenv(EnvUserCacheTTL); val != "" {
+	if val := os.Getenv(domain.EnvUserCacheTTL); val != "" {
 		if ttl, err := time.ParseDuration(val); err == nil && ttl > 0 {
 			config.TTL = ttl
 		}
@@ -158,7 +158,7 @@ func getPlatformKeysFromUser(user domain.User) map[string]string {
 
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgUserServiceShuttingDown)
+	log.Info(domain.LogMsgUserServiceShuttingDown)
 
 	// 1. Stop the chatter tracker (stops cleanup loop)
 	if s.activeChatterTracker != nil {

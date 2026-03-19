@@ -148,6 +148,53 @@ func TestHandleSellItem(t *testing.T) {
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgInsufficientItemsErr,
 		},
+		{
+			name: "Quantity Boundary - Negative (beyond lower)",
+			requestBody: SellItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   -1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
+		{
+			name: "Quantity Boundary - Max (on upper boundary)",
+			requestBody: SellItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   10000,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
+				e.On("SellItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 10000).Return(1000000, 10000, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"money_gained":1000000,"items_sold":10000`,
+		},
+		{
+			name: "Quantity Boundary - Over Max (beyond upper)",
+			requestBody: SellItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   10001,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   "Invalid request",
+		},
 	}
 
 	for _, tt := range tests {
