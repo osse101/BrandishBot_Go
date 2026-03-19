@@ -2,7 +2,7 @@
 
 ## New Features
 
-- **Duels**: The groundwork for challenging other players to Duels has been laid!
+- **Duels**: Duels are now fully functional! You can now accept challenges, fight other players, and win or lose stakes.
 - **Gamble Updates**: Gamble events now display the winner's username, making it easier to see who won big.
 - **Weapon 'This'**: The `weapon_this` item now correctly targets and times out the user who uses it.
 - **Search Regions**: Added new Search Regions to expand your exploration options.

@@ -72,7 +72,9 @@ func TestVotingFlow_Complete(t *testing.T) {
 	unlock, err := service.CheckAndUnlockNode(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, unlock)
-	assert.Equal(t, winner.NodeID, unlock.NodeID)
+	if unlock != nil {
+		assert.Equal(t, winner.NodeID, unlock.NodeID)
+	}
 
 	// Step 7: Verify node is unlocked
 	isUnlocked, _ := repo.IsNodeUnlocked(ctx, winner.NodeDetails.NodeKey, 1)
