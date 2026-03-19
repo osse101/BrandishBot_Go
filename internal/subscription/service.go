@@ -266,7 +266,7 @@ func (s *service) VerifyAndUpdateSubscription(ctx context.Context, userID, platf
 	case domain.PlatformYoutube:
 		platformUserID = user.YoutubeID
 	default:
-		return fmt.Errorf("unsupported platform: %s", platform)
+		return fmt.Errorf("%w: unsupported platform %s", domain.ErrInvalidPlatform, platform)
 	}
 
 	if platformUserID == "" {
