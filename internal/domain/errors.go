@@ -97,6 +97,11 @@ const (
 	// Search region errors
 	ErrMsgRegionLocked       = "region locked: explorer level too low"
 	ErrMsgNoActiveExpedition = "no active expedition found"
+
+	// Duel errors
+	ErrMsgDuelNotPending   = "duel is not pending"
+	ErrMsgDuelExpired      = "duel has expired"
+	ErrMsgDuelUnauthorized = "unauthorized to accept this duel"
 )
 
 // Common domain errors
@@ -193,4 +198,9 @@ var (
 	// Search region errors
 	ErrRegionLocked       = errors.New(ErrMsgRegionLocked)
 	ErrNoActiveExpedition = errors.New(ErrMsgNoActiveExpedition)
+
+	// Duel errors
+	ErrDuelNotPending   = errors.New(ErrMsgDuelNotPending)
+	ErrDuelExpired      = errors.New(ErrMsgDuelExpired)
+	ErrDuelUnauthorized = errors.New(ErrMsgDuelUnauthorized)
 )
