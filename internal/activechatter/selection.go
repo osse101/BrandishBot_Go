@@ -36,6 +36,10 @@ func (t *Tracker) GetRandomTarget(platform string) (username string, userID stri
 // count specifies how many targets to select (will return fewer if not enough active chatters)
 // Returns slice of TargetInfo or an error if no active chatters are available
 func (t *Tracker) GetRandomTargets(platform string, count int) ([]TargetInfo, error) {
+	if count <= 0 {
+		return []TargetInfo{}, nil
+	}
+
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
