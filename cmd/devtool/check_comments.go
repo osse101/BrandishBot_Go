@@ -103,6 +103,9 @@ func (c *CheckCommentsCommand) checkFile(path string, maxLen int) (int, error) {
 
 	var allLines []string
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 10*1024*1024) // 10MB maximum buffer to handle very large log lines
+
 	for scanner.Scan() {
 		allLines = append(allLines, scanner.Text())
 	}
