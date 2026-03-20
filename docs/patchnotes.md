@@ -1,3 +1,18 @@
+# Patch Notes (Week of March 20, 2026)
+
+## New Features & Gameplay Updates
+
+- **Bomb Item**: Watch out! A new "Bomb" item has been added to shake things up.
+- **Expeditions**: Joining expeditions is now smoother—you no longer need an ID! We've also added better gating to keep things balanced.
+- **Jobs & Rewards**: We've tweaked XP gains and made it so your harvest spoil rewards now scale nicely with your job level.
+- **Display Improvements**: We polished the look of Gamble payouts and the Job Progress command so they are easier to read.
+
+## System Updates & Bug Fixes
+
+- **General Fixes**: Resolved an annoying bug where junkbox recipes wrongly showed as locked. We also fixed issues with engagement tracking, target selection, and the video filter.
+- **Progression**: Progression nodes are now smarter and will react automatically if item costs change.
+- **Behind the Scenes**: A huge week for internal polish! We streamlined our code across several systems (like Quests, Slots, and Predictions), expanded our testing, and supercharged our developer tools to make future updates even faster.
+
 # Patch Notes (Week of March 13, 2026)
 
 ## New Features
