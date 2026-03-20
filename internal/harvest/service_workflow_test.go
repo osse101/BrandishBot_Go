@@ -72,11 +72,12 @@ func TestHarvest_Workflow(t *testing.T) {
 			name:         "Spoiled Harvest - > 336 hours",
 			hoursElapsed: 340.0,
 			expectedGains: map[string]int{
-				itemLootbox1: 1,
-				itemStick:    3,
+				itemMoney:    20,
+				itemStick:    5,
+				itemLootbox0: 1,
 			},
 			expectedXPAward: true,
-			expectedXP:      2720,
+			expectedXP:      960, // capped at 120h * 8 XP/h
 			expectedSpoiled: true,
 		},
 		{
@@ -240,12 +241,10 @@ func TestHarvest_Workflow(t *testing.T) {
 			}
 
 			// --- Calculate Rewards ---
-			if !tt.expectedSpoiled {
-				if tt.allRewardsLocked {
-					mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(false, nil).Maybe()
-				} else {
-					mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
-				}
+			if tt.allRewardsLocked {
+				mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(false, nil).Maybe()
+			} else {
+				mockProgressionSvc.On("IsItemUnlocked", mock.Anything, mock.Anything).Return(true, nil).Maybe()
 			}
 
 			// XP is now awarded via HarvestCompletedPayload event (no direct job service call)

@@ -54,7 +54,20 @@ func (s *service) calculateSpoiledRewards(ctx context.Context, yieldMultiplier f
 	rewards := make(map[string]int)
 	tier := getSpoilRewardTier()
 
+	// Map items to the minimum tier index where they first appear in regular harvest
+	itemTierRequirements := map[string]int{
+		itemStick:    2, // Tier 3
+		itemLootbox0: 4, // Tier 5
+	}
+
 	for itemName, quantity := range tier.Items {
+		// Check if user's harvest tier limit allows this item
+		if minTier, ok := itemTierRequirements[itemName]; ok {
+			if limitIndex < minTier {
+				continue
+			}
+		}
+
 		if tier.RequiresUnlock[itemName] {
 			unlocked, err := s.progressionSvc.IsItemUnlocked(ctx, itemName)
 			if err != nil {

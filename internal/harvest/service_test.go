@@ -512,14 +512,16 @@ func TestCalculateSpoiledRewards(t *testing.T) {
 		name            string
 		unlockedItems   map[string]bool
 		yieldMultiplier float64
+		limitIndex      int
 		expectedReward  map[string]int
 	}{
 		{
-			name: "Base Scaling - No bonus",
+			name: "Base Scaling - All Tiers Unlocked (9)",
 			unlockedItems: map[string]bool{
 				itemStick: true,
 			},
 			yieldMultiplier: 1.0,
+			limitIndex:      9,
 			expectedReward: map[string]int{
 				itemMoney:    20,
 				itemStick:    5,
@@ -532,6 +534,7 @@ func TestCalculateSpoiledRewards(t *testing.T) {
 				itemStick: true,
 			},
 			yieldMultiplier: 2.0,
+			limitIndex:      9,
 			expectedReward: map[string]int{
 				itemMoney:    40,
 				itemStick:    10,
@@ -539,14 +542,38 @@ func TestCalculateSpoiledRewards(t *testing.T) {
 			},
 		},
 		{
-			name: "Stick Locked",
+			name: "Stick Locked (via Progression)",
 			unlockedItems: map[string]bool{
 				itemStick: false,
 			},
 			yieldMultiplier: 1.0,
+			limitIndex:      9,
 			expectedReward: map[string]int{
 				itemMoney:    20,
 				itemLootbox0: 1,
+			},
+		},
+		{
+			name: "Limit at Tier 1 (Money only)",
+			unlockedItems: map[string]bool{
+				itemStick: true,
+			},
+			yieldMultiplier: 1.0,
+			limitIndex:      0,
+			expectedReward: map[string]int{
+				itemMoney: 20,
+			},
+		},
+		{
+			name: "Limit at Tier 3 (Money and Stick)",
+			unlockedItems: map[string]bool{
+				itemStick: true,
+			},
+			yieldMultiplier: 1.0,
+			limitIndex:      2,
+			expectedReward: map[string]int{
+				itemMoney: 20,
+				itemStick: 5,
 			},
 		},
 	}
@@ -562,7 +589,7 @@ func TestCalculateSpoiledRewards(t *testing.T) {
 				progressionSvc: mockProgressionSvc,
 			}
 
-			rewards := svc.calculateSpoiledRewards(context.Background(), tt.yieldMultiplier, 9)
+			rewards := svc.calculateSpoiledRewards(context.Background(), tt.yieldMultiplier, tt.limitIndex)
 			assert.Equal(t, tt.expectedReward, rewards)
 			mockProgressionSvc.AssertExpectations(t)
 		})
