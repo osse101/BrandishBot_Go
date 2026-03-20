@@ -2,5 +2,3 @@ Gamble start and join is complicated
 Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
 Harvest Spoiling has better items than normal harvest.
-Harvest gives too much XP.
-Bomb not implemented/functioning.

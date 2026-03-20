@@ -356,7 +356,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 	userID := "user1"
 	jobKey := JobKeyBlacksmith
 	jobID := 1
-	baseXP := 150
+	baseXP := 300 // Level 1 requires 250
 
 	job := &domain.Job{ID: jobID, JobKey: jobKey}
 
@@ -369,7 +369,7 @@ func TestAwardXP_LevelUp(t *testing.T) {
 
 	// 150 XP should be Level 1 (requires 100)
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
-		return uj.CurrentXP == 150 && uj.CurrentLevel == 1
+		return uj.CurrentXP == 300 && uj.CurrentLevel == 1
 	})).Return(nil)
 
 	prog.On("GetModifiedValue", ctx, "job_xp_multiplier", 1.0).Return(1.0, nil)
@@ -887,7 +887,7 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 		JobID:         1,
 		CurrentXP:     2000,
 		CurrentLevel:  5,
-		XPGainedToday: 200,
+		XPGainedToday: int64(DefaultDailyCap - 50),
 	}
 
 	prog.On("IsNodeUnlocked", ctx, JobKeyBlacksmith, 1).Return(true, nil)
@@ -901,7 +901,7 @@ func TestAwardXP_PartialDailyCapRemaining(t *testing.T) {
 
 	// Try to award 100, but should only get 50
 	repo.On("UpsertUserJob", ctx, mock.MatchedBy(func(uj *domain.UserJob) bool {
-		return uj.XPGainedToday == 250 && uj.CurrentXP == 2050 // 2000 + 50
+		return uj.XPGainedToday == int64(DefaultDailyCap) && uj.CurrentXP == 2050 // 2000 + 50
 	})).Return(nil)
 
 	result, err := svc.AwardXP(ctx, "u1", JobKeyBlacksmith, 100, "test", domain.JobXPMetadata{})
