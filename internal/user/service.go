@@ -61,6 +61,12 @@ type service struct {
 
 	activeChatterTracker *activechatter.Tracker // Tracks users eligible for random targeting
 
+	// Bomb system
+	bombMu              sync.Mutex
+	bombQueues          map[string][]*pendingBomb  // Platform -> Queue of bombs
+	recentChatterWindow map[string]map[string]bool // Platform -> UserIDs in 2s window
+	recentChatterTicker *time.Ticker
+
 	rnd func() float64 // For RNG - allows deterministic testing
 
 	wg sync.WaitGroup // Track background tasks for graceful shutdown
@@ -136,8 +142,14 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: activechatter.NewTracker(),
+		bombQueues:           make(map[string][]*pendingBomb),
+		recentChatterWindow:  make(map[string]map[string]bool),
+		recentChatterTicker:  time.NewTicker(2 * time.Second),
 		rnd:                  utils.RandomFloat,
 	}
+
+	// Start recent chatter pulse
+	go svc.pulseRecentChatters()
 
 	return svc
 }

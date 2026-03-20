@@ -156,3 +156,13 @@ type ItemTransferredPayload struct {
 	Quantity   int    `json:"quantity"`
 	Timestamp  int64  `json:"timestamp"`
 }
+
+// BombDetonatedPayload is the event payload for bomb.detonated events
+type BombDetonatedPayload struct {
+	SetterUsername string   `json:"setter_username"`
+	Platform       string   `json:"platform"`
+	HitCount       int      `json:"hit_count"`
+	Targets        []string `json:"targets"`
+	TimeoutSeconds int      `json:"timeout_seconds"`
+	Timestamp      int64    `json:"timestamp"`
+}

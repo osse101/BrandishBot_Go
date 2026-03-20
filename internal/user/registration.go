@@ -106,6 +106,14 @@ func (s *service) HandleIncomingMessage(ctx context.Context, platform, platformI
 		}
 	}
 
+	// Track this user for bomb peak detection (2s window)
+	s.bombMu.Lock()
+	if s.recentChatterWindow[platform] == nil {
+		s.recentChatterWindow[platform] = make(map[string]bool)
+	}
+	s.recentChatterWindow[platform][user.ID] = true
+	s.bombMu.Unlock()
+
 	// Track this user as an active chatter for random targeting
 	s.activeChatterTracker.Track(platform, user.ID, username)
 

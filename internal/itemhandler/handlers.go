@@ -248,6 +248,48 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
 }
 
+func handleBomb(ctx context.Context, ec EffectContext, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("handleBomb called", "username", args.Username)
+
+	platform := args.Platform
+	username := args.Username
+
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
+		return "", domain.ErrNotInInventory
+	}
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
+	if err != nil {
+		return "", err
+	}
+
+	// 2. Queue each bomb (handling multiple quantities)
+	var lastDisplayName string
+	totalQueued := 0
+	for _, slot := range consumedSlots {
+		baseTimeout := getWeaponTimeout(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
+		displayName := ec.GetDisplayName(item.InternalName, slot.QualityLevel)
+		lastDisplayName = displayName
+
+		// A single slot might contain multiple items of the same quality
+		for i := 0; i < slot.Quantity; i++ {
+			if err := ec.SetPendingBomb(ctx, platform, username, baseTimeout); err != nil {
+				log.Error("Failed to set pending bomb", "error", err, "index", i)
+			} else {
+				totalQueued++
+			}
+		}
+	}
+
+	if totalQueued == 0 {
+		return "", fmt.Errorf("failed to queue any bombs: %w", domain.ErrInternalError)
+	}
+
+	log.Info("Bombs set successfully", "setter", username, "platform", platform, "count", totalQueued)
+	return fmt.Sprintf("%s set %s! Waiting for a crowd...", username, lastDisplayName), nil
+}
+
 func handleTNT(ctx context.Context, ec EffectContext, username, platform string, timeout time.Duration, displayName string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("TNT used, selecting 5-9 random targets")

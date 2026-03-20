@@ -5,6 +5,10 @@ import "errors"
 // Error message string constants - single source of truth for error messages
 // Use these in assert.Contains() checks when testing error messages
 const (
+
+	// General errors
+	ErrMsgInternalError = "internal error"
+
 	// User errors
 	ErrMsgUserNotFound = "user not found"
 
@@ -108,6 +112,10 @@ const (
 // These errors should be used consistently across all layers of the application.
 // Wrap these errors with fmt.Errorf("%w: %s", domain.ErrXxx, details) for additional context.
 var (
+
+	// General errors
+	ErrInternalError = errors.New(ErrMsgInternalError)
+
 	// User errors
 	ErrUserNotFound = errors.New(ErrMsgUserNotFound)
 

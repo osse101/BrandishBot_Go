@@ -34,6 +34,7 @@ func NewRegistry() *Registry {
 			&ResourceGeneratorHandler{},
 			&UtilityHandler{},
 			&VideoFilterHandler{},
+			&BombHandler{},
 		},
 	}
 }
@@ -180,4 +181,17 @@ func (h *VideoFilterHandler) CanHandle(itemName string) bool {
 // Handle processes video filter application.
 func (h *VideoFilterHandler) Handle(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	return handleVideoFilter(ctx, ec, user, inventory, item, quantity, args)
+}
+
+// BombHandler handles bomb items.
+type BombHandler struct{}
+
+// CanHandle returns true for bomb items.
+func (h *BombHandler) CanHandle(itemName string) bool {
+	return itemName == domain.ItemBomb
+}
+
+// Handle processes bomb usage.
+func (h *BombHandler) Handle(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
+	return handleBomb(ctx, ec, user, inventory, item, quantity, args)
 }

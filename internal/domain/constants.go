@@ -80,6 +80,7 @@ const (
 
 	// Progression public names
 	PublicNameRareCandy = "rarecandy" // XP item
+	PublicNameBomb      = "bomb"      // Large timed explosive
 )
 
 // Action name constants for cooldown tracking
@@ -315,6 +316,9 @@ const (
 
 	// Job XP critical (Epiphany bonus)
 	EventTypeJobXPCritical = "job.xp_critical"
+
+	// Bomb events
+	EventTypeBombDetonated = "bomb.detonated"
 )
 
 // ============================================================================

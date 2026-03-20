@@ -108,3 +108,21 @@ func (s *service) TriggerTrap(ctx context.Context, trapID uuid.UUID) error {
 func (s *service) RandomFloat() float64 {
 	return s.rnd()
 }
+
+// SetPendingBomb adds a bomb to the queue for a platform.
+func (s *service) SetPendingBomb(ctx context.Context, platform, setterUsername string, timeout time.Duration) error {
+	s.bombMu.Lock()
+	defer s.bombMu.Unlock()
+
+	if s.bombQueues[platform] == nil {
+		s.bombQueues[platform] = make([]*pendingBomb, 0)
+	}
+
+	s.bombQueues[platform] = append(s.bombQueues[platform], &pendingBomb{
+		SetterUsername:   setterUsername,
+		Timeout:          timeout,
+		AccumulatedUsers: make(map[string]bool),
+	})
+
+	return nil
+}
