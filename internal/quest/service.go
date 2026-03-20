@@ -61,7 +61,6 @@ func NewService(
 	return s, nil
 }
 
-// loadQuestPool loads quest templates from config
 func (s *service) loadQuestPool() error {
 	data, err := os.ReadFile(config.ConfigPathQuestPool)
 	if err != nil {
@@ -80,17 +79,14 @@ func (s *service) loadQuestPool() error {
 	return nil
 }
 
-// GetActiveQuests returns all active quests
 func (s *service) GetActiveQuests(ctx context.Context) ([]domain.Quest, error) {
 	return s.repo.GetActiveQuests(ctx)
 }
 
-// GetUserQuestProgress returns user's quest progress
 func (s *service) GetUserQuestProgress(ctx context.Context, userID string) ([]domain.QuestProgress, error) {
 	return s.repo.GetUserQuestProgress(ctx, userID)
 }
 
-// GenerateWeeklyQuests generates 3 random quests for the week
 func (s *service) GenerateWeeklyQuests(ctx context.Context, year, weekNumber int) error {
 	log := logger.FromContext(ctx)
 
@@ -131,7 +127,6 @@ func (s *service) GenerateWeeklyQuests(ctx context.Context, year, weekNumber int
 	return nil
 }
 
-// ResetWeeklyQuests deactivates old quests and generates new ones
 func (s *service) ResetWeeklyQuests(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
@@ -177,7 +172,6 @@ func (s *service) ResetWeeklyQuests(ctx context.Context) error {
 	return nil
 }
 
-// OnItemBought handles quest progress when user buys items
 func (s *service) OnItemBought(ctx context.Context, userID string, itemCategory string, quantity int) error {
 	quests, err := s.repo.GetUserActiveQuestProgress(ctx, userID)
 	if err != nil {
@@ -209,7 +203,6 @@ func (s *service) OnItemBought(ctx context.Context, userID string, itemCategory 
 	return nil
 }
 
-// OnItemSold handles quest progress when user sells items
 func (s *service) OnItemSold(ctx context.Context, userID string, itemCategory string, quantity, moneyEarned int) error {
 	quests, err := s.repo.GetUserActiveQuestProgress(ctx, userID)
 	if err != nil {
@@ -239,7 +232,6 @@ func (s *service) OnItemSold(ctx context.Context, userID string, itemCategory st
 	return nil
 }
 
-// incrementAndCheckCompletion increments progress and auto-completes if threshold reached
 func (s *service) incrementAndCheckCompletion(ctx context.Context, userID string, qp domain.QuestProgress, incrementBy int) error {
 	log := logger.FromContext(ctx)
 
@@ -279,7 +271,6 @@ func (s *service) incrementAndCheckCompletion(ctx context.Context, userID string
 	return nil
 }
 
-// matchesCategoryFilter checks if item category matches quest filter
 func (s *service) matchesCategoryFilter(itemCategory string, filterCategory *string) bool {
 	// nil filter means all items match
 	if filterCategory == nil {
@@ -290,7 +281,6 @@ func (s *service) matchesCategoryFilter(itemCategory string, filterCategory *str
 	return strings.EqualFold(itemCategory, *filterCategory)
 }
 
-// OnRecipeCrafted handles quest progress when user performs crafting
 func (s *service) OnRecipeCrafted(ctx context.Context, userID string, recipeKey string, quantity int) error {
 	quests, err := s.repo.GetUserActiveQuestProgress(ctx, userID)
 	if err != nil {
@@ -319,7 +309,6 @@ func (s *service) OnRecipeCrafted(ctx context.Context, userID string, recipeKey 
 	return nil
 }
 
-// OnSearch handles quest progress when user performs a search
 func (s *service) OnSearch(ctx context.Context, userID string) error {
 	quests, err := s.repo.GetUserActiveQuestProgress(ctx, userID)
 	if err != nil {
@@ -343,7 +332,6 @@ func (s *service) OnSearch(ctx context.Context, userID string) error {
 	return nil
 }
 
-// ClaimQuestReward claims completed quest reward
 func (s *service) ClaimQuestReward(ctx context.Context, userID string, questID int) (money int, err error) {
 	log := logger.FromContext(ctx)
 

@@ -358,6 +358,16 @@ func TestTracker_GetRandomTargets(t *testing.T) {
 			expectError:   false,
 			expectedCount: 0,
 		},
+		{
+			name: "Invalid Case - Request Negative Targets",
+			setupTracker: func(tr *Tracker) {
+				tr.Track(domain.PlatformDiscord, "user1", "Alice")
+			},
+			platform:      domain.PlatformDiscord,
+			requestCount:  -1,
+			expectError:   false,
+			expectedCount: 0,
+		},
 	}
 
 	for _, tt := range tests {

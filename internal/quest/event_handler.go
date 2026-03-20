@@ -10,19 +10,16 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 )
 
-// EventHandler handles events related to quests
 type EventHandler struct {
 	service Service
 }
 
-// NewEventHandler creates a new quest event handler
 func NewEventHandler(service Service) *EventHandler {
 	return &EventHandler{
 		service: service,
 	}
 }
 
-// Register subscribes the handler to relevant events
 func (h *EventHandler) Register(bus event.Bus) {
 	// Crafting events
 	bus.Subscribe(event.Type(domain.EventTypeItemUpgraded), h.HandleItemUpgraded)
@@ -36,7 +33,6 @@ func (h *EventHandler) Register(bus event.Bus) {
 	bus.Subscribe(event.Type(domain.EventTypeSearchPerformed), h.HandleSearchPerformed)
 }
 
-// HandleItemUpgraded handles item upgrade events to update quest progress
 func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) error {
 	payload, err := event.DecodePayload[crafting.ItemUpgradedPayload](evt.Payload)
 	if err != nil {
@@ -46,7 +42,6 @@ func (h *EventHandler) HandleItemUpgraded(ctx context.Context, evt event.Event) 
 	return h.handleRecipeCrafted(ctx, payload.UserID, payload.RecipeKey, payload.ItemName, payload.Quantity, "upgrade")
 }
 
-// HandleItemDisassembled handles item disassemble events to update quest progress
 func (h *EventHandler) HandleItemDisassembled(ctx context.Context, evt event.Event) error {
 	payload, err := event.DecodePayload[crafting.ItemDisassembledPayload](evt.Payload)
 	if err != nil {
@@ -72,7 +67,6 @@ func (h *EventHandler) handleRecipeCrafted(ctx context.Context, userID, recipeKe
 	return nil
 }
 
-// HandleItemSold handles item sold events to update quest progress
 func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
@@ -89,7 +83,6 @@ func (h *EventHandler) HandleItemSold(ctx context.Context, evt event.Event) erro
 	return nil
 }
 
-// HandleItemBought handles item bought events to update quest progress
 func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
@@ -106,7 +99,6 @@ func (h *EventHandler) HandleItemBought(ctx context.Context, evt event.Event) er
 	return nil
 }
 
-// HandleSearchPerformed handles search performed events to update quest progress
 func (h *EventHandler) HandleSearchPerformed(ctx context.Context, evt event.Event) error {
 	log := logger.FromContext(ctx)
 
