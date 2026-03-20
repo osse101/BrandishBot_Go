@@ -43,12 +43,38 @@ func (s *service) calculateHarvestRewards(ctx context.Context, userID string, ho
 
 	if hoursElapsed > effectiveSpoiledThreshold {
 		logger.FromContext(ctx).Info("Harvest spoiled", "hours", hoursElapsed)
-		return map[string]int{
-			itemLootbox1: 1,
-			itemStick:    3,
-		}, "Your crops spoiled! You salvaged 1 Decent Lootbox and 3 Sticks."
+		rewards := s.calculateSpoiledRewards(ctx, yieldMultiplier, limitIndex)
+		return rewards, "Your crops spoiled! You salvaged some basic materials."
 	}
 	return s.calculateRewards(ctx, hoursElapsed, yieldMultiplier, limitIndex), "Harvest successful!"
+}
+
+func (s *service) calculateSpoiledRewards(ctx context.Context, yieldMultiplier float64, limitIndex int) map[string]int {
+	log := logger.FromContext(ctx)
+	rewards := make(map[string]int)
+	tier := getSpoilRewardTier()
+
+	for itemName, quantity := range tier.Items {
+		if tier.RequiresUnlock[itemName] {
+			unlocked, err := s.progressionSvc.IsItemUnlocked(ctx, itemName)
+			if err != nil {
+				log.Warn("Failed to check item unlock status for spoil", "item", itemName, "error", err)
+				continue
+			}
+			if !unlocked {
+				continue
+			}
+		}
+
+		baseQty := quantity
+		bonusQty := int(float64(baseQty) * yieldMultiplier)
+		if bonusQty < baseQty {
+			bonusQty = baseQty
+		}
+		rewards[itemName] = bonusQty
+	}
+
+	return rewards
 }
 
 // calculateRewards calculates the total rewards for a given elapsed time
@@ -293,6 +319,20 @@ func getRewardTiers() []domain.HarvestReward {
 			RequiresUnlock: map[string]bool{
 				itemLootbox2: true,
 			},
+		},
+	}
+}
+
+func getSpoilRewardTier() domain.HarvestReward {
+	return domain.HarvestReward{
+		MaxHours: spoiledThreshold,
+		Items: map[string]int{
+			itemMoney:    20,
+			itemStick:    5,
+			itemLootbox0: 1,
+		},
+		RequiresUnlock: map[string]bool{
+			itemStick: true,
 		},
 	}
 }

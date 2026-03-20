@@ -132,18 +132,21 @@ func TestHarvest_Spoiled(t *testing.T) {
 	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureSpoilExtension, 0.0).Return(0.0, nil)
 	mockProgressionSvc.On("GetModifiedValue", ctx, user.ID, featureHarvestTier, 3.0).Return(9.0, nil)
 
-	// Spoiled logic returns fixed rewards: 1 Lootbox1, 3 Sticks.
+	// Spoil items: Money: 20, Stick: 5 (if unlocked), LB0: 1
+	mockProgressionSvc.On("IsItemUnlocked", ctx, itemStick).Return(true, nil)
+
 	mockPublisher.On("PublishWithRetry", mock.Anything, mock.Anything).Return()
 
 	inventory := &domain.Inventory{Slots: []domain.InventorySlot{}}
 	mockTx.On("GetInventory", ctx, user.ID).Return(inventory, nil)
 
-	// Expect lookup for Lootbox1 and Stick
-	lbItem := domain.Item{ID: 2, InternalName: domain.ItemLootbox1}
+	// Expect lookup for Money, Stick, LB0
+	moneyItem := domain.Item{ID: 1, InternalName: domain.ItemMoney}
+	lbItem := domain.Item{ID: 2, InternalName: domain.ItemLootbox0}
 	stickItem := domain.Item{ID: 3, InternalName: domain.ItemStick}
 	mockUserRepo.On("GetItemsByNames", ctx, mock.MatchedBy(func(names []string) bool {
-		return len(names) == 2 // Order might vary
-	})).Return([]domain.Item{lbItem, stickItem}, nil)
+		return len(names) == 3
+	})).Return([]domain.Item{moneyItem, lbItem, stickItem}, nil)
 
 	mockTx.On("UpdateInventory", ctx, user.ID, mock.Anything).Return(nil)
 	mockTx.On("UpdateHarvestState", ctx, user.ID, mock.Anything).Return(nil)
@@ -156,8 +159,9 @@ func TestHarvest_Spoiled(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, 1, resp.ItemsGained[domain.ItemLootbox1])
-	assert.Equal(t, 3, resp.ItemsGained[domain.ItemStick])
+	assert.Equal(t, 20, resp.ItemsGained[domain.ItemMoney])
+	assert.Equal(t, 5, resp.ItemsGained[domain.ItemStick])
+	assert.Equal(t, 1, resp.ItemsGained[domain.ItemLootbox0])
 	assert.Contains(t, resp.Message, "spoiled")
 
 	// Wait for async tasks
@@ -501,4 +505,66 @@ func TestRewardTiers(t *testing.T) {
 
 func TestMinHarvestInterval(t *testing.T) {
 	assert.Equal(t, 1.0, minHarvestInterval, "Minimum harvest interval should be 1 hour")
+}
+
+func TestCalculateSpoiledRewards(t *testing.T) {
+	tests := []struct {
+		name            string
+		unlockedItems   map[string]bool
+		yieldMultiplier float64
+		expectedReward  map[string]int
+	}{
+		{
+			name: "Base Scaling - No bonus",
+			unlockedItems: map[string]bool{
+				itemStick: true,
+			},
+			yieldMultiplier: 1.0,
+			expectedReward: map[string]int{
+				itemMoney:    20,
+				itemStick:    5,
+				itemLootbox0: 1,
+			},
+		},
+		{
+			name: "2.0x Yield Bonus",
+			unlockedItems: map[string]bool{
+				itemStick: true,
+			},
+			yieldMultiplier: 2.0,
+			expectedReward: map[string]int{
+				itemMoney:    40,
+				itemStick:    10,
+				itemLootbox0: 2,
+			},
+		},
+		{
+			name: "Stick Locked",
+			unlockedItems: map[string]bool{
+				itemStick: false,
+			},
+			yieldMultiplier: 1.0,
+			expectedReward: map[string]int{
+				itemMoney:    20,
+				itemLootbox0: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockProgressionSvc := new(mocks.MockProgressionService)
+			for itemName, unlocked := range tt.unlockedItems {
+				mockProgressionSvc.On("IsItemUnlocked", mock.Anything, itemName).Return(unlocked, nil).Maybe()
+			}
+
+			svc := &service{
+				progressionSvc: mockProgressionSvc,
+			}
+
+			rewards := svc.calculateSpoiledRewards(context.Background(), tt.yieldMultiplier, 9)
+			assert.Equal(t, tt.expectedReward, rewards)
+			mockProgressionSvc.AssertExpectations(t)
+		})
+	}
 }
