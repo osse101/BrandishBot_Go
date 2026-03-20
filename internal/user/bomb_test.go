@@ -27,36 +27,36 @@ func TestBombQueuingAndDetonation(t *testing.T) {
 	err = svc.SetPendingBomb(ctx, platform, "bob", timeout)
 	assert.NoError(t, err)
 
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	require.Equal(t, 2, len(svc.bombQueues[platform]))
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	// 3. Pulse with users (Peak)
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	svc.recentChatterWindow[platform] = map[string]bool{
 		"user-alice": true, "user-bob": true, "user-charlie": true,
 	}
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	svc.processRecentChatters() // Pulse 1
 
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	assert.Equal(t, 3, len(svc.bombQueues[platform][0].AccumulatedUsers))
 	assert.Equal(t, 0, len(svc.recentChatterWindow[platform]))
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	// 4. Pulse with more users
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	svc.recentChatterWindow[platform] = map[string]bool{
 		"user-dave": true, "user-eve": true,
 	}
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	svc.processRecentChatters() // Pulse 2
 
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	assert.Equal(t, 5, len(svc.bombQueues[platform][0].AccumulatedUsers))
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	// 5. Pulse with empty window (Slowdown) -> Detonation
 	repo := svc.repo.(*FakeRepository)
@@ -68,10 +68,10 @@ func TestBombQueuingAndDetonation(t *testing.T) {
 
 	svc.processRecentChatters() // Pulse 3 (Detonation)
 
-	svc.bombMu.Lock()
+	svc.recentChatterMu.Lock()
 	assert.Equal(t, 1, len(svc.bombQueues[platform]), "First bomb should be shifted out of queue")
 	assert.Equal(t, 0, len(svc.bombQueues[platform][0].AccumulatedUsers), "New active bomb should be clean")
-	svc.bombMu.Unlock()
+	svc.recentChatterMu.Unlock()
 
 	// Verify timeouts were applied to all 5 users
 	victims := []string{"alice", "bob", "charlie", "dave", "eve"}

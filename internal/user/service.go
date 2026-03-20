@@ -61,11 +61,13 @@ type service struct {
 
 	activeChatterTracker *activechatter.Tracker // Tracks users eligible for random targeting
 
-	// Bomb system
-	bombMu              sync.Mutex
-	bombQueues          map[string][]*pendingBomb  // Platform -> Queue of bombs
+	// Recent chatter tracking
+	recentChatterMu     sync.Mutex
 	recentChatterWindow map[string]map[string]bool // Platform -> UserIDs in 2s window
 	recentChatterTicker *time.Ticker
+
+	// Bomb system
+	bombQueues map[string][]*pendingBomb // Platform -> Queue of bombs
 
 	rnd func() float64 // For RNG - allows deterministic testing
 

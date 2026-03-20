@@ -25,33 +25,37 @@ func (s *service) pulseRecentChatters() {
 
 // processRecentChatters handles the 2-second pulse logic
 func (s *service) processRecentChatters() {
-	s.bombMu.Lock()
-	defer s.bombMu.Unlock()
+	s.recentChatterMu.Lock()
+	defer s.recentChatterMu.Unlock()
 
 	for platform, window := range s.recentChatterWindow {
-		queue := s.bombQueues[platform]
-		if len(queue) == 0 {
-			// No bombs, just clear the window
-			s.recentChatterWindow[platform] = make(map[string]bool)
-			continue
-		}
+		// 1. Process Bombs
+		s.handleBombPulse(platform, window)
 
-		activeBomb := queue[0]
-
-		if len(window) > 0 {
-			// Chat is active, accumulate users
-			for userID := range window {
-				activeBomb.AccumulatedUsers[userID] = true
-			}
-		} else {
-			// Chat slowed down (window is empty)
-			if len(activeBomb.AccumulatedUsers) >= 5 {
-				s.detonateBomb(platform)
-			}
-		}
-
-		// Clear window for next 2s
+		// 2. Clear window for next 2s
 		s.recentChatterWindow[platform] = make(map[string]bool)
+	}
+}
+
+// handleBombPulse handles bomb-specific pulse logic
+func (s *service) handleBombPulse(platform string, window map[string]bool) {
+	queue := s.bombQueues[platform]
+	if len(queue) == 0 {
+		return
+	}
+
+	activeBomb := queue[0]
+
+	if len(window) > 0 {
+		// Chat is active, accumulate users
+		for userID := range window {
+			activeBomb.AccumulatedUsers[userID] = true
+		}
+	} else {
+		// Chat slowed down (window is empty)
+		if len(activeBomb.AccumulatedUsers) >= 5 {
+			s.detonateBomb(platform)
+		}
 	}
 }
 
