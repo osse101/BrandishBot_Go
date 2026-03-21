@@ -46,3 +46,7 @@ Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/ser
 - **Compost**: Resolved. Verified implementation in `internal/compost/` including service lifecycle, engine logic, and database integration.
 - **Expeditions**: Resolved. Verified implementation in `internal/expedition/` including encounter engine, skills, and background worker (`internal/worker/expedition_worker.go`).
 - **Duels**: PENDING. `Accept` method still returns "not implemented". This is the last remaining item in this tracking issue.
+
+## Status Update (2026-03-21)
+
+- **Duels**: Resolved. Verified implementation in `internal/duel/` including service lifecycle, engine logic, and database integration.

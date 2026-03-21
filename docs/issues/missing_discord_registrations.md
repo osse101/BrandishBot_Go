@@ -12,3 +12,5 @@ This document tracks features that have backend implementation (Service/Handler 
   1. Implement `Accept` logic in `internal/duel/service.go` (e.g., coin flip, dice roll).
   2. Create `internal/discord/cmd_duel.go` to handle interactions.
   3. Register commands in `internal/discord/commands.go`.
+
+- **Status Update (2026-03-21)**: `Accept` method is fully implemented, but discord commands are still not registered.
