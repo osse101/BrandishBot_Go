@@ -260,3 +260,9 @@ CREATE TABLE duels (
 
 - Confirmed `Accept` method in `internal/duel/service.go` remains unimplemented.
 - **Status**: Open
+
+## Status Update (2026-03-21)
+
+**Implementation Status: Complete**
+
+- Confirmed `Accept` method in `internal/duel/service.go` is fully implemented, with coin-flip resolution logic, database transactions, and integration with the user service for item deductions and rewards.
