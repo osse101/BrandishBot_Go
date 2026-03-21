@@ -56,12 +56,12 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 		return &domain.GambleResult{GambleID: id}, nil
 	}
 
-	userValues, allOpenedItems, totalGambleValue := s.openParticipantsLootboxes(ctx, gamble)
+	userValues, openedItems, totalPoolValue := s.openParticipantsLootboxes(ctx, gamble)
 
 	// Determine critical failures (before determining winner)
-	critFailUsers := s.determineCriticalFailures(userValues, totalGambleValue)
+	critFailUsers := s.determineCriticalFailures(userValues, totalPoolValue)
 
-	if err := tx.SaveOpenedItems(ctx, allOpenedItems); err != nil {
+	if err := tx.SaveOpenedItems(ctx, openedItems); err != nil {
 		return nil, fmt.Errorf("failed to save opened items: %w", err)
 	}
 
@@ -69,7 +69,7 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	nearMissUsers := s.determineNearMisses(winnerID, highestValue, userValues)
 
 	if winnerID != "" {
-		if err := s.awardItemsToWinner(ctx, tx, winnerID, allOpenedItems); err != nil {
+		if err := s.awardItemsToWinner(ctx, tx, winnerID, openedItems); err != nil {
 			return nil, err
 		}
 	}
@@ -77,8 +77,8 @@ func (s *service) ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.Gamb
 	result := &domain.GambleResult{
 		GambleID:   id,
 		WinnerID:   winnerID,
-		TotalValue: totalGambleValue,
-		Items:      allOpenedItems,
+		TotalValue: totalPoolValue,
+		Items:      openedItems,
 	}
 
 	if err := tx.CompleteGamble(ctx, result); err != nil {
@@ -157,8 +157,8 @@ func (s *service) refundGamble(ctx context.Context, tx repository.GambleTx, gamb
 
 func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.Gamble) (map[string]int64, []domain.GambleOpenedItem, int64) {
 	userValues := make(map[string]int64)
-	var allOpenedItems []domain.GambleOpenedItem
-	var totalGambleValue int64
+	var openedItems []domain.GambleOpenedItem
+	var totalPoolValue int64
 
 	// Cache item names to avoid redundant DB lookups
 	itemNameCache := make(map[int]string)
@@ -202,7 +202,7 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 					}
 				}
 
-				allOpenedItems = append(allOpenedItems, domain.GambleOpenedItem{
+				openedItems = append(openedItems, domain.GambleOpenedItem{
 					GambleID:     gamble.ID,
 					UserID:       p.UserID,
 					ItemID:       drop.ItemID,
@@ -213,9 +213,9 @@ func (s *service) openParticipantsLootboxes(ctx context.Context, gamble *domain.
 				})
 
 				userValues[p.UserID] += totalValue
-				totalGambleValue += totalValue
+				totalPoolValue += totalValue
 			}
 		}
 	}
-	return userValues, allOpenedItems, totalGambleValue
+	return userValues, openedItems, totalPoolValue
 }

@@ -30,44 +30,44 @@ func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, 
 	}
 
 	// Get initiator's bets to use for this joiner
-	var initiatorBets []domain.LootboxBet
+	var initialBets []domain.LootboxBet
 	for _, p := range gamble.Participants {
 		if p.UserID == gamble.InitiatorID {
-			initiatorBets = p.LootboxBets
+			initialBets = p.LootboxBets
 			break
 		}
 	}
 
-	if len(initiatorBets) == 0 {
+	if len(initialBets) == 0 {
 		return fmt.Errorf("failed to find initiator bets for gamble %s: %w", gambleID, domain.ErrGambleNotFound)
 	}
 
 	// Create a deep copy of bets to use for this joiner to avoid side effects
-	bets := make([]domain.LootboxBet, len(initiatorBets))
-	copy(bets, initiatorBets)
+	joinerBets := make([]domain.LootboxBet, len(initialBets))
+	copy(joinerBets, initialBets)
 
 	// Note: Duplicate join prevention is enforced by database constraint
 	// (idx_gamble_participants_unique_user on gamble_participants table)
 
 	// Validate bets and resolve item names to IDs
-	resolvedItemIDs, err := s.validateGambleBets(ctx, bets)
+	resolvedItemIDs, err := s.validateGambleBets(ctx, joinerBets)
 	if err != nil {
 		return err
 	}
 
 	// Execute transaction
-	if err := s.executeGambleJoinTx(ctx, user.ID, gamble.ID, username, bets, resolvedItemIDs); err != nil {
+	if err := s.executeGambleJoinTx(ctx, user.ID, gamble.ID, username, joinerBets, resolvedItemIDs); err != nil {
 		return err
 	}
 
 	// Publish gamble participated event (job handler awards XP)
-	s.publishGambleParticipatedEvent(ctx, gambleID.String(), user.ID, calculateTotalLootboxes(bets), "join")
+	s.publishGambleParticipatedEvent(ctx, gambleID.String(), user.ID, calculateTotalLootboxes(joinerBets), "join")
 
 	return nil
 }
 
 // executeGambleJoinTx encapsulates the transactional logic for joining a gamble
-func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, bets []domain.LootboxBet, resolvedItemIDs []int) error {
+func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gambleID uuid.UUID, username string, joinerBets []domain.LootboxBet, resolvedItemIDs []int) error {
 	tx, err := s.repo.BeginGambleTx(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrContextFailedToBeginTx, err)
@@ -81,13 +81,13 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 	}
 
 	// Consume Bets using resolved item IDs
-	for i := range bets {
+	for i := range joinerBets {
 		itemID := resolvedItemIDs[i]
-		qualityLevel, err := consumeItem(inventory, itemID, bets[i].Quantity)
+		qualityLevel, err := consumeItem(inventory, itemID, joinerBets[i].Quantity)
 		if err != nil {
 			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
-		bets[i].QualityLevel = qualityLevel
+		joinerBets[i].QualityLevel = qualityLevel
 	}
 
 	// Update Inventory
@@ -99,7 +99,7 @@ func (s *service) executeGambleJoinTx(ctx context.Context, userID string, gamble
 	participant := &domain.Participant{
 		GambleID:    gambleID,
 		UserID:      userID,
-		LootboxBets: bets,
+		LootboxBets: joinerBets,
 		Username:    username,
 	}
 	if err := s.repo.JoinGamble(ctx, participant); err != nil {

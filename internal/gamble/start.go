@@ -77,17 +77,17 @@ func (s *service) executeGambleStartTx(ctx context.Context, userID, username str
 	}
 
 	// Create a local copy of bets to avoid modifying the caller's slice and race conditions
-	gambleBets := make([]domain.LootboxBet, len(bets))
-	copy(gambleBets, bets)
+	localBets := make([]domain.LootboxBet, len(bets))
+	copy(localBets, bets)
 
 	// Consume bet items from inventory using resolved IDs
-	for i := range gambleBets {
+	for i := range localBets {
 		itemID := resolvedItemIDs[i]
-		qualityLevel, err := consumeItem(inventory, itemID, gambleBets[i].Quantity)
+		qualityLevel, err := consumeItem(inventory, itemID, localBets[i].Quantity)
 		if err != nil {
 			return fmt.Errorf("%s (item %d): %w", ErrContextFailedToConsumeBet, itemID, err)
 		}
-		gambleBets[i].QualityLevel = qualityLevel
+		localBets[i].QualityLevel = qualityLevel
 	}
 
 	if err := tx.UpdateInventory(ctx, userID, *inventory); err != nil {
@@ -104,7 +104,7 @@ func (s *service) executeGambleStartTx(ctx context.Context, userID, username str
 	participant := &domain.Participant{
 		GambleID:    gamble.ID,
 		UserID:      userID,
-		LootboxBets: gambleBets,
+		LootboxBets: localBets,
 		Username:    username,
 	}
 
