@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -230,21 +229,14 @@ func (c *DeployCommand) announceRelease(version string) {
 		"description": notes,
 		"color":       65280,
 	}
-	jsonPayload, _ := json.Marshal(payload)
 
 	discordURL := "http://localhost:8082/admin/announce"
-	resp, err := http.Post(discordURL, "application/json", bytes.NewBuffer(jsonPayload))
-	if err != nil {
+	if err := postJSON(discordURL, payload, "", nil); err != nil {
 		PrintWarning("Failed to send release notes: %v", err)
 		return
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		PrintSuccess("Release notes sent successfully")
-	} else {
-		PrintWarning("Failed to send release notes (Status: %d)", resp.StatusCode)
-	}
+	PrintSuccess("Release notes sent successfully")
 }
 
 func checkHealth(env string) error {
