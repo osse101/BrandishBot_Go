@@ -9,32 +9,28 @@ import (
 	"sync"
 )
 
-// FeatureData represents the loaded information for a feature
 type FeatureData struct {
 	Description string   `json:"description"`
 	Commands    []string `json:"commands"`
 }
 
-// Loader handles loading feature data from files
 type Loader struct {
-	dir     string
-	cache   map[string]FeatureData
-	cacheMu sync.RWMutex
-	loaded  bool
+	dir    string
+	data   map[string]FeatureData
+	mu     sync.RWMutex
+	loaded bool
 }
 
-// NewLoader creates a new feature loader
 func NewLoader(dir string) *Loader {
 	return &Loader{
-		dir:   dir,
-		cache: make(map[string]FeatureData),
+		dir:  dir,
+		data: make(map[string]FeatureData),
 	}
 }
 
-// Load reads all feature files from the directory
 func (l *Loader) Load() error {
-	l.cacheMu.Lock()
-	defer l.cacheMu.Unlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	entries, err := os.ReadDir(l.dir)
 	if err != nil {
@@ -54,47 +50,45 @@ func (l *Loader) Load() error {
 			return fmt.Errorf(ErrMsgParseFileFailed, name, err)
 		}
 
-		l.cache[name] = data
+		l.data[name] = data
 	}
 
 	l.loaded = true
 	return nil
 }
 
-// GetFeature returns data for a specific feature
 func (l *Loader) GetFeature(name string) (FeatureData, bool) {
-	l.cacheMu.RLock()
-	defer l.cacheMu.RUnlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
 	// Lazy load if not already loaded
 	if !l.loaded {
 		// Release read lock to acquire write lock in Load
-		l.cacheMu.RUnlock()
+		l.mu.RUnlock()
 		if err := l.Load(); err != nil {
-			l.cacheMu.RLock()
+			l.mu.RLock()
 			return FeatureData{}, false
 		}
-		l.cacheMu.RLock()
+		l.mu.RLock()
 	}
 
-	data, ok := l.cache[name]
+	data, ok := l.data[name]
 	return data, ok
 }
 
-// GetAllFeatures returns all loaded features
 func (l *Loader) GetAllFeatures() map[string]FeatureData {
-	l.cacheMu.RLock()
-	defer l.cacheMu.RUnlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
 	if !l.loaded {
-		l.cacheMu.RUnlock()
+		l.mu.RUnlock()
 		_ = l.Load()
-		l.cacheMu.RLock()
+		l.mu.RLock()
 	}
 
 	// Return a copy to prevent modification
-	result := make(map[string]FeatureData, len(l.cache))
-	for k, v := range l.cache {
+	result := make(map[string]FeatureData, len(l.data))
+	for k, v := range l.data {
 		result[k] = v
 	}
 	return result
