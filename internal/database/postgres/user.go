@@ -159,7 +159,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrUserNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, platformID)
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
 	}
@@ -175,7 +175,7 @@ func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrUserNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
@@ -203,7 +203,7 @@ func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName str
 	row, err := r.q.GetItemByPublicName(ctx, pgtype.Text{String: publicName, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrItemNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, publicName)
 		}
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}
