@@ -29,9 +29,9 @@ func setupTestService() (*service, *FakeRepository) {
 		DiscordID: "discord123",
 	}
 	repo.users["user2"] = &domain.User{
-		ID:        "user2",
-		Username:  "Bob",
-		TwitchID:  "twitch456",
+		ID:       "user2",
+		Username: "Bob",
+		TwitchID: "twitch456",
 	}
 
 	repo.inventories["user1"] = &domain.Inventory{
@@ -147,9 +147,9 @@ func TestAddItemByUsername(t *testing.T) {
 			err := svc.AddItemByUsername(context.Background(), tt.platform, tt.username, tt.itemName, tt.quantity)
 
 			// The service uses generic add logic; depending on how negative/zero is handled in the actual method,
-            // we adjust expectations.
+			// we adjust expectations.
 			// Currently, internal/user/use_item.go / internal/user/inventory.go might handle zero/negative differently.
-            // Let's assume standard domain rules or we assert what currently happens.
+			// Let's assume standard domain rules or we assert what currently happens.
 			// Let's rely on standard errors. If it doesn't fail, we might need to adjust wantErr in subsequent runs.
 
 			if tt.wantErr != nil {
