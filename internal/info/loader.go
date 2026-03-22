@@ -10,7 +10,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Loader handles loading and caching info features from YAML files
 type Loader struct {
 	dir     string
 	cache   map[string]*Feature
@@ -18,7 +17,6 @@ type Loader struct {
 	loaded  bool
 }
 
-// NewLoader creates a new info loader
 func NewLoader(dir string) *Loader {
 	return &Loader{
 		dir:   dir,
@@ -26,7 +24,6 @@ func NewLoader(dir string) *Loader {
 	}
 }
 
-// Load reads all YAML feature files from the directory
 func (l *Loader) Load() error {
 	l.cacheMu.Lock()
 	defer l.cacheMu.Unlock()
@@ -56,7 +53,6 @@ func (l *Loader) Load() error {
 	return nil
 }
 
-// loadFeatureFile loads a single YAML feature file
 func (l *Loader) loadFeatureFile(path string) (*Feature, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -71,8 +67,6 @@ func (l *Loader) loadFeatureFile(path string) (*Feature, error) {
 	return &feature, nil
 }
 
-// ensureLoaded checks if features are loaded and loads them if not
-// It returns false if loading fails
 func (l *Loader) ensureLoaded() bool {
 	if l.loaded {
 		return true
@@ -86,7 +80,6 @@ func (l *Loader) ensureLoaded() bool {
 	return err == nil
 }
 
-// GetFeature returns a feature by name
 func (l *Loader) GetFeature(name string) (*Feature, bool) {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
@@ -99,7 +92,6 @@ func (l *Loader) GetFeature(name string) (*Feature, bool) {
 	return feature, ok
 }
 
-// GetTopic returns a specific topic within a feature
 func (l *Loader) GetTopic(featureName, topicName string) (*Topic, bool) {
 	feature, ok := l.GetFeature(featureName)
 	if !ok {
@@ -114,8 +106,6 @@ func (l *Loader) GetTopic(featureName, topicName string) (*Topic, bool) {
 	return &topic, true
 }
 
-// SearchTopic searches for a topic across all features by name
-// Returns the topic, the feature it belongs to, and whether it was found
 func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
@@ -133,7 +123,6 @@ func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
 	return nil, "", false
 }
 
-// GetAllFeatures returns all loaded features
 func (l *Loader) GetAllFeatures() map[string]*Feature {
 	l.cacheMu.RLock()
 	defer l.cacheMu.RUnlock()
