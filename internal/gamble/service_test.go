@@ -44,6 +44,8 @@ func setupService(rng func(int) int, enableProgression bool) *testService {
 	}
 
 	svc := NewService(repo, eventBus, resilientPub, lootboxSvc, time.Minute, pSvc, namingResolver, rng)
+	// Default mock for GetItemByID for reward items (ID >= 10) to avoid panics in various tests
+	repo.On("GetItemByID", mock.Anything, mock.MatchedBy(func(id int) bool { return id >= 10 })).Return(&domain.Item{PublicName: "Reward Item"}, nil).Maybe()
 
 	return &testService{
 		svc:            svc,

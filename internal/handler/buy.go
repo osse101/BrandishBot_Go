@@ -79,12 +79,6 @@ func HandleBuyItem(svc economy.Service, userSvc user.ManagementService, progress
 			log.Warn("Could not resolve UUID for item bought metrics, using username", "username", req.Username, "error", err)
 		}
 
-		// Record contribution for buying
-		if err := progressionSvc.RecordEngagement(r.Context(), eventUserID, domain.MetricTypeItemBought, bought); err != nil {
-			log.Error("Failed to record buy engagement", "error", err, "user_id", eventUserID)
-			// Don't fail the request
-		}
-
 		// Publish item.bought event
 		// Note: We don't have the exact cost here, would need to modify economy.Service to return it
 		if err := PublishEvent(r.Context(), eventBus, domain.EventTypeItemBought, map[string]interface{}{

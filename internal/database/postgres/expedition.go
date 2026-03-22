@@ -45,7 +45,7 @@ func (r *ExpeditionRepository) CreateExpedition(ctx context.Context, expedition 
 	params := generated.CreateExpeditionParams{
 		ID:                 expedition.ID,
 		InitiatorID:        expedition.InitiatorID,
-		ExpeditionType:     expedition.ExpeditionType,
+		ExpeditionType:     string(expedition.ExpeditionType),
 		State:              string(expedition.State),
 		CreatedAt:          pgtype.Timestamptz{Time: expedition.CreatedAt, Valid: true},
 		JoinDeadline:       pgtype.Timestamptz{Time: expedition.JoinDeadline, Valid: true},
@@ -408,7 +408,7 @@ func mapExpedition(exp generated.Expedition) *domain.Expedition {
 	expedition := &domain.Expedition{
 		ID:                 exp.ID,
 		InitiatorID:        exp.InitiatorID,
-		ExpeditionType:     exp.ExpeditionType,
+		ExpeditionType:     domain.ExpeditionType(exp.ExpeditionType),
 		State:              domain.ExpeditionState(exp.State),
 		CreatedAt:          exp.CreatedAt.Time,
 		JoinDeadline:       exp.JoinDeadline.Time,

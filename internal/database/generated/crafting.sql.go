@@ -23,7 +23,7 @@ func (q *Queries) ClearDisassembleOutputs(ctx context.Context, recipeID int32) e
 
 const getAllCraftingRecipes = `-- name: GetAllCraftingRecipes :many
 
-SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level, is_auto_unlock
 FROM crafting_recipes
 ORDER BY recipe_id
 `
@@ -35,6 +35,7 @@ type GetAllCraftingRecipesRow struct {
 	BaseCost         []byte           `json:"base_cost"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
 	RequiredJobLevel int32            `json:"required_job_level"`
+	IsAutoUnlock     bool             `json:"is_auto_unlock"`
 }
 
 // Crafting Recipe Repository Queries
@@ -54,6 +55,7 @@ func (q *Queries) GetAllCraftingRecipes(ctx context.Context) ([]GetAllCraftingRe
 			&i.BaseCost,
 			&i.CreatedAt,
 			&i.RequiredJobLevel,
+			&i.IsAutoUnlock,
 		); err != nil {
 			return nil, err
 		}
@@ -106,7 +108,7 @@ func (q *Queries) GetAllDisassembleRecipes(ctx context.Context) ([]GetAllDisasse
 }
 
 const getCraftingRecipeByKey = `-- name: GetCraftingRecipeByKey :one
-SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level
+SELECT recipe_id, recipe_key, target_item_id, base_cost, created_at, required_job_level, is_auto_unlock
 FROM crafting_recipes
 WHERE recipe_key = $1
 `
@@ -118,6 +120,7 @@ type GetCraftingRecipeByKeyRow struct {
 	BaseCost         []byte           `json:"base_cost"`
 	CreatedAt        pgtype.Timestamp `json:"created_at"`
 	RequiredJobLevel int32            `json:"required_job_level"`
+	IsAutoUnlock     bool             `json:"is_auto_unlock"`
 }
 
 func (q *Queries) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) (GetCraftingRecipeByKeyRow, error) {
@@ -130,6 +133,7 @@ func (q *Queries) GetCraftingRecipeByKey(ctx context.Context, recipeKey string) 
 		&i.BaseCost,
 		&i.CreatedAt,
 		&i.RequiredJobLevel,
+		&i.IsAutoUnlock,
 	)
 	return i, err
 }
@@ -162,8 +166,8 @@ func (q *Queries) GetDisassembleRecipeByKey(ctx context.Context, recipeKey strin
 }
 
 const insertCraftingRecipe = `-- name: InsertCraftingRecipe :one
-INSERT INTO crafting_recipes (recipe_key, target_item_id, base_cost, required_job_level)
-VALUES ($1, $2, $3, $4)
+INSERT INTO crafting_recipes (recipe_key, target_item_id, base_cost, required_job_level, is_auto_unlock)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING recipe_id
 `
 
@@ -172,6 +176,7 @@ type InsertCraftingRecipeParams struct {
 	TargetItemID     int32  `json:"target_item_id"`
 	BaseCost         []byte `json:"base_cost"`
 	RequiredJobLevel int32  `json:"required_job_level"`
+	IsAutoUnlock     bool   `json:"is_auto_unlock"`
 }
 
 func (q *Queries) InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRecipeParams) (int32, error) {
@@ -180,6 +185,7 @@ func (q *Queries) InsertCraftingRecipe(ctx context.Context, arg InsertCraftingRe
 		arg.TargetItemID,
 		arg.BaseCost,
 		arg.RequiredJobLevel,
+		arg.IsAutoUnlock,
 	)
 	var recipe_id int32
 	err := row.Scan(&recipe_id)
@@ -223,8 +229,8 @@ func (q *Queries) InsertDisassembleRecipe(ctx context.Context, arg InsertDisasse
 
 const updateCraftingRecipe = `-- name: UpdateCraftingRecipe :exec
 UPDATE crafting_recipes
-SET recipe_key = $1, target_item_id = $2, base_cost = $3, required_job_level = $4
-WHERE recipe_id = $5
+SET recipe_key = $1, target_item_id = $2, base_cost = $3, required_job_level = $4, is_auto_unlock = $5
+WHERE recipe_id = $6
 `
 
 type UpdateCraftingRecipeParams struct {
@@ -232,6 +238,7 @@ type UpdateCraftingRecipeParams struct {
 	TargetItemID     int32  `json:"target_item_id"`
 	BaseCost         []byte `json:"base_cost"`
 	RequiredJobLevel int32  `json:"required_job_level"`
+	IsAutoUnlock     bool   `json:"is_auto_unlock"`
 	RecipeID         int32  `json:"recipe_id"`
 }
 
@@ -241,6 +248,7 @@ func (q *Queries) UpdateCraftingRecipe(ctx context.Context, arg UpdateCraftingRe
 		arg.TargetItemID,
 		arg.BaseCost,
 		arg.RequiredJobLevel,
+		arg.IsAutoUnlock,
 		arg.RecipeID,
 	)
 	return err

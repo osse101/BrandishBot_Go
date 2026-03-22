@@ -156,16 +156,13 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	if progress != nil {
 		if err := s.repo.SetUnlockTarget(ctx, progress.ID, winner.NodeID, winner.TargetLevel, session.ID); err != nil {
 			log.Warn("Failed to set unlock target during instant unlock", "error", err)
+		} else if winner.NodeDetails != nil {
+			s.updateLiveNodeCostAndCache(ctx, winner.NodeDetails, progress.ID)
 		}
 	}
 
 	// Unlock the node immediately
-	engagementScore, err := s.GetEngagementScore(ctx)
-	if err != nil {
-		log.Warn("Failed to get engagement score for instant unlock", "error", err)
-		engagementScore = 0
-	}
-
+	engagementScore, _ := s.GetEngagementScore(ctx)
 	if err := s.repo.UnlockNode(ctx, winner.NodeID, winner.TargetLevel, "instant_override", engagementScore); err != nil {
 		return nil, fmt.Errorf("failed to unlock node: %w", err)
 	}
@@ -174,28 +171,11 @@ func (s *service) ForceInstantUnlock(ctx context.Context) (*domain.ProgressionUn
 	if progress != nil {
 		if _, err := s.repo.CompleteUnlock(ctx, progress.ID, 0); err != nil {
 			log.Error("Failed to complete unlock progress", "error", err)
-			// We don't return error here because the node IS unlocked, but we log the inconsistency
 		}
 	}
 
-	// Start new voting session with the unlocked node context
-	reqID := logger.GetRequestID(ctx)
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-
-		ctx, cancel := context.WithTimeout(s.shutdownCtx, 1*time.Minute)
-		defer cancel()
-
-		// Inject request ID into context for tracing
-		if reqID != "" {
-			ctx = logger.WithRequestID(ctx, reqID)
-		}
-
-		if err := s.StartVotingSession(ctx, &winner.NodeID); err != nil {
-			log.Error("Failed to auto-start voting session after instant unlock", "error", err)
-		}
-	}()
+	// Start new voting session asynchronously
+	s.autoStartNextVotingSession(ctx, winner.NodeID)
 
 	// Return the unlock
 	return s.repo.GetUnlock(ctx, winner.NodeID, winner.TargetLevel)

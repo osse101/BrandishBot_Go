@@ -41,7 +41,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		userID := "user1"
 		jobKey := JobKeyBlacksmith
 		jobID := 1
-		baseXP := 150
+		baseXP := 300 // Level 1 requires 250
 
 		job := &domain.Job{ID: jobID, JobKey: jobKey}
 
@@ -92,7 +92,7 @@ func TestResilientEvents_Integration(t *testing.T) {
 		userID := "user2"
 		jobKey := JobKeyBlacksmith
 		jobID := 1
-		baseXP := 150
+		baseXP := 300 // Level 1 requires 250
 
 		job := &domain.Job{ID: jobID, JobKey: jobKey}
 

@@ -1,11 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -22,16 +18,13 @@ func (c *TestSecurityCommand) Description() string {
 }
 
 func (c *TestSecurityCommand) Run(args []string) error {
-	apiKey := os.Getenv("API_KEY")
+	apiKey := getAPIKey()
 	if apiKey == "" {
 		PrintError("API_KEY not found in environment (check .env file)")
 		return fmt.Errorf("API_KEY not found")
 	}
 
-	apiURL := os.Getenv("API_URL")
-	if apiURL == "" {
-		apiURL = "http://localhost:8080"
-	}
+	apiURL := getAPIURL()
 
 	PrintHeader("Security Feature Tests")
 
@@ -136,30 +129,11 @@ func (c *TestSecurityCommand) runTestCase(testNum int, description, baseURL, api
 }
 
 func (c *TestSecurityCommand) makeRequest(baseURL, apiKey string, payload interface{}) int {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Printf("Error marshaling payload: %v\n", err)
-		return 0
-	}
-
-	req, err := http.NewRequest("POST", baseURL+"/test", bytes.NewBuffer(body))
-	if err != nil {
-		fmt.Printf("Error creating request: %v\n", err)
-		return 0
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := makeHTTPRequest("POST", baseURL+"/test", payload, apiKey)
 	if err != nil {
 		fmt.Printf("Error making request: %v\n", err)
 		return 0
 	}
 	defer resp.Body.Close()
-
 	return resp.StatusCode
 }

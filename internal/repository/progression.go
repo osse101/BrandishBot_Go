@@ -13,6 +13,7 @@ type Progression interface {
 	GetNodeByKey(ctx context.Context, nodeKey string) (*domain.ProgressionNode, error)
 	GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error)
 	GetAllNodes(ctx context.Context) ([]*domain.ProgressionNode, error)
+	UpdateNodeCost(ctx context.Context, nodeID int, cost int) error
 	GetNodeByFeatureKey(ctx context.Context, featureKey string) (*domain.ProgressionNode, int, error)         // Returns node with ModifierConfig and current unlock level
 	GetAllNodesByFeatureKey(ctx context.Context, featureKey string) ([]*domain.ProgressionNode, []int, error) // Returns all nodes with same feature_key and their levels
 

@@ -3,6 +3,7 @@ package expedition
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -36,6 +37,16 @@ func (s *service) GetStatus(ctx context.Context) (*domain.ExpeditionStatus, erro
 	if active != nil {
 		status.HasActive = true
 		status.ActiveDetails = active
+	}
+
+	// Check for global cooldown
+	last, err := s.repo.GetLastCompletedExpedition(ctx)
+	if err == nil && last != nil && last.CompletedAt != nil {
+		cooldownEnd := last.CompletedAt.Add(10 * time.Minute)
+		if time.Now().Before(cooldownEnd) {
+			status.OnCooldown = true
+			status.CooldownExpires = &cooldownEnd
+		}
 	}
 
 	return status, nil

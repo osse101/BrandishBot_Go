@@ -421,7 +421,25 @@ func NewTimeoutClearedEvent(platform, username string) Event {
 }
 
 // NewGambleCompletedEvent creates a new gamble completed event with type-safe payload
-func NewGambleCompletedEvent(gambleID, winnerID, winnerUsername string, totalValue int64, participantCount int, participants []domain.GambleParticipantOutcome) Event {
+func NewGambleCompletedEvent(gambleID, winnerID, winnerUsername string, totalValue int64, participantCount int, participants []domain.GambleParticipantOutcome, openedItems []domain.GambleOpenedItem) Event {
+	// Group items by name
+	groupedMap := make(map[string]int)
+	for _, item := range openedItems {
+		name := item.ItemName
+		if name == "" {
+			name = fmt.Sprintf("Item %d", item.ItemID)
+		}
+		groupedMap[name] += item.Quantity
+	}
+
+	groupedItems := make([]domain.GambleItemSummary, 0, len(groupedMap))
+	for name, qty := range groupedMap {
+		groupedItems = append(groupedItems, domain.GambleItemSummary{
+			ItemName: name,
+			Quantity: qty,
+		})
+	}
+
 	return Event{
 		Version: EventSchemaVersion,
 		Type:    "GambleCompleted",
@@ -432,6 +450,8 @@ func NewGambleCompletedEvent(gambleID, winnerID, winnerUsername string, totalVal
 			TotalValue:       totalValue,
 			ParticipantCount: participantCount,
 			Participants:     participants,
+			OpenedItems:      openedItems,
+			GroupedItems:     groupedItems,
 			Timestamp:        time.Now().Unix(),
 		},
 		Metadata: nil,

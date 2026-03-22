@@ -131,6 +131,11 @@ func (m *ReliabilityMockRepository) GetAllNodes(ctx context.Context) ([]*domain.
 	return args.Get(0).([]*domain.ProgressionNode), args.Error(1)
 }
 
+func (m *ReliabilityMockRepository) UpdateNodeCost(ctx context.Context, nodeID int, cost int) error {
+	args := m.Called(ctx, nodeID, cost)
+	return args.Error(0)
+}
+
 func (m *ReliabilityMockRepository) GetNodeByID(ctx context.Context, id int) (*domain.ProgressionNode, error) {
 	panic("not implemented")
 }

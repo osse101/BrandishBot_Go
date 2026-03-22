@@ -126,6 +126,19 @@ func (r *progressionRepository) UpdateNode(ctx context.Context, nodeID int, node
 	return nil
 }
 
+func (r *progressionRepository) UpdateNodeCost(ctx context.Context, nodeID int, cost int) error {
+	err := r.q.UpdateNodeCost(ctx, generated.UpdateNodeCostParams{
+		ID:         int32(nodeID),
+		UnlockCost: pgtype.Int4{Int32: int32(cost), Valid: true},
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to update node cost: %w", err)
+	}
+
+	return nil
+}
+
 // Unlock operations
 
 func (r *progressionRepository) GetUnlock(ctx context.Context, nodeID int, level int) (*domain.ProgressionUnlock, error) {
@@ -892,7 +905,7 @@ func (r *progressionRepository) GetDailyEngagementTotals(ctx context.Context, si
 func (r *progressionRepository) GetSyncMetadata(ctx context.Context, configName string) (*domain.SyncMetadata, error) {
 	row, err := r.q.GetSyncMetadata(ctx, configName)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.New(ErrMsgSyncMetadataNotFound)
+		return nil, fmt.Errorf("%w: sync metadata not found", domain.ErrItemNotFound)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sync metadata: %w", err)

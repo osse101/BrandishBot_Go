@@ -285,6 +285,6 @@ func TestProcessLootbox(t *testing.T) {
 
 		_, err := itemhandler.ProcessLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 2)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), domain.ErrMsgNotEnoughItems)
+		assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	})
 }

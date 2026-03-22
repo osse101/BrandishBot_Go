@@ -57,7 +57,7 @@ func SetupLogger(cfg *config.Config) (*os.File, error) {
 	slog.SetDefault(logger)
 
 	// Log initialization messages
-	slog.Info(LogMsgLoggingInitialized, "level", level)
+	slog.Info(LogMsgLoggingInitialized)
 	slog.Info(LogMsgStartingBrandishBot,
 		"environment", cfg.Environment,
 		"log_level", cfg.LogLevel,

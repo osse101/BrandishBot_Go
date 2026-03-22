@@ -57,7 +57,7 @@ func setupContainer(ctx context.Context) (string, func()) {
 	}()
 
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:15",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),

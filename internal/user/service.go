@@ -61,6 +61,14 @@ type service struct {
 
 	activeChatterTracker *activechatter.Tracker // Tracks users eligible for random targeting
 
+	// Recent chatter tracking
+	recentChatterMu     sync.Mutex
+	recentChatterWindow map[string]map[string]bool // Platform -> UserIDs in 2s window
+	recentChatterTicker *time.Ticker
+
+	// Bomb system
+	bombQueues map[string][]*pendingBomb // Platform -> Queue of bombs
+
 	rnd func() float64 // For RNG - allows deterministic testing
 
 	wg sync.WaitGroup // Track background tasks for graceful shutdown
@@ -95,13 +103,13 @@ func setPlatformInfo(user *domain.User, platform, platformID, platformUsername s
 func loadCacheConfig() CacheConfig {
 	config := DefaultCacheConfig()
 
-	if val := os.Getenv(EnvUserCacheSize); val != "" {
+	if val := os.Getenv(domain.EnvUserCacheSize); val != "" {
 		if size, err := strconv.Atoi(val); err == nil && size > 0 {
 			config.Size = size
 		}
 	}
 
-	if val := os.Getenv(EnvUserCacheTTL); val != "" {
+	if val := os.Getenv(domain.EnvUserCacheTTL); val != "" {
 		if ttl, err := time.ParseDuration(val); err == nil && ttl > 0 {
 			config.TTL = ttl
 		}
@@ -136,8 +144,14 @@ func NewService(repo repository.User, trapRepo repository.TrapRepository, statsS
 		itemIDToName:         make(map[int]string),
 		userCache:            newUserCache(loadCacheConfig()),
 		activeChatterTracker: activechatter.NewTracker(),
+		bombQueues:           make(map[string][]*pendingBomb),
+		recentChatterWindow:  make(map[string]map[string]bool),
+		recentChatterTicker:  time.NewTicker(2 * time.Second),
 		rnd:                  utils.RandomFloat,
 	}
+
+	// Start recent chatter pulse
+	go svc.pulseRecentChatters()
 
 	return svc
 }
@@ -158,7 +172,7 @@ func getPlatformKeysFromUser(user domain.User) map[string]string {
 
 func (s *service) Shutdown(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	log.Info(LogMsgUserServiceShuttingDown)
+	log.Info(domain.LogMsgUserServiceShuttingDown)
 
 	// 1. Stop the chatter tracker (stops cleanup loop)
 	if s.activeChatterTracker != nil {

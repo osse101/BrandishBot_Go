@@ -5,6 +5,10 @@ import "errors"
 // Error message string constants - single source of truth for error messages
 // Use these in assert.Contains() checks when testing error messages
 const (
+
+	// General errors
+	ErrMsgInternalError = "internal error"
+
 	// User errors
 	ErrMsgUserNotFound = "user not found"
 
@@ -45,7 +49,9 @@ const (
 	ErrMsgFailedToRegisterUser = "failed to register user"
 
 	// Job errors
-	ErrMsgDailyCapReached = "daily XP cap reached"
+	ErrMsgDailyCapReached       = "daily XP cap reached"
+	ErrMsgInsufficientLevel     = "insufficient level"
+	ErrMsgInvalidExpeditionType = "invalid expedition type"
 
 	// Database/System errors
 	ErrMsgConnectionTimeout       = "connection timeout"
@@ -93,13 +99,23 @@ const (
 	ErrMsgCompostNothingToHarvest = "nothing to harvest"
 
 	// Search region errors
-	ErrMsgRegionLocked = "region locked: explorer level too low"
+	ErrMsgRegionLocked       = "region locked: explorer level too low"
+	ErrMsgNoActiveExpedition = "no active expedition found"
+
+	// Duel errors
+	ErrMsgDuelNotPending   = "duel is not pending"
+	ErrMsgDuelExpired      = "duel has expired"
+	ErrMsgDuelUnauthorized = "unauthorized to accept this duel"
 )
 
 // Common domain errors
 // These errors should be used consistently across all layers of the application.
 // Wrap these errors with fmt.Errorf("%w: %s", domain.ErrXxx, details) for additional context.
 var (
+
+	// General errors
+	ErrInternalError = errors.New(ErrMsgInternalError)
+
 	// User errors
 	ErrUserNotFound = errors.New(ErrMsgUserNotFound)
 
@@ -132,7 +148,9 @@ var (
 	ErrFailedToRegisterUser = errors.New(ErrMsgFailedToRegisterUser)
 
 	// Job errors
-	ErrDailyCapReached = errors.New(ErrMsgDailyCapReached)
+	ErrDailyCapReached       = errors.New(ErrMsgDailyCapReached)
+	ErrInsufficientLevel     = errors.New(ErrMsgInsufficientLevel)
+	ErrInvalidExpeditionType = errors.New(ErrMsgInvalidExpeditionType)
 
 	// Database/System errors
 	ErrConnectionTimeout       = errors.New(ErrMsgConnectionTimeout)
@@ -186,5 +204,11 @@ var (
 	ErrCompostNothingToHarvest = errors.New(ErrMsgCompostNothingToHarvest)
 
 	// Search region errors
-	ErrRegionLocked = errors.New(ErrMsgRegionLocked)
+	ErrRegionLocked       = errors.New(ErrMsgRegionLocked)
+	ErrNoActiveExpedition = errors.New(ErrMsgNoActiveExpedition)
+
+	// Duel errors
+	ErrDuelNotPending   = errors.New(ErrMsgDuelNotPending)
+	ErrDuelExpired      = errors.New(ErrMsgDuelExpired)
+	ErrDuelUnauthorized = errors.New(ErrMsgDuelUnauthorized)
 )

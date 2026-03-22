@@ -22,7 +22,13 @@ func (s *service) awardFarmerXP(ctx context.Context, userID string, hoursElapsed
 		return
 	}
 
-	xpAmount := int(hoursElapsed * farmerXPPerHour)
+	// Cap XP at 120 hours (5 days)
+	xpWaitHours := hoursElapsed
+	if xpWaitHours > 120.0 {
+		xpWaitHours = 120.0
+	}
+
+	xpAmount := int(xpWaitHours * farmerXPPerHour)
 	spoiled := hoursElapsed > spoiledThreshold
 
 	if s.publisher != nil {

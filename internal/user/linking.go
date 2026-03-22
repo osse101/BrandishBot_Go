@@ -155,7 +155,7 @@ func (s *service) UnlinkPlatform(ctx context.Context, userID, platform string) e
 		platformID = user.YoutubeID
 		user.YoutubeID = ""
 	default:
-		return fmt.Errorf("unknown platform: %s", platform)
+		return fmt.Errorf("%w: unknown platform %s", domain.ErrInvalidPlatform, platform)
 	}
 
 	if err := s.repo.UpdateUser(ctx, *user); err != nil {

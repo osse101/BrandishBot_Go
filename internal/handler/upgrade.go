@@ -79,12 +79,6 @@ func HandleUpgradeItem(svc crafting.Service, userSvc user.ManagementService, pro
 			trackCraftingEngagement(r.Context(), eventBus, userID, "item_crafted", result.Quantity)
 		}
 
-		// Record contribution for crafting
-		if err := progressionSvc.RecordEngagement(r.Context(), req.Username, "item_crafted", result.Quantity); err != nil {
-			log.Error("Failed to record upgrade engagement", "error", err)
-			// Don't fail the request
-		}
-
 		// Construct user message
 		message := fmt.Sprintf("Successfully upgraded to %dx %s", result.Quantity, result.ItemName)
 		if result.IsMasterwork {

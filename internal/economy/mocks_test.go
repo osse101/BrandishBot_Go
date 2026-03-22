@@ -130,6 +130,36 @@ func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platfo
 	return args.Get(0).(*domain.XPAwardResult), args.Error(1)
 }
 
+func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
+	return true, nil
+}
+func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string) (int, error) {
+	return 0, nil
+}
+func (m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) { return 0, nil }
+func (m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) { return nil, nil }
+func (m *MockJobService) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return nil, nil
+}
+func (m *MockJobService) CalculateLevel(totalXP int64) int { return 0 }
+func (m *MockJobService) GetXPForLevel(level int) int64    { return 0 }
+func (m *MockJobService) GetXPProgress(currentXP int64) (int, int64, int64, int64) {
+	return 0, 0, 0, 0
+}
+func (m *MockJobService) Shutdown(ctx context.Context) error { return nil }
+
 // MockProgressionService implements ProgressionService for testing
 type MockProgressionService struct {
 	mock.Mock

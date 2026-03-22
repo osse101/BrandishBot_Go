@@ -14,7 +14,7 @@ import (
 
 // Service defines the interface for expedition operations
 type Service interface {
-	StartExpedition(ctx context.Context, platform, platformID, username, expeditionType string) (*domain.Expedition, error)
+	StartExpedition(ctx context.Context, platform, platformID, username string, expeditionType domain.ExpeditionType) (*domain.Expedition, error)
 	JoinExpedition(ctx context.Context, platform, platformID, username string, expeditionID uuid.UUID) error
 	GetExpedition(ctx context.Context, expeditionID uuid.UUID) (*domain.ExpeditionDetails, error)
 	GetActiveExpedition(ctx context.Context) (*domain.ExpeditionDetails, error)
@@ -33,6 +33,7 @@ type ProgressionService interface {
 // Kept for GetUserJobs (read-only) used during expedition skill checks
 type JobService interface {
 	GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error)
+	GetJobLevel(ctx context.Context, userID, jobKey string) (int, error)
 }
 
 // EventPublisher defines the interface for publishing events with retry
@@ -43,6 +44,7 @@ type EventPublisher interface {
 // UserService defines the interface for user operations needed by expedition
 type UserService interface {
 	AddItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) error
+	RemoveItemByUsername(ctx context.Context, platform, username, itemName string, quantity int) (int, error)
 }
 
 // CooldownService defines the interface for cooldown operations

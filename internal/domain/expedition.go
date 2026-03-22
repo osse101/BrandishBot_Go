@@ -7,6 +7,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// ExpeditionType represents the type/difficulty of an expedition
+type ExpeditionType string
+
+const (
+	ExpeditionTypeStandard ExpeditionType = "standard"
+	ExpeditionTypeNormal   ExpeditionType = "normal" // Alias for standard/tests
+)
+
+// ValidExpeditionTypes is a list of all accepted expedition types
+var ValidExpeditionTypes = []ExpeditionType{
+	ExpeditionTypeStandard,
+	ExpeditionTypeNormal,
+}
+
 // ExpeditionMetadata stores expedition configuration and results
 type ExpeditionMetadata struct {
 	Difficulty      string             `json:"difficulty,omitempty"`
@@ -28,7 +42,7 @@ type ExpeditionRewards struct {
 type Expedition struct {
 	ID                 uuid.UUID           `json:"id"`
 	InitiatorID        uuid.UUID           `json:"initiator_id"`
-	ExpeditionType     string              `json:"expedition_type"`
+	ExpeditionType     ExpeditionType      `json:"expedition_type"`
 	State              ExpeditionState     `json:"state"`
 	CreatedAt          time.Time           `json:"created_at"`
 	JoinDeadline       time.Time           `json:"join_deadline"`

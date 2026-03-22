@@ -2870,6 +2870,54 @@ func (_c *MockRepository_UnlockUserProgression_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// UpdateNodeCost provides a mock function with given fields: ctx, nodeID, cost
+func (_m *MockRepository) UpdateNodeCost(ctx context.Context, nodeID int, cost int) error {
+	ret := _m.Called(ctx, nodeID, cost)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateNodeCost")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) error); ok {
+		r0 = rf(ctx, nodeID, cost)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRepository_UpdateNodeCost_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateNodeCost'
+type MockRepository_UpdateNodeCost_Call struct {
+	*mock.Call
+}
+
+// UpdateNodeCost is a helper method to define mock.On call
+//   - ctx context.Context
+//   - nodeID int
+//   - cost int
+func (_e *MockRepository_Expecter) UpdateNodeCost(ctx interface{}, nodeID interface{}, cost interface{}) *MockRepository_UpdateNodeCost_Call {
+	return &MockRepository_UpdateNodeCost_Call{Call: _e.mock.On("UpdateNodeCost", ctx, nodeID, cost)}
+}
+
+func (_c *MockRepository_UpdateNodeCost_Call) Run(run func(ctx context.Context, nodeID int, cost int)) *MockRepository_UpdateNodeCost_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateNodeCost_Call) Return(_a0 error) *MockRepository_UpdateNodeCost_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRepository_UpdateNodeCost_Call) RunAndReturn(run func(context.Context, int, int) error) *MockRepository_UpdateNodeCost_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateNodeDynamicPrerequisites provides a mock function with given fields: ctx, nodeID, jsonData
 func (_m *MockRepository) UpdateNodeDynamicPrerequisites(ctx context.Context, nodeID int, jsonData []byte) error {
 	ret := _m.Called(ctx, nodeID, jsonData)

@@ -150,6 +150,8 @@ lint-fix:
 format:
 	@echo "Formatting with Prettier..."
 	@npm run format
+	@echo "Formatting Go code..."
+	@go fmt ./...
 
 format-check:
 	@echo "Checking formatting with Prettier..."
@@ -244,7 +246,7 @@ swagger:
 	@$(SWAG) init -g cmd/app/main.go --output ./docs/swagger
 	@echo "Swagger docs updated: docs/swagger/"
 
-generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy
+generate: generate-swagger generate-sqlc generate-progression generate-mocks generate-tidy format 
 
 generate-swagger: swagger
 

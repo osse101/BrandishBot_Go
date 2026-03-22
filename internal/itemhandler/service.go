@@ -60,6 +60,9 @@ type EffectContext interface {
 	GetActiveTrapForUpdate(ctx context.Context, targetID uuid.UUID) (*domain.Trap, error)
 	TriggerTrap(ctx context.Context, trapID uuid.UUID) error
 
+	// Bombs
+	SetPendingBomb(ctx context.Context, platform, setterUsername string, timeout time.Duration) error
+
 	// RNG
 	RandomFloat() float64
 }

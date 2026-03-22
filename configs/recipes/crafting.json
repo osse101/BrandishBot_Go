@@ -15,7 +15,8 @@
           "quantity": 100
         }
       ],
-      "required_job_level": 1
+      "required_job_level": 1,
+      "is_auto_unlock": true
     },
     {
       "recipe_key": "lootbox_tier1",

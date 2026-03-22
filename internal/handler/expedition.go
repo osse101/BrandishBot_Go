@@ -42,7 +42,7 @@ type StartExpeditionResponse struct {
 func (h *ExpeditionHandler) HandleStart(w http.ResponseWriter, r *http.Request) {
 	handleFeatureAction(w, r, h.progressionSvc, progression.FeatureExpedition, "Start expedition",
 		func(ctx context.Context, req StartExpeditionRequest) (*domain.Expedition, error) {
-			exp, err := h.service.StartExpedition(ctx, req.Platform, req.PlatformID, req.Username, req.ExpeditionType)
+			exp, err := h.service.StartExpedition(ctx, req.Platform, req.PlatformID, req.Username, domain.ExpeditionType(req.ExpeditionType))
 			if err == nil {
 				recordEngagement(r, h.progressionSvc, req.Username, "expedition_started", 2)
 			}
@@ -74,9 +74,16 @@ func (h *ExpeditionHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expeditionID, ok := h.parseExpeditionID(w, r)
-	if !ok {
-		return
+	// Expedition ID is now optional; if missing, service joins active one
+	var expeditionID uuid.UUID
+	idStr := GetOptionalQueryParam(r, "id", "")
+	if idStr != "" {
+		var err error
+		expeditionID, err = uuid.Parse(idStr)
+		if err != nil {
+			RespondError(w, http.StatusBadRequest, "Invalid expedition ID")
+			return
+		}
 	}
 
 	var req JoinExpeditionRequest

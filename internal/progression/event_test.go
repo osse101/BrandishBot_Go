@@ -35,6 +35,7 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	// Service subscribes to events for cache invalidation
 	mockBus.On("Subscribe", event.Type("progression.node_unlocked"), mock.Anything).Return()
 	mockBus.On("Subscribe", event.Type("progression.node_relocked"), mock.Anything).Return()
+	mockBus.On("Subscribe", event.Type(domain.EventTypeEngagement), mock.Anything).Return()
 
 	// Setup tree with single available option
 	// 1. Root - Unlocked

@@ -5,10 +5,10 @@ import "github.com/osse101/BrandishBot_Go/internal/domain"
 // XP formula constants
 const (
 	// BaseXP is the base XP value used in level calculations
-	BaseXP = 100.0
+	BaseXP = 250.0
 
 	// LevelExponent is the exponent used in the XP formula: XP = BaseXP * (Level ^ LevelExponent)
-	LevelExponent = 1.2
+	LevelExponent = 1.3
 
 	// MaxIterationLevel is the maximum level to iterate to when calculating levels
 	MaxIterationLevel = 100
@@ -23,7 +23,7 @@ const (
 	DefaultXPMultiplier = 1.0
 
 	// DefaultDailyCap is the base daily XP cap per job
-	DefaultDailyCap = 250
+	DefaultDailyCap = 500
 )
 
 // Job keys for referencing specific jobs
@@ -39,7 +39,7 @@ const (
 // XP award amounts for different actions
 const (
 	// Blacksmith XP awards
-	BlacksmithXPPerItem = 25
+	BlacksmithXPPerItem = 200
 
 	// Gambler XP awards
 	GamblerXPPerLootbox = 50
@@ -49,11 +49,11 @@ const (
 	ExplorerXPPerItem = 45
 
 	// Merchant XP awards (value-based)
-	MerchantXPValueDivisor = 5.0 // XP = ceil(transactionValue / divisor)
+	MerchantXPValueDivisor = 2.5 // XP = ceil(transactionValue / divisor)
 	MerchantBonusPerLevel  = 0.5 // 0.5% price adjustment per level
 
 	// Scholar XP awards
-	ScholarXPPerEngagement = 1
+	ScholarXPPerEngagement = 2
 )
 
 // XP source types for tracking and special behavior

@@ -1036,6 +1036,12 @@ namespace BrandishBot.Client
         [JsonProperty("current_xp")]
         public long CurrentXP { get; set; }
 
+        [JsonProperty("level_xp")]
+        public long LevelXP { get; set; }
+
+        [JsonProperty("level_requirement")]
+        public long LevelRequirement { get; set; }
+
         [JsonProperty("xp_to_next_level")]
         public long XPToNextLevel { get; set; }
 

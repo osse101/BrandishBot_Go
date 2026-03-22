@@ -256,8 +256,9 @@ func (s *service) calculatePerfectSalvage(ctx context.Context, quantity int) int
 	if s.progressionSvc != nil {
 		if modifiedChance, err := s.progressionSvc.GetModifiedValue(ctx, "", "crafting_success_rate", PerfectSalvageChance); err == nil {
 			salvageChance = modifiedChance
+		} else if err != nil {
+			logger.FromContext(ctx).Error("Failed to get modified perfect salvage chance", "error", err)
 		}
-		// TODO: Log on Error
 	}
 
 	count := 0

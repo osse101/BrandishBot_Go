@@ -1,20 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/osse101/BrandishBot_Go/internal/handler"
 	"github.com/osse101/BrandishBot_Go/internal/scenario"
-)
-
-const (
-	defaultAPIURL = "http://localhost:8080"
 )
 
 type ScenarioCommand struct{}
@@ -49,28 +42,12 @@ func (c *ScenarioCommand) Run(args []string) error {
 func (c *ScenarioCommand) runList() error {
 	PrintHeader("Available Scenarios")
 
-	apiURL := c.getAPIURL()
-	apiKey := c.getAPIKey()
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/admin/simulate/scenarios", apiURL), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	c.addHeaders(req, apiKey)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to fetch scenarios: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("api error: %s", resp.Status)
-	}
+	apiURL := getAPIURL()
+	apiKey := getAPIKey()
 
 	var data handler.ScenariosResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return fmt.Errorf("failed to decode response: %w", err)
+	if err := getJSON(fmt.Sprintf("%s/api/v1/admin/simulate/scenarios", apiURL), apiKey, &data); err != nil {
+		return fmt.Errorf("failed to fetch scenarios: %w", err)
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -88,8 +65,8 @@ func (c *ScenarioCommand) runList() error {
 func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 	PrintHeader(fmt.Sprintf("Running Scenario: %s", scenarioID))
 
-	apiURL := c.getAPIURL()
-	apiKey := c.getAPIKey()
+	apiURL := getAPIURL()
+	apiKey := getAPIKey()
 
 	params := c.parseParams(extraArgs)
 
@@ -98,39 +75,9 @@ func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 		Parameters: params,
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
-	if err != nil {
-		return fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/admin/simulate/run", apiURL), bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	c.addHeaders(req, apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to execute scenario: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Try to read error message
-		var errResp struct {
-			Error string `json:"error"`
-		}
-		_ = json.NewDecoder(resp.Body).Decode(&errResp)
-		if errResp.Error != "" {
-			return fmt.Errorf("api error: %s (%s)", resp.Status, errResp.Error)
-		}
-		return fmt.Errorf("api error: %s", resp.Status)
-	}
-
 	var result scenario.ExecutionResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return fmt.Errorf("failed to decode response: %w", err)
+	if err := postJSON(fmt.Sprintf("%s/api/v1/admin/simulate/run", apiURL), reqBody, apiKey, &result); err != nil {
+		return fmt.Errorf("failed to execute scenario: %w", err)
 	}
 
 	c.printExecutionResult(result)
@@ -193,23 +140,5 @@ func (c *ScenarioCommand) printExecutionResult(result scenario.ExecutionResult) 
 				}
 			}
 		}
-	}
-}
-
-func (c *ScenarioCommand) getAPIURL() string {
-	url := os.Getenv("API_URL")
-	if url == "" {
-		return defaultAPIURL
-	}
-	return url
-}
-
-func (c *ScenarioCommand) getAPIKey() string {
-	return os.Getenv("API_KEY")
-}
-
-func (c *ScenarioCommand) addHeaders(req *http.Request, apiKey string) {
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
 	}
 }

@@ -3,11 +3,10 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-	"testing"
-
 	"errors"
+	"net/http"
 	"net/http/httptest"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,13 +27,15 @@ func setupExpeditionTest(t *testing.T) (*ExpeditionHandler, *mocks.MockExpeditio
 
 // createTestExpeditionRequest Helper function to create a new HTTP request with JSON body
 func createTestExpeditionRequest(method, url string, body interface{}) (*http.Request, error) {
-	var buf bytes.Buffer
+	var bodyBytes []byte
 	if body != nil {
-		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+		var err error
+		bodyBytes, err = json.Marshal(body)
+		if err != nil {
 			return nil, err
 		}
 	}
-	req, err := http.NewRequest(method, url, &buf)
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -55,10 +56,10 @@ func TestHandleStartExpedition(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: StartExpeditionRequest{
-				Platform:       "discord",
+				Platform:       domain.PlatformDiscord,
 				PlatformID:     "user1",
 				Username:       "testuser",
-				ExpeditionType: "gathering",
+				ExpeditionType: string(domain.ExpeditionTypeNormal),
 			},
 			setupMocks: func(mockExp *mocks.MockExpeditionService, mockProg *mocks.MockProgressionService) {
 				mockProg.On("IsFeatureUnlocked", mock.Anything, "feature_expedition").
@@ -80,15 +81,15 @@ func TestHandleStartExpedition(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: StartExpeditionRequest{
-				Platform:       "discord",
+				Platform:       domain.PlatformDiscord,
 				PlatformID:     "user1",
 				Username:       "testuser",
-				ExpeditionType: "gathering",
+				ExpeditionType: string(domain.ExpeditionTypeNormal),
 			},
 			setupMocks: func(mockExp *mocks.MockExpeditionService, mockProg *mocks.MockProgressionService) {
 				mockProg.On("IsFeatureUnlocked", mock.Anything, "feature_expedition").
 					Return(true, nil)
-				mockExp.On("StartExpedition", mock.Anything, "discord", "user1", "testuser", "gathering").
+				mockExp.On("StartExpedition", mock.Anything, domain.PlatformDiscord, "user1", "testuser", domain.ExpeditionTypeNormal).
 					Return(nil, errors.New("Something went wrong"))
 			},
 			expectedCode:  http.StatusInternalServerError,
@@ -97,10 +98,10 @@ func TestHandleStartExpedition(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: StartExpeditionRequest{
-				Platform:       "discord",
+				Platform:       domain.PlatformDiscord,
 				PlatformID:     "user1",
 				Username:       "testuser",
-				ExpeditionType: "gathering",
+				ExpeditionType: string(domain.ExpeditionTypeNormal),
 			},
 			setupMocks: func(mockExp *mocks.MockExpeditionService, mockProg *mocks.MockProgressionService) {
 				mockProg.On("IsFeatureUnlocked", mock.Anything, "feature_expedition").
@@ -109,10 +110,11 @@ func TestHandleStartExpedition(t *testing.T) {
 					Return(nil)
 
 				expID := uuid.New()
-				mockExp.On("StartExpedition", mock.Anything, "discord", "user1", "testuser", "gathering").
+				mockExp.On("StartExpedition", mock.Anything, domain.PlatformDiscord, "user1", "testuser", domain.ExpeditionTypeNormal).
 					Return(&domain.Expedition{
-						ID:           expID,
-						JoinDeadline: time.Now().Add(10 * time.Minute),
+						ID:             expID,
+						ExpeditionType: domain.ExpeditionTypeNormal,
+						JoinDeadline:   time.Now().Add(10 * time.Minute),
 					}, nil)
 			},
 			expectedCode: http.StatusCreated,
@@ -388,7 +390,7 @@ func TestHandleGetActiveExpedition(t *testing.T) {
 					Return(&domain.ExpeditionDetails{
 						Expedition: domain.Expedition{
 							ID:             expID,
-							ExpeditionType: "gathering",
+							ExpeditionType: domain.ExpeditionTypeNormal,
 						},
 					}, nil)
 			},
@@ -422,7 +424,7 @@ func TestHandleGetActiveExpedition(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
 				assert.Equal(t, expID, resp.Expedition.ID)
-				assert.Equal(t, "gathering", resp.Expedition.ExpeditionType)
+				assert.Equal(t, domain.ExpeditionTypeNormal, resp.Expedition.ExpeditionType)
 			}
 
 			mockExp.AssertExpectations(t)
@@ -495,7 +497,7 @@ func TestHandleGetExpedition(t *testing.T) {
 					Return(&domain.ExpeditionDetails{
 						Expedition: domain.Expedition{
 							ID:             expID,
-							ExpeditionType: "gathering",
+							ExpeditionType: domain.ExpeditionTypeNormal,
 						},
 					}, nil)
 			},
@@ -529,7 +531,7 @@ func TestHandleGetExpedition(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
 				assert.Equal(t, expID, resp.Expedition.ID)
-				assert.Equal(t, "gathering", resp.Expedition.ExpeditionType)
+				assert.Equal(t, domain.ExpeditionTypeNormal, resp.Expedition.ExpeditionType)
 			}
 
 			mockExp.AssertExpectations(t)
@@ -554,7 +556,7 @@ func TestHandleJoinExpedition(t *testing.T) {
 		{
 			name: "Feature Locked",
 			requestBody: JoinExpeditionRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
 				Username:   "testuser2",
 			},
@@ -567,9 +569,9 @@ func TestHandleJoinExpedition(t *testing.T) {
 			expectedError: "progression_locked",
 		},
 		{
-			name: "Missing ID",
+			name: "Success (Active Default)",
 			requestBody: JoinExpeditionRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
 				Username:   "testuser2",
 			},
@@ -577,14 +579,15 @@ func TestHandleJoinExpedition(t *testing.T) {
 			setupMocks: func(mockExp *mocks.MockExpeditionService, mockProg *mocks.MockProgressionService) {
 				mockProg.On("IsFeatureUnlocked", mock.Anything, "feature_expedition").
 					Return(true, nil)
+				mockExp.On("JoinExpedition", mock.Anything, domain.PlatformDiscord, "user2", "testuser2", uuid.Nil).
+					Return(nil)
 			},
-			expectedCode:  http.StatusBadRequest,
-			expectedError: "Missing id query parameter",
+			expectedCode: http.StatusOK,
 		},
 		{
 			name: "Invalid ID",
 			requestBody: JoinExpeditionRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
 				Username:   "testuser2",
 			},
@@ -610,7 +613,7 @@ func TestHandleJoinExpedition(t *testing.T) {
 		{
 			name: "Service Error",
 			requestBody: JoinExpeditionRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
 				Username:   "testuser2",
 			},
@@ -627,7 +630,7 @@ func TestHandleJoinExpedition(t *testing.T) {
 		{
 			name: "Success",
 			requestBody: JoinExpeditionRequest{
-				Platform:   "discord",
+				Platform:   domain.PlatformDiscord,
 				PlatformID: "user2",
 				Username:   "testuser2",
 			},

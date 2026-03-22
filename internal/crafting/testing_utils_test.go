@@ -168,6 +168,12 @@ func (m *MockRepository) GetRecipeByTargetItemID(ctx context.Context, itemID int
 func (m *MockRepository) IsRecipeUnlocked(ctx context.Context, userID string, recipeID int) (bool, error) {
 	m.RLock()
 	defer m.RUnlock()
+
+	// Check if recipe is auto-unlocked
+	if recipe, ok := m.recipes[recipeID]; ok && recipe.IsAutoUnlock {
+		return true, nil
+	}
+
 	if m.unlockedRecipes[userID] == nil {
 		return false, nil
 	}
@@ -632,14 +638,16 @@ func (m *MockNamingResolver) RegisterItem(internalName, publicName string) {
 
 // MockJobService for testing job level requirements
 type MockJobService struct {
-	mu          sync.Mutex
-	levels      map[string]map[string]int // userID -> jobKey -> level
-	returnError error
+	mu               sync.Mutex
+	levels           map[string]map[string]int  // userID -> jobKey -> level
+	unlockedFeatures map[string]map[string]bool // userID -> featureKey -> unlocked
+	returnError      error
 }
 
 func NewMockJobService() *MockJobService {
 	return &MockJobService{
-		levels: make(map[string]map[string]int),
+		levels:           make(map[string]map[string]int),
+		unlockedFeatures: make(map[string]map[string]bool),
 	}
 }
 
@@ -658,7 +666,30 @@ func (m *MockJobService) GetJobLevel(ctx context.Context, userID, jobKey string)
 }
 
 func (m *MockJobService) IsJobFeatureUnlocked(ctx context.Context, userID, featureKey string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.returnError != nil {
+		return false, m.returnError
+	}
+
+	if userFeatures, ok := m.unlockedFeatures[userID]; ok {
+		if unlocked, ok := userFeatures[featureKey]; ok {
+			return unlocked, nil
+		}
+	}
+	// Default to true for existing tests
 	return true, nil
+}
+
+func (m *MockJobService) SetFeatureUnlocked(userID, featureKey string, unlocked bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.unlockedFeatures[userID] == nil {
+		m.unlockedFeatures[userID] = make(map[string]bool)
+	}
+	m.unlockedFeatures[userID][featureKey] = unlocked
 }
 
 func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {
@@ -670,3 +701,33 @@ func (m *MockJobService) SetJobLevel(userID, jobKey string, level int) {
 	}
 	m.levels[userID][jobKey] = level
 }
+
+func (m *MockJobService) GetUserJobs(ctx context.Context, userID string) ([]domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetUserJobsByPlatform(ctx context.Context, platform, platformID string) ([]domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetPrimaryJob(ctx context.Context, platform, platformID string) (*domain.UserJobInfo, error) {
+	return nil, nil
+}
+func (m *MockJobService) AwardXP(ctx context.Context, userID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
+	return nil, nil
+}
+func (m *MockJobService) AwardXPByPlatform(ctx context.Context, platform, platformID, jobKey string, baseAmount int, source string, metadata domain.JobXPMetadata) (*domain.XPAwardResult, error) {
+	return nil, nil
+}
+func (m *MockJobService) ResetDailyJobXP(ctx context.Context) (int64, error) { return 0, nil }
+func (m *MockJobService) GetDailyResetStatus(ctx context.Context) (*domain.DailyResetStatus, error) {
+	return nil, nil
+}
+func (m *MockJobService) GetAllJobs(ctx context.Context) ([]domain.Job, error) { return nil, nil }
+func (m *MockJobService) GetUserByPlatformID(ctx context.Context, platform, platformID string) (*domain.User, error) {
+	return nil, nil
+}
+func (m *MockJobService) CalculateLevel(totalXP int64) int { return 0 }
+func (m *MockJobService) GetXPForLevel(level int) int64    { return 0 }
+func (m *MockJobService) GetXPProgress(currentXP int64) (int, int64, int64, int64) {
+	return 0, 0, 0, 0
+}
+func (m *MockJobService) Shutdown(ctx context.Context) error { return nil }

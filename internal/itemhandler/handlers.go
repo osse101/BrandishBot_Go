@@ -29,10 +29,10 @@ func ProcessLootbox(ctx context.Context, ec EffectContext, user *domain.User, in
 	// 1. Validate and consume lootboxes
 	totalAvailable := utils.GetTotalQuantity(inventory, lootboxItem.ID)
 	if totalAvailable == 0 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 
 	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, ec.RandomFloat)
@@ -200,11 +200,11 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
 		log.Warn(LogWarnWeaponNotInInventory, "item", item.InternalName)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughWeapons, "item", item.InternalName)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 
 	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
@@ -235,7 +235,7 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 	// Standard weapons require a user-provided target
 	if targetUsername == "" {
 		log.Warn(LogWarnTargetUsernameMissingWeapon)
-		return "", errors.New(ErrMsgTargetUsernameRequired)
+		return "", fmt.Errorf("%w: target username is required for weapon", domain.ErrInvalidInput)
 	}
 
 	// Apply timeout
@@ -248,6 +248,48 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 	return fmt.Sprintf("%s used %s on %s! %d %s(s) fired. Timed out for %v.", username, displayName, targetUsername, quantity, displayName, timeout), nil
 }
 
+func handleBomb(ctx context.Context, ec EffectContext, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
+	log := logger.FromContext(ctx)
+	log.Info("handleBomb called", "username", args.Username)
+
+	platform := args.Platform
+	username := args.Username
+
+	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
+	if totalAvailable == 0 {
+		return "", domain.ErrNotInInventory
+	}
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
+	if err != nil {
+		return "", err
+	}
+
+	// 2. Queue each bomb (handling multiple quantities)
+	var lastDisplayName string
+	totalQueued := 0
+	for _, slot := range consumedSlots {
+		baseTimeout := getWeaponTimeout(item.InternalName) + slot.QualityLevel.GetTimeoutAdjustment()
+		displayName := ec.GetDisplayName(item.InternalName, slot.QualityLevel)
+		lastDisplayName = displayName
+
+		// A single slot might contain multiple items of the same quality
+		for i := 0; i < slot.Quantity; i++ {
+			if err := ec.SetPendingBomb(ctx, platform, username, baseTimeout); err != nil {
+				log.Error("Failed to set pending bomb", "error", err, "index", i)
+			} else {
+				totalQueued++
+			}
+		}
+	}
+
+	if totalQueued == 0 {
+		return "", fmt.Errorf("failed to queue any bombs: %w", domain.ErrInternalError)
+	}
+
+	log.Info("Bombs set successfully", "setter", username, "platform", platform, "count", totalQueued)
+	return fmt.Sprintf("%s set %s! Waiting for a crowd...", username, lastDisplayName), nil
+}
+
 func handleTNT(ctx context.Context, ec EffectContext, username, platform string, timeout time.Duration, displayName string) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("TNT used, selecting 5-9 random targets")
@@ -257,7 +299,7 @@ func handleTNT(ctx context.Context, ec EffectContext, username, platform string,
 	targets, err := ec.GetRandomTargets(platform, numTargets)
 	if err != nil {
 		log.Warn("No active targets available for TNT", "error", err)
-		return "", errors.New(ErrMsgNoActiveTargets)
+		return "", fmt.Errorf("%w: no active users to target", domain.ErrInvalidInput)
 	}
 
 	// Apply timeout to all targets and collect names
@@ -288,7 +330,7 @@ func handleGrenade(ctx context.Context, ec EffectContext, username, platform str
 	randomUsername, randomUserID, err := ec.GetRandomTarget(platform)
 	if err != nil {
 		log.Warn("No active targets available for grenade", "error", err)
-		return "", errors.New(ErrMsgNoActiveTargets)
+		return "", fmt.Errorf("%w: no active users to target", domain.ErrInvalidInput)
 	}
 
 	// Apply timeout
@@ -360,7 +402,7 @@ func handleRevive(ctx context.Context, ec EffectContext, inventory *domain.Inven
 	targetUsername := args.TargetUsername
 	if targetUsername == "" {
 		log.Warn(LogWarnTargetUsernameMissingRevive)
-		return "", errors.New(ErrMsgTargetUsernameRequiredRevive)
+		return "", fmt.Errorf("%w: target username is required for revive", domain.ErrInvalidInput)
 	}
 	username := args.Username
 
@@ -368,11 +410,11 @@ func handleRevive(ctx context.Context, ec EffectContext, inventory *domain.Inven
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
 		log.Warn(LogWarnReviveNotInInventory, "item", item.InternalName)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughRevives, "item", item.InternalName)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 
 	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, item.ID, quantity, ec.RandomFloat)
@@ -410,7 +452,7 @@ func handleTrap(ctx context.Context, ec EffectContext, user *domain.User, invent
 	log.Info(LogMsgHandleTrapCalled, "item", item.InternalName, "quantity", quantity)
 
 	if quantity < 1 {
-		return "", errors.New(ErrMsgInvalidQuantity)
+		return "", domain.ErrInvalidQuantity
 	}
 
 	platform := args.Platform
@@ -460,7 +502,7 @@ func getTrapTargets(ctx context.Context, ec EffectContext, item *domain.Item, qu
 
 	targetUsername := args.TargetUsername
 	if targetUsername == "" {
-		return nil, false, errors.New(ErrMsgTargetUsernameRequired)
+		return nil, false, fmt.Errorf("%w: target username is required for weapon", domain.ErrInvalidInput)
 	}
 	return []string{targetUsername}, false, nil
 }
@@ -468,13 +510,13 @@ func getTrapTargets(ctx context.Context, ec EffectContext, item *domain.Item, qu
 func validateTrapInventory(ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, isMine bool) error {
 	itemSlotIndex, slotQuantity := utils.FindRandomSlot(inventory, item.ID, ec.RandomFloat)
 	if itemSlotIndex == -1 {
-		return errors.New(ErrMsgItemNotFoundInInventory)
+		return domain.ErrNotInInventory
 	}
 	if slotQuantity < 1 {
-		return errors.New(ErrMsgNotEnoughItemsInInventory)
+		return domain.ErrInsufficientQuantity
 	}
 	if !isMine && slotQuantity < quantity {
-		return errors.New(ErrMsgNotEnoughItemsInInventory)
+		return domain.ErrInsufficientQuantity
 	}
 	return nil
 }
@@ -665,11 +707,11 @@ func handleShield(ctx context.Context, ec EffectContext, user *domain.User, inve
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
 		log.Warn(LogWarnShieldNotInInventory)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughShields)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
@@ -681,7 +723,7 @@ func handleShield(ctx context.Context, ec EffectContext, user *domain.User, inve
 	// Apply shield status to user
 	if err := ec.ApplyShield(ctx, user, quantity, isMirror); err != nil {
 		log.Error(LogWarnFailedToApplyShield, "error", err)
-		return "", errors.New(ErrMsgFailedToApplyShield)
+		return "", fmt.Errorf("%w: failed to apply shield", domain.ErrInvalidInput)
 	}
 
 	displayName := ec.GetDisplayName(item.InternalName, "")
@@ -704,18 +746,18 @@ func handleRareCandy(ctx context.Context, ec EffectContext, user *domain.User, i
 	jobName := args.JobName
 	if jobName == "" {
 		log.Warn(LogWarnJobNameMissing)
-		return "", errors.New(ErrMsgJobNameRequired)
+		return "", fmt.Errorf("%w: job name is required for rare candy", domain.ErrInvalidInput)
 	}
 
 	// Find total availability
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
 		log.Warn(LogWarnRareCandyNotInInventory)
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
 		log.Warn(LogWarnNotEnoughRareCandy)
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
@@ -746,10 +788,10 @@ func handleResourceGenerator(ctx context.Context, ec EffectContext, inventory *d
 	// Find total availability
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
@@ -783,10 +825,10 @@ func handleUtility(ctx context.Context, ec EffectContext, inventory *domain.Inve
 	// Find total availability
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err
@@ -815,10 +857,10 @@ func handleVideoFilter(ctx context.Context, ec EffectContext, user *domain.User,
 	// Find total availability
 	totalAvailable := utils.GetTotalQuantity(inventory, item.ID)
 	if totalAvailable == 0 {
-		return "", errors.New(ErrMsgItemNotFoundInInventory)
+		return "", domain.ErrNotInInventory
 	}
 	if totalAvailable < quantity {
-		return "", errors.New(ErrMsgNotEnoughItemsInInventory)
+		return "", domain.ErrInsufficientQuantity
 	}
 	if err := utils.ConsumeItems(inventory, item.ID, quantity, ec.RandomFloat); err != nil {
 		return "", err

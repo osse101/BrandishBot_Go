@@ -68,12 +68,14 @@ type JobLevelBonus struct {
 
 // UserJobInfo combines job info with user progress for API responses
 type UserJobInfo struct {
-	JobKey        string `json:"job_key"`
-	DisplayName   string `json:"display_name"`
-	Level         int    `json:"level"`
-	CurrentXP     int64  `json:"current_xp"`
-	XPToNextLevel int64  `json:"xp_to_next_level"`
-	MaxLevel      int    `json:"max_level"` // From progression system
+	JobKey           string `json:"job_key"`
+	DisplayName      string `json:"display_name"`
+	Level            int    `json:"level"`
+	CurrentXP        int64  `json:"current_xp"`
+	LevelXP          int64  `json:"level_xp"`          // Progress within current level
+	LevelRequirement int64  `json:"level_requirement"` // Total XP needed for current level
+	XPToNextLevel    int64  `json:"xp_to_next_level"`
+	MaxLevel         int    `json:"max_level"` // From progression system
 }
 
 // XPAwardResult contains the outcome of awarding XP

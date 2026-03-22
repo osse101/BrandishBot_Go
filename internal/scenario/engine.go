@@ -330,7 +330,7 @@ func (e *Engine) compareNumeric(actual, expected interface{}, op string) (bool, 
 	b, bOk := e.toFloat64(expected)
 
 	if !aOk || !bOk {
-		return false, fmt.Errorf("cannot compare non-numeric values: %v, %v", actual, expected)
+		return false, fmt.Errorf("%w: cannot compare non-numeric values: %v, %v", ErrAssertionFailed, actual, expected)
 	}
 
 	switch op {

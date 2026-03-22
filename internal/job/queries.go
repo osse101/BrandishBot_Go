@@ -79,10 +79,14 @@ func (s *service) GetUserJobs(ctx context.Context, userID string) ([]domain.User
 		if progress != nil {
 			info.Level = progress.CurrentLevel
 			info.CurrentXP = progress.CurrentXP
-			_, xpToNext := s.GetXPProgress(progress.CurrentXP)
+			_, levelXP, levelReq, xpToNext := s.GetXPProgress(progress.CurrentXP)
+			info.LevelXP = levelXP
+			info.LevelRequirement = levelReq
 			info.XPToNextLevel = xpToNext
 		} else {
-			info.XPToNextLevel = s.GetXPForLevel(1)
+			info.LevelXP = 0
+			info.LevelRequirement = s.GetXPForLevel(1)
+			info.XPToNextLevel = info.LevelRequirement
 		}
 
 		result = append(result, info)

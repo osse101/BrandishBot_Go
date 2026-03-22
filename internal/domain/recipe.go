@@ -15,6 +15,7 @@ type Recipe struct {
 	TargetItemID     int          `json:"item_id"` // Changed from TargetItemID to item_id for consistency
 	BaseCost         []RecipeCost `json:"base_cost"`
 	RequiredJobLevel int          `json:"required_job_level,omitempty"` // Required Blacksmith level (0 = no requirement)
+	IsAutoUnlock     bool         `json:"is_auto_unlock"`               // Whether this recipe is automatically unlocked for all users
 	CreatedAt        time.Time    `json:"created_at,omitempty"`
 }
 

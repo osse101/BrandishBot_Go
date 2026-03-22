@@ -84,7 +84,7 @@ func ExploreCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 		}
 
 		// No active expedition and no cooldown: start a new one
-		expeditionID, joinDeadline, err := client.StartExpedition(domain.PlatformDiscord, user.ID, user.Username, "standard")
+		expeditionID, joinDeadline, err := client.StartExpedition(domain.PlatformDiscord, user.ID, user.Username, domain.ExpeditionTypeStandard)
 		if err != nil {
 			slog.Error("Failed to start expedition", "error", err)
 			respondFriendlyError(s, i, err.Error())

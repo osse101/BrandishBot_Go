@@ -70,7 +70,6 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", err
 	}
 
-	// Try resolving as a public name ("junkbox")
 	resolvedName, err := s.resolveItemName(ctx, itemName)
 	if err != nil {
 		return nil, nil, nil, "", err
@@ -81,45 +80,72 @@ func (s *service) validateUpgradeInput(ctx context.Context, platform, platformID
 		return nil, nil, nil, "", err
 	}
 
-	// For upgrades, the input item is what we seek a recipe FOR.
-	// We first check if there's a recipe where this item is the source (RecipeKey matches itemName or resolvedName)
-	recipe, err := s.repo.GetCraftingRecipeByKey(ctx, resolvedName)
+	if err := s.checkUpgradeFeatureLock(ctx, user.ID); err != nil {
+		return nil, nil, nil, "", err
+	}
+
+	recipe, err := s.findRecipe(ctx, resolvedName)
 	if err != nil {
-		return nil, nil, nil, "", fmt.Errorf("failed to check recipe by key: %w", err)
+		return nil, nil, nil, "", err
 	}
-
-	// FALLBACK: If no recipe found by key, try looking up by target item ID (legacy/compatible behavior)
-	if recipe == nil {
-		item, err := s.validateItem(ctx, resolvedName)
-		if err != nil {
-			return nil, nil, nil, "", err
-		}
-		recipe, err = s.repo.GetRecipeByTargetItemID(ctx, item.ID)
-		if err != nil {
-			return nil, nil, nil, "", fmt.Errorf("failed to get recipe by target: %w", err)
-		}
-	}
-
 	if recipe == nil {
 		return nil, nil, nil, "", fmt.Errorf("no recipe found for '%s' | %w", itemName, domain.ErrRecipeNotFound)
 	}
 
-	// Check if user has unlocked this recipe
-	unlocked, err := s.repo.IsRecipeUnlocked(ctx, user.ID, recipe.ID)
-	if err != nil {
-		return nil, nil, nil, "", fmt.Errorf("failed to check recipe unlock: %w", err)
-	}
-	if !unlocked {
-		return nil, nil, nil, "", fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
+	if err := s.verifyRecipeUnlock(ctx, user.ID, recipe, itemName); err != nil {
+		return nil, nil, nil, "", err
 	}
 
-	// Get the target item for verification/information
 	targetItem, err := s.repo.GetItemByID(ctx, recipe.TargetItemID)
 	if err != nil {
 		return nil, nil, nil, "", fmt.Errorf("failed to get target item: %w", err)
 	}
 
 	return user, targetItem, recipe, targetItem.InternalName, nil
+}
+
+func (s *service) checkUpgradeFeatureLock(ctx context.Context, userID string) error {
+	if s.jobService != nil {
+		jobUnlocked, err := s.jobService.IsJobFeatureUnlocked(ctx, userID, "feature_upgrade")
+		if err == nil && !jobUnlocked {
+			return fmt.Errorf("upgrade requires job progression: %w", domain.ErrFeatureLocked)
+		}
+	}
+	return nil
+}
+
+func (s *service) findRecipe(ctx context.Context, resolvedName string) (*domain.Recipe, error) {
+	recipe, err := s.repo.GetCraftingRecipeByKey(ctx, resolvedName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check recipe by key: %w", err)
+	}
+	if recipe != nil {
+		return recipe, nil
+	}
+
+	item, err := s.repo.GetItemByName(ctx, resolvedName)
+	if err != nil {
+		return nil, nil // Silently fail and return nil recipe if item doesn't exist? No, probably return nil recipe.
+	}
+	if item == nil {
+		return nil, nil
+	}
+
+	return s.repo.GetRecipeByTargetItemID(ctx, item.ID)
+}
+
+func (s *service) verifyRecipeUnlock(ctx context.Context, userID string, recipe *domain.Recipe, itemName string) error {
+	if recipe.IsAutoUnlock {
+		return nil
+	}
+	unlocked, err := s.repo.IsRecipeUnlocked(ctx, userID, recipe.ID)
+	if err != nil {
+		return fmt.Errorf("failed to check recipe unlock: %w", err)
+	}
+	if !unlocked {
+		return fmt.Errorf("recipe for %s is not unlocked | %w", itemName, domain.ErrRecipeLocked)
+	}
+	return nil
 }
 
 func (s *service) executeUpgradeTx(ctx context.Context, userID string, itemID int, recipe *domain.Recipe, requestedQuantity int, resolvedName string) (*Result, int, error) {

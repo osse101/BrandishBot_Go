@@ -72,7 +72,7 @@ func (s *service) Challenge(ctx context.Context, platform, platformID, opponentU
 	}
 
 	// Get opponent
-	opponent, err := s.userSvc.GetUserByPlatformUsername(ctx, "twitch", opponentUsername) // TODO: Make platform configurable
+	opponent, err := s.userSvc.GetUserByPlatformUsername(ctx, platform, opponentUsername)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get opponent: %w", err)
 	}
@@ -117,17 +117,17 @@ func (s *service) Challenge(ctx context.Context, platform, platformID, opponentU
 	return duel, nil
 }
 
-func (s *service) processDuelStakes(ctx context.Context, duel *domain.Duel, winnerUsername, loserUsername string) error {
+func (s *service) processDuelStakes(ctx context.Context, platform string, duel *domain.Duel, winnerUsername, loserUsername string) error {
 	if duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
 		wagerPool := duel.Stakes.WagerAmount * 2
-		err := s.userSvc.AddItemByUsername(ctx, "twitch", winnerUsername, duel.Stakes.WagerItemKey, wagerPool)
+		err := s.userSvc.AddItemByUsername(ctx, platform, winnerUsername, duel.Stakes.WagerItemKey, wagerPool)
 		if err != nil {
 			return fmt.Errorf("failed to reward winner: %w", err)
 		}
 	}
 
 	if duel.Stakes.TimeoutDuration > 0 {
-		err := s.userSvc.AddTimeout(ctx, "twitch", loserUsername, time.Duration(duel.Stakes.TimeoutDuration)*time.Second, "Lost duel against "+winnerUsername)
+		err := s.userSvc.AddTimeout(ctx, platform, loserUsername, time.Duration(duel.Stakes.TimeoutDuration)*time.Second, "Lost duel against "+winnerUsername)
 		if err != nil {
 			return fmt.Errorf("failed to timeout loser: %w", err)
 		}
@@ -142,13 +142,13 @@ func (s *service) validateAndGetDuel(ctx context.Context, tx repository.DuelTx, 
 	}
 
 	if duel.State != domain.DuelStatePending {
-		return nil, nil, fmt.Errorf("duel is not pending")
+		return nil, nil, fmt.Errorf("duel is not pending: %w", domain.ErrDuelNotPending)
 	}
 
 	if duel.ExpiresAt.Before(time.Now()) {
 		_ = tx.UpdateDuelState(ctx, duelID, domain.DuelStateExpired)
 		_ = tx.Commit(ctx)
-		return nil, nil, fmt.Errorf("duel has expired")
+		return nil, nil, fmt.Errorf("duel has expired: %w", domain.ErrDuelExpired)
 	}
 
 	// Verify accept caller is the opponent
@@ -158,7 +158,7 @@ func (s *service) validateAndGetDuel(ctx context.Context, tx repository.DuelTx, 
 	}
 
 	if duel.OpponentID == nil || opponent.ID != duel.OpponentID.String() {
-		return nil, nil, fmt.Errorf("unauthorized to accept this duel")
+		return nil, nil, fmt.Errorf("unauthorized to accept this duel: %w", domain.ErrDuelUnauthorized)
 	}
 
 	return duel, opponent, nil
@@ -213,7 +213,7 @@ func (s *service) Accept(ctx context.Context, platform, platformID string, duelI
 		Details:  "50/50 random selection",
 	}
 
-	if err := s.processDuelStakes(ctx, duel, winnerUsername, loserUsername); err != nil {
+	if err := s.processDuelStakes(ctx, platform, duel, winnerUsername, loserUsername); err != nil {
 		return nil, err
 	}
 
@@ -240,7 +240,7 @@ func (s *service) Decline(ctx context.Context, platform, platformID string, duel
 	if err == nil && duel.Stakes.WagerItemKey != "" && duel.Stakes.WagerAmount > 0 {
 		challenger, errChallenger := s.userRepo.GetUserByID(ctx, duel.ChallengerID.String())
 		if errChallenger == nil {
-			_ = s.userSvc.AddItemByUsername(ctx, "twitch", challenger.Username, duel.Stakes.WagerItemKey, duel.Stakes.WagerAmount)
+			_ = s.userSvc.AddItemByUsername(ctx, platform, challenger.Username, duel.Stakes.WagerItemKey, duel.Stakes.WagerAmount)
 		}
 	}
 
