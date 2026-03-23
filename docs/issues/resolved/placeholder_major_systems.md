@@ -4,9 +4,9 @@
 
 The Duel and Compost systems were functionally blocked by "not implemented" placeholders in core service methods. This tracking issue documents the resolution status of these systems.
 
-### 1. Duel System Incomplete
+### 1. Duel System Incomplete (Resolved)
 
-The `internal/duel/service.go` method `Accept` is a placeholder.
+Previously incomplete, the Duel system (`internal/duel/`) is now fully implemented.
 
 - **Impact**: Users can challenge each other and have their currency/items deducted, but the duel can never be accepted or resolved. This leads to stuck game states and lost user currency.
 - **Root Cause**: Missing coin-flip/dice-roll logic and winner awarding logic.
@@ -45,4 +45,4 @@ Verified that `internal/duel/service.go` (`Accept`) and `internal/expedition/ser
 
 - **Compost**: Resolved. Verified implementation in `internal/compost/` including service lifecycle, engine logic, and database integration.
 - **Expeditions**: Resolved. Verified implementation in `internal/expedition/` including encounter engine, skills, and background worker (`internal/worker/expedition_worker.go`).
-- **Duels**: PENDING. `Accept` method still returns "not implemented". This is the last remaining item in this tracking issue.
+- **Duels**: Resolved. Verified implementation in `internal/duel/service.go`.
