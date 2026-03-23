@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -246,12 +245,11 @@ func checkHealth(env string) error {
 	}
 	url := fmt.Sprintf("http://localhost:%s/healthz", port)
 
-	client := http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+	resp, err := makeHTTPRequest("GET", url, nil, "")
 	if err != nil {
 		// Try 127.0.0.1
 		url = fmt.Sprintf("http://127.0.0.1:%s/healthz", port)
-		resp, err = client.Get(url)
+		resp, err = makeHTTPRequest("GET", url, nil, "")
 		if err != nil {
 			return err
 		}
