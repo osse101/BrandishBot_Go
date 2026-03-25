@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,8 +22,11 @@ func setupTimeoutService() Service {
 }
 
 func TestAddTimeout(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
+		username         string
 		initialTimeouts  []time.Duration // Initial timeouts to add sequentially
 		newTimeout       time.Duration   // The timeout to add in the test
 		expectedMinDur   time.Duration   // Expected minimum duration
@@ -58,13 +62,31 @@ func TestAddTimeout(t *testing.T) {
 			expectedMinDur: 23*time.Hour + 59*time.Minute,
 			expectedMaxDur: 24 * time.Hour,
 		},
+		{
+			name:             "Hostile Case - Empty Username",
+			username:         "",
+			newTimeout:       5 * time.Second,
+			expectedDurExact: 0,
+		},
+		{
+			name:           "Hostile Case - Massive Overflow Duration",
+			newTimeout:     1000000 * time.Hour,
+			expectedMinDur: 999999 * time.Hour,
+			expectedMaxDur: 1000000 * time.Hour,
+		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			svc := setupTimeoutService()
 			ctx := context.Background()
-			username := "test_user"
+
+			username := tt.username
+			if username == "" && tt.name != "Hostile Case - Empty Username" {
+				username = "test_user"
+			}
 
 			// Setup initial timeouts
 			for i, dur := range tt.initialTimeouts {
@@ -74,6 +96,10 @@ func TestAddTimeout(t *testing.T) {
 
 			// Add the new timeout
 			err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, tt.newTimeout, "Test reason")
+			if tt.name == "Hostile Case - Empty Username" {
+				assert.Error(t, err)
+				return // Early return since the timeout wasn't added
+			}
 			require.NoError(t, err)
 
 			timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
@@ -90,25 +116,29 @@ func TestAddTimeout(t *testing.T) {
 }
 
 func TestAddTimeout_Concurrency(t *testing.T) {
+	t.Parallel()
+
 	svc := setupTimeoutService()
 	ctx := context.Background()
 
 	// Try to add many timeouts concurrently to check for map panics
-	done := make(chan bool)
+	var wg sync.WaitGroup
 	concurrency := 50
+	wg.Add(concurrency)
 
 	for i := 0; i < concurrency; i++ {
 		go func() {
-			_ = svc.AddTimeout(ctx, domain.PlatformTwitch, "concurrent_user", 100*time.Millisecond, "concurrent")
-			_, _ = svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
-			_ = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user", 50*time.Millisecond)
-			done <- true
+			defer wg.Done()
+			err1 := svc.AddTimeout(ctx, domain.PlatformTwitch, "concurrent_user", 100*time.Millisecond, "concurrent")
+			assert.NoError(t, err1)
+			_, err2 := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
+			assert.NoError(t, err2)
+			err3 := svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user", 50*time.Millisecond)
+			assert.NoError(t, err3)
 		}()
 	}
 
-	for i := 0; i < concurrency; i++ {
-		<-done
-	}
+	wg.Wait()
 
 	// Simply surviving without panic proves thread-safety
 	timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
@@ -117,7 +147,10 @@ func TestAddTimeout_Concurrency(t *testing.T) {
 }
 
 func TestTimeoutUser(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Legacy Replace/Accumulate Behavior", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -132,7 +165,10 @@ func TestTimeoutUser(t *testing.T) {
 }
 
 func TestClearTimeout(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case - Clear Existing Timeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -148,6 +184,7 @@ func TestClearTimeout(t *testing.T) {
 	})
 
 	t.Run("Invalid Case - Clear Non-existent Timeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -162,7 +199,10 @@ func TestClearTimeout(t *testing.T) {
 }
 
 func TestGetTimeout(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Best Case - Get Active Timeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -176,6 +216,7 @@ func TestGetTimeout(t *testing.T) {
 	})
 
 	t.Run("Edge Case - Cross Platform Isolation", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -189,6 +230,7 @@ func TestGetTimeout(t *testing.T) {
 	})
 
 	t.Run("Boundary Case - No Timeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -199,6 +241,8 @@ func TestGetTimeout(t *testing.T) {
 }
 
 func TestReduceTimeout(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		initialTimeout   time.Duration
@@ -239,10 +283,25 @@ func TestReduceTimeout(t *testing.T) {
 			reduction:        5 * time.Second,
 			expectedDurExact: 0,
 		},
+		{
+			name:           "Boundary Case - Just Inside Full Reduction",
+			initialTimeout: 5 * time.Second,
+			reduction:      4*time.Second + 999*time.Millisecond,
+			expectedMinDur: 0 * time.Millisecond,
+			expectedMaxDur: 2 * time.Millisecond,
+		},
+		{
+			name:             "Hostile Case - Massive Overflow Reduction",
+			initialTimeout:   5 * time.Second,
+			reduction:        1000000 * time.Hour,
+			expectedDurExact: 0,
+		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			svc := setupTimeoutService()
 			ctx := context.Background()
 			username := "test_user"
@@ -268,6 +327,7 @@ func TestReduceTimeout(t *testing.T) {
 	}
 
 	t.Run("Legacy Wrapper - ReduceTimeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 
@@ -285,7 +345,10 @@ func TestReduceTimeout(t *testing.T) {
 }
 
 func TestHandleBlaster_Timeout(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Integration Case - Blaster Applies Timeout", func(t *testing.T) {
+		t.Parallel()
 		svc := setupTimeoutService()
 		ctx := context.Background()
 		item := domain.ItemMissile

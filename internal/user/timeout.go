@@ -20,6 +20,10 @@ func timeoutKey(platform, username string) string {
 // If the user already has a timeout, the new duration is ADDED to the remaining time.
 // Note: Timeouts are in-memory and will be lost on server restart.
 func (s *service) AddTimeout(ctx context.Context, platform, username string, duration time.Duration, reason string) error {
+	if username == "" {
+		return fmt.Errorf("%w: empty username", domain.ErrInvalidInput)
+	}
+
 	log := logger.FromContext(ctx)
 	key := timeoutKey(platform, username)
 	log.Info("AddTimeout called", "platform", platform, "username", username, "duration", duration, "reason", reason)
