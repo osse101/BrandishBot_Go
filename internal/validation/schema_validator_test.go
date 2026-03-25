@@ -3,12 +3,14 @@ package validation
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSchemaValidator_ValidateFile(t *testing.T) {
-	validator := NewSchemaValidator()
+	t.Parallel()
 
 	// Create temp directory for test files
 	tmpDir := t.TempDir()
@@ -29,9 +31,8 @@ func TestSchemaValidator_ValidateFile(t *testing.T) {
 		},
 		"required": ["name"]
 	}`
-	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-		t.Fatalf("Failed to write schema file: %v", err)
-	}
+	err := os.WriteFile(schemaPath, []byte(schemaContent), 0644)
+	require.NoError(t, err, "Failed to write schema file")
 
 	tests := []struct {
 		name      string
@@ -73,35 +74,52 @@ func TestSchemaValidator_ValidateFile(t *testing.T) {
 			wantError: true,
 			errorMsg:  "parse JSON",
 		},
+		// Boundary cases for minimum: 0
+		{
+			name:      "age exactly minimum boundary",
+			data:      `{"name": "John", "age": 0}`,
+			wantError: false,
+		},
+		{
+			name:      "age just inside minimum boundary",
+			data:      `{"name": "John", "age": 1}`,
+			wantError: false,
+		},
+		{
+			name:      "age just outside minimum boundary",
+			data:      `{"name": "John", "age": -1}`,
+			wantError: true,
+			errorMsg:  "age",
+		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			validator := NewSchemaValidator()
 			// Write test data to file
-			dataPath := filepath.Join(tmpDir, "test_data.json")
-			if err := os.WriteFile(dataPath, []byte(tt.data), 0644); err != nil {
-				t.Fatalf("Failed to write data file: %v", err)
-			}
+			subDir := t.TempDir()
+			dataPath := filepath.Join(subDir, "test_data.json")
+			err := os.WriteFile(dataPath, []byte(tt.data), 0644)
+			require.NoError(t, err, "Failed to write data file")
 
-			err := validator.ValidateFile(dataPath, schemaPath)
+			err = validator.ValidateFile(dataPath, schemaPath)
 
 			if tt.wantError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tt.errorMsg != "" && !strings.Contains(err.Error(), tt.errorMsg) {
-					t.Errorf("Expected error to contain %q, got: %v", tt.errorMsg, err)
+				require.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.ErrorContains(t, err, tt.errorMsg)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("Unexpected error: %v", err)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}
 }
 
 func TestSchemaValidator_ValidateBytes(t *testing.T) {
-	validator := NewSchemaValidator()
+	t.Parallel()
 
 	tmpDir := t.TempDir()
 	schemaPath := filepath.Join(tmpDir, "test.schema.json")
@@ -117,9 +135,8 @@ func TestSchemaValidator_ValidateBytes(t *testing.T) {
 			"required": ["id", "name"]
 		}
 	}`
-	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-		t.Fatalf("Failed to write schema file: %v", err)
-	}
+	err := os.WriteFile(schemaPath, []byte(schemaContent), 0644)
+	require.NoError(t, err, "Failed to write schema file")
 
 	tests := []struct {
 		name      string
@@ -149,39 +166,38 @@ func TestSchemaValidator_ValidateBytes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			validator := NewSchemaValidator()
 			err := validator.ValidateBytes(tt.data, schemaPath)
 
-			if tt.wantError && err == nil {
-				t.Errorf("Expected error but got none")
-			}
-			if !tt.wantError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
 }
 
 func TestSchemaValidator_InvalidSchemaFile(t *testing.T) {
+	t.Parallel()
 	validator := NewSchemaValidator()
 
 	tmpDir := t.TempDir()
 	dataPath := filepath.Join(tmpDir, "data.json")
-	if err := os.WriteFile(dataPath, []byte(`{}`), 0644); err != nil {
-		t.Fatalf("Failed to write data file: %v", err)
-	}
+	err := os.WriteFile(dataPath, []byte(`{}`), 0644)
+	require.NoError(t, err, "Failed to write data file")
 
 	// Test with non-existent schema file
-	err := validator.ValidateFile(dataPath, "nonexistent.schema.json")
-	if err == nil {
-		t.Error("Expected error for non-existent schema file")
-	}
-	if !strings.Contains(err.Error(), "failed to load schema") {
-		t.Errorf("Expected 'failed to load schema' error, got: %v", err)
-	}
+	err = validator.ValidateFile(dataPath, "nonexistent.schema.json")
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to load schema")
 }
 
 func TestSchemaValidator_InvalidDataFile(t *testing.T) {
+	t.Parallel()
 	validator := NewSchemaValidator()
 
 	tmpDir := t.TempDir()
@@ -190,21 +206,17 @@ func TestSchemaValidator_InvalidDataFile(t *testing.T) {
 		"$schema": "http://json-schema.org/draft-07/schema#",
 		"type": "object"
 	}`
-	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-		t.Fatalf("Failed to write schema file: %v", err)
-	}
+	err := os.WriteFile(schemaPath, []byte(schemaContent), 0644)
+	require.NoError(t, err, "Failed to write schema file")
 
 	// Test with non-existent data file
-	err := validator.ValidateFile("nonexistent.json", schemaPath)
-	if err == nil {
-		t.Error("Expected error for non-existent data file")
-	}
-	if !strings.Contains(err.Error(), "failed to read data file") {
-		t.Errorf("Expected 'failed to read data file' error, got: %v", err)
-	}
+	err = validator.ValidateFile("nonexistent.json", schemaPath)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "failed to read data file")
 }
 
 func TestSchemaValidator_CachesCompiledSchemas(t *testing.T) {
+	t.Parallel()
 	v := NewSchemaValidator().(*validator)
 
 	tmpDir := t.TempDir()
@@ -213,32 +225,23 @@ func TestSchemaValidator_CachesCompiledSchemas(t *testing.T) {
 		"$schema": "http://json-schema.org/draft-07/schema#",
 		"type": "object"
 	}`
-	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-		t.Fatalf("Failed to write schema file: %v", err)
-	}
+	err := os.WriteFile(schemaPath, []byte(schemaContent), 0644)
+	require.NoError(t, err, "Failed to write schema file")
 
 	// First validation should compile and cache the schema
 	data := []byte(`{"test": "value"}`)
-	if err := v.ValidateBytes(data, schemaPath); err != nil {
-		t.Fatalf("First validation failed: %v", err)
-	}
-
-	if len(v.schemas) != 1 {
-		t.Errorf("Expected 1 cached schema, got %d", len(v.schemas))
-	}
+	err = v.ValidateBytes(data, schemaPath)
+	require.NoError(t, err, "First validation failed")
+	assert.Len(t, v.schemas, 1)
 
 	// Second validation should use cached schema
-	if err := v.ValidateBytes(data, schemaPath); err != nil {
-		t.Fatalf("Second validation failed: %v", err)
-	}
-
-	if len(v.schemas) != 1 {
-		t.Errorf("Expected 1 cached schema after second validation, got %d", len(v.schemas))
-	}
+	err = v.ValidateBytes(data, schemaPath)
+	require.NoError(t, err, "Second validation failed")
+	assert.Len(t, v.schemas, 1)
 }
 
 func TestSchemaValidator_EnumValidation(t *testing.T) {
-	validator := NewSchemaValidator()
+	t.Parallel()
 
 	tmpDir := t.TempDir()
 	schemaPath := filepath.Join(tmpDir, "enum.schema.json")
@@ -253,9 +256,8 @@ func TestSchemaValidator_EnumValidation(t *testing.T) {
 		},
 		"required": ["status"]
 	}`
-	if err := os.WriteFile(schemaPath, []byte(schemaContent), 0644); err != nil {
-		t.Fatalf("Failed to write schema file: %v", err)
-	}
+	err := os.WriteFile(schemaPath, []byte(schemaContent), 0644)
+	require.NoError(t, err, "Failed to write schema file")
 
 	tests := []struct {
 		name      string
@@ -275,14 +277,16 @@ func TestSchemaValidator_EnumValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			validator := NewSchemaValidator()
 			err := validator.ValidateBytes([]byte(tt.data), schemaPath)
 
-			if tt.wantError && err == nil {
-				t.Errorf("Expected error but got none")
-			}
-			if !tt.wantError && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
