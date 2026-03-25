@@ -47,9 +47,7 @@ func makeHTTPRequest(method, url string, payload interface{}, apiKey string) (*h
 		req.Header.Set("X-API-Key", apiKey)
 	}
 
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := &http.Client{Timeout: 5 * time.Second}
 	return client.Do(req)
 }
 

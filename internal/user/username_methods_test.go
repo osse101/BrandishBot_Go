@@ -146,12 +146,6 @@ func TestAddItemByUsername(t *testing.T) {
 
 			err := svc.AddItemByUsername(context.Background(), tt.platform, tt.username, tt.itemName, tt.quantity)
 
-			// The service uses generic add logic; depending on how negative/zero is handled in the actual method,
-			// we adjust expectations.
-			// Currently, internal/user/use_item.go / internal/user/inventory.go might handle zero/negative differently.
-			// Let's assume standard domain rules or we assert what currently happens.
-			// Let's rely on standard errors. If it doesn't fail, we might need to adjust wantErr in subsequent runs.
-
 			if tt.wantErr != nil {
 				require.Error(t, err)
 				assert.ErrorIs(t, err, tt.wantErr)
