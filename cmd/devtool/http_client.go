@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 const defaultAPIURL = "http://localhost:8080"
@@ -46,7 +47,7 @@ func makeHTTPRequest(method, url string, payload interface{}, apiKey string) (*h
 		req.Header.Set("X-API-Key", apiKey)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 5 * time.Second}
 	return client.Do(req)
 }
 
