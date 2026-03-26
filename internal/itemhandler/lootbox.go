@@ -18,7 +18,7 @@ type dropStats struct {
 	hasEpic      bool
 }
 
-func ProcessLootbox(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
+func HandleLootbox(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
 	log := logger.FromContext(ctx)
 
 	// 1. Validate and consume lootboxes
@@ -51,10 +51,10 @@ func ProcessLootbox(ctx context.Context, ec EffectContext, user *domain.User, in
 	}
 
 	// 3. Process drops and generate feedback
-	return ProcessLootboxDrops(ctx, ec, user, inventory, lootboxItem, quantity, allDrops)
+	return HandleLootboxDrops(ctx, ec, user, inventory, lootboxItem, quantity, allDrops)
 }
 
-func ProcessLootboxDrops(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
+func HandleLootboxDrops(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
 	var msgBuilder strings.Builder
 	// Use alias for the lootbox when opening
 	displayName := ec.GetDisplayName(lootboxItem.InternalName, "")
@@ -178,5 +178,5 @@ func (h *LootboxHandler) CanHandle(itemName string) bool {
 
 // Handle processes lootbox opening.
 func (h *LootboxHandler) Handle(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
-	return ProcessLootbox(ctx, ec, user, inventory, item, quantity)
+	return HandleLootbox(ctx, ec, user, inventory, item, quantity)
 }

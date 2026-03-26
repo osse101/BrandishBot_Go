@@ -229,7 +229,11 @@ func (c *DeployCommand) announceRelease(version string) {
 		"color":       65280,
 	}
 
-	discordURL := "http://localhost:8082/admin/announce"
+	discordURL := os.Getenv("DISCORD_ANNOUNCE_URL")
+	if discordURL == "" {
+		discordURL = "http://localhost:8082/admin/announce"
+	}
+
 	if err := postJSON(discordURL, payload, "", nil); err != nil {
 		PrintWarning("Failed to send release notes: %v", err)
 		return
@@ -377,10 +381,34 @@ func cleanupOldImages(imageName string) {
 		return
 	}
 
-	// This is a bit complex to do cross-platform with just exec,
-	// simpler to shell out or use docker Go SDK.
-	// For now, mirroring the shell script logic roughly.
-	//nolint:gosec // G204: imageName is validated above
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker images \"%s\" --format \"{{.Tag}}\" | grep -v \"latest\" | tail -n +6 | xargs -r -I {} docker rmi \"%s:{}\"", imageName, imageName))
-	_ = cmd.Run()
+	// 1. Get tags for the image, excluding 'latest'
+	// nolint:gosec // G204: imageName is validated above
+	out, err := exec.Command("docker", "images", imageName, "--format", "{{.Tag}}").Output()
+	if err != nil {
+		PrintWarning("Failed to list Docker images for cleanup: %v", err)
+		return
+	}
+
+	tags := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var oldTags []string
+	for _, tag := range tags {
+		if tag != "" && !strings.Contains(tag, "latest") {
+			oldTags = append(oldTags, tag)
+		}
+	}
+
+	// Keep last 5 tags
+	if len(oldTags) <= 5 {
+		return
+	}
+
+	tagsToRemove := oldTags[5:]
+	PrintInfo("Removing %d old images for %s...", len(tagsToRemove), imageName)
+
+	for _, tag := range tagsToRemove {
+		// nolint:gosec // G204: imageName and tag are safe
+		if err := exec.Command("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)).Run(); err != nil {
+			PrintWarning("Failed to remove image %s:%s: %v", imageName, tag, err)
+		}
+	}
 }

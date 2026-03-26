@@ -2,6 +2,7 @@ package itemhandler
 
 import (
 	"strings"
+	"time"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
@@ -64,4 +65,11 @@ func getIndefiniteArticle(word string) string {
 		return "an"
 	}
 	return "a"
+}
+
+func getWeaponTimeout(itemName string) time.Duration {
+	if timeout, ok := weaponTimeouts[itemName]; ok {
+		return timeout
+	}
+	return domain.BlasterTimeoutDuration // default fallback
 }

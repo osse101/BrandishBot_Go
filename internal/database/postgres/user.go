@@ -104,39 +104,8 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 		}
 	}
 
-	platforms := map[string]string{
-		domain.PlatformTwitch:  user.TwitchID,
-		domain.PlatformYoutube: user.YoutubeID,
-		domain.PlatformDiscord: user.DiscordID,
-	}
-
-	for platformName, externalID := range platforms {
-		if externalID == "" {
-			continue
-		}
-
-		platformID, err := q.GetPlatformID(ctx, platformName)
-		if err != nil {
-			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
-		}
-
-		platformUsername := ""
-		if user.PlatformUsernames != nil {
-			platformUsername = user.PlatformUsernames[platformName]
-		}
-
-		err = q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
-			UserID:         userUUID,
-			PlatformID:     platformID,
-			PlatformUserID: externalID,
-			PlatformUsername: pgtype.Text{
-				String: platformUsername,
-				Valid:  platformUsername != "",
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("failed to upsert link for %s: %w", platformName, err)
-		}
+	if err := upsertUserPlatformLinks(ctx, q, user, userUUID); err != nil {
+		return err
 	}
 
 	// Ensure inventory row exists to allow row-level locking
@@ -358,6 +327,44 @@ func (r *UserRepository) UpdateCooldownTx(ctx context.Context, tx pgx.Tx, userID
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update cooldown: %w", err)
+	}
+	return nil
+}
+
+func upsertUserPlatformLinks(ctx context.Context, q *generated.Queries, user *domain.User, userUUID uuid.UUID) error {
+	platforms := map[string]string{
+		domain.PlatformTwitch:  user.TwitchID,
+		domain.PlatformYoutube: user.YoutubeID,
+		domain.PlatformDiscord: user.DiscordID,
+	}
+
+	for platformName, externalID := range platforms {
+		if externalID == "" {
+			continue
+		}
+
+		platformID, err := q.GetPlatformID(ctx, platformName)
+		if err != nil {
+			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
+		}
+
+		platformUsername := ""
+		if user.PlatformUsernames != nil {
+			platformUsername = user.PlatformUsernames[platformName]
+		}
+
+		err = q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
+			UserID:         userUUID,
+			PlatformID:     platformID,
+			PlatformUserID: externalID,
+			PlatformUsername: pgtype.Text{
+				String: platformUsername,
+				Valid:  platformUsername != "",
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert link for %s: %w", platformName, err)
+		}
 	}
 	return nil
 }

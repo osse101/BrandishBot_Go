@@ -245,7 +245,7 @@ func TestProcessLootbox(t *testing.T) {
 
 		// Execute
 		// Pass nil user as it's not used in this test path (except for stats which is nil here)
-		msg, err := itemhandler.ProcessLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 1)
+		msg, err := itemhandler.HandleLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 1)
 
 		// Verify
 		assert.NoError(t, err)
@@ -283,7 +283,7 @@ func TestProcessLootbox(t *testing.T) {
 			},
 		}
 
-		_, err := itemhandler.ProcessLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 2)
+		_, err := itemhandler.HandleLootbox(ctx, svc, &domain.User{ID: "test-user"}, inventory, lootbox0, 2)
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, domain.ErrInsufficientQuantity)
 	})
