@@ -1,3 +1,12 @@
+# Patch Notes (Week of March 27, 2026)
+
+## System Updates & Polish
+
+- **Behind the Scenes**: Another massive week for technical improvements! We reorganized how items and commands are processed internally to make future features faster to build. We also heavily expanded our automated testing to ensure the bot stays stable and bug-free, particularly around daily resets, user profiles, and Streamer.bot integration.
+- **Developer Tools**: We supercharged our internal developer tools with smarter network configurations and better performance, making it easier for us to test and deploy updates smoothly.
+- **Code Health**: We standardized how errors are handled across the system and cleaned up internal configuration data to keep the project healthy.
+- **Issue Tracking**: The Duel system has officially been marked as resolved in our internal tracking!
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
