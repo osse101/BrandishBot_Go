@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
-	"github.com/osse101/BrandishBot_Go/internal/event"
-	"github.com/osse101/BrandishBot_Go/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/event"
+	"github.com/osse101/BrandishBot_Go/mocks"
 )
 
-func setupTestService(t *testing.T) (*service, *mocks.MockProgressionService, *mocks.MockUserService, *mocks.MockEventBus, *event.ResilientPublisher) {
+func setupTestService(t *testing.T) (*service, *mocks.MockProgressionService, *mocks.MockUserService, *mocks.MockEventBus) {
 	mockProgSvc := mocks.NewMockProgressionService(t)
 	mockUserSvc := mocks.NewMockUserService(t)
 	mockEventBus := mocks.NewMockEventBus(t)
@@ -24,11 +25,11 @@ func setupTestService(t *testing.T) (*service, *mocks.MockProgressionService, *m
 	require.NoError(t, err)
 
 	svc := NewService(mockProgSvc, mockUserSvc, mockEventBus, rp)
-	return svc.(*service), mockProgSvc, mockUserSvc, mockEventBus, rp
+	return svc.(*service), mockProgSvc, mockUserSvc, mockEventBus
 }
 
 func TestApplyContributionModifier(t *testing.T) {
-	svc, mockProgSvc, _, _, _ := setupTestService(t)
+	svc, mockProgSvc, _, _ := setupTestService(t)
 
 	ctx := context.Background()
 
@@ -49,7 +50,7 @@ func TestApplyContributionModifier(t *testing.T) {
 }
 
 func TestRecordTotalEngagement(t *testing.T) {
-	svc, mockProgSvc, _, _, _ := setupTestService(t)
+	svc, mockProgSvc, _, _ := setupTestService(t)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -67,7 +68,7 @@ func TestRecordTotalEngagement(t *testing.T) {
 }
 
 func TestPublishPredictionEvent(t *testing.T) {
-	svc, _, _, mockBus, _ := setupTestService(t)
+	svc, _, _, mockBus := setupTestService(t)
 	ctx := context.Background()
 
 	req := &domain.PredictionOutcomeRequest{
@@ -97,7 +98,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("found by platform username", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		expectedUser := &domain.User{ID: "123", Username: "testuser"}
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "twitch", "testuser").Return(expectedUser, nil).Once()
 
@@ -107,7 +108,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	})
 
 	t.Run("found by platform id", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		expectedUser := &domain.User{ID: "123", Username: "testuser"}
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "twitch", "testuser").Return(nil, errors.New("not found")).Once()
 		mockUserSvc.On("FindUserByPlatformID", ctx, "twitch", "pid1").Return(expectedUser, nil).Once()
@@ -118,7 +119,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	})
 
 	t.Run("auto register twitch", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "twitch", "testuser").Return(nil, errors.New("not found")).Once()
 		mockUserSvc.On("FindUserByPlatformID", ctx, "twitch", "pid1").Return(nil, errors.New("not found")).Once()
 
@@ -132,7 +133,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	})
 
 	t.Run("auto register youtube", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "youtube", "testuser").Return(nil, errors.New("not found")).Once()
 		mockUserSvc.On("FindUserByPlatformID", ctx, "youtube", "pid1").Return(nil, errors.New("not found")).Once()
 
@@ -146,7 +147,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	})
 
 	t.Run("auto register discord", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "discord", "testuser").Return(nil, errors.New("not found")).Once()
 		mockUserSvc.On("FindUserByPlatformID", ctx, "discord", "pid1").Return(nil, errors.New("not found")).Once()
 
@@ -160,7 +161,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 	})
 
 	t.Run("auto register fails", func(t *testing.T) {
-		svc, _, mockUserSvc, _, _ := setupTestService(t)
+		svc, _, mockUserSvc, _ := setupTestService(t)
 		mockUserSvc.On("GetUserByPlatformUsername", ctx, "twitch", "testuser").Return(nil, errors.New("not found")).Once()
 		mockUserSvc.On("FindUserByPlatformID", ctx, "twitch", "pid1").Return(nil, errors.New("not found")).Once()
 
@@ -174,7 +175,7 @@ func TestEnsureUserRegistered(t *testing.T) {
 }
 
 func TestAwardParticipantsXP(t *testing.T) {
-	svc, _, mockUserSvc, mockBus, _ := setupTestService(t)
+	svc, _, mockUserSvc, mockBus := setupTestService(t)
 	ctx := context.Background()
 
 	participants := []domain.PredictionParticipant{
@@ -201,7 +202,7 @@ func TestAwardParticipantsXP(t *testing.T) {
 }
 
 func TestAwardWinnerRewards(t *testing.T) {
-	svc, mockProgSvc, mockUserSvc, mockBus, _ := setupTestService(t)
+	svc, mockProgSvc, mockUserSvc, mockBus := setupTestService(t)
 	ctx := context.Background()
 
 	winner := domain.PredictionWinner{Username: "w1", PlatformID: "wid1"}
@@ -234,7 +235,7 @@ func TestAwardWinnerRewards(t *testing.T) {
 }
 
 func TestProcessOutcome(t *testing.T) {
-	svc, mockProgSvc, mockUserSvc, mockBus, _ := setupTestService(t)
+	svc, mockProgSvc, mockUserSvc, mockBus := setupTestService(t)
 	ctx := context.Background()
 
 	req := &domain.PredictionOutcomeRequest{
@@ -294,7 +295,7 @@ func TestProcessOutcome(t *testing.T) {
 }
 
 func TestProcessOutcome_RecordEngagementError(t *testing.T) {
-	svc, mockProgSvc, _, _, _ := setupTestService(t)
+	svc, mockProgSvc, _, _ := setupTestService(t)
 	ctx := context.Background()
 
 	req := &domain.PredictionOutcomeRequest{
@@ -312,7 +313,7 @@ func TestProcessOutcome_RecordEngagementError(t *testing.T) {
 }
 
 func TestShutdown(t *testing.T) {
-	svc, _, _, _, _ := setupTestService(t)
+	svc, _, _, _ := setupTestService(t)
 
 	// Simulate a running goroutine
 	svc.wg.Add(1)
@@ -327,7 +328,7 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestShutdown_Timeout(t *testing.T) {
-	svc, _, _, _, _ := setupTestService(t)
+	svc, _, _, _ := setupTestService(t)
 
 	svc.wg.Add(1) // Will never finish
 

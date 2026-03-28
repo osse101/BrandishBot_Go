@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -58,9 +57,8 @@ func generateHTMLReport(file string) error {
 	}
 
 	PrintInfo("Generating HTML report: %s", htmlFile)
-	// #nosec G204 - file and htmlFile are validated
-	cmd := exec.Command("go", "tool", "cover", "-html="+file, "-o", htmlFile)
-	if err := cmd.Run(); err != nil {
+	// nolint:forbidigo
+	if err := runCommand("go", "tool", "cover", "-html="+file, "-o", htmlFile); err != nil {
 		return err
 	}
 	PrintSuccess("HTML report generated: %s", htmlFile)

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -269,11 +268,8 @@ func runMakeTarget(target string) error {
 
 func runLinter() error {
 	PrintInfo("Running linter on changes...")
-	// Use go run to ensure we use the version pinned in tools.go
-	cmd := exec.Command("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run", "--new-from-rev=HEAD", "./...")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	// nolint:forbidigo
+	if err := runCommandVerbose("go", "run", "github.com/golangci/golangci-lint/cmd/golangci-lint", "run", "--new-from-rev=HEAD", "./..."); err != nil {
 		return fmt.Errorf("linter failed")
 	}
 	return nil

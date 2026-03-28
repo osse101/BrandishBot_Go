@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 )
 
@@ -144,11 +143,8 @@ func runGoTest(packages []string, file string, verbose bool) (*bytes.Buffer, err
 	var buf bytes.Buffer
 	multiWriter := io.MultiWriter(os.Stdout, &buf)
 
-	// #nosec G204 - file and packages are validated (packages from git or args)
-	cmd := exec.Command("go", testArgs...)
-	cmd.Stdout = multiWriter
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	// nolint:forbidigo
+	if err := runCommandExt(nil, multiWriter, os.Stderr, "go", testArgs...); err != nil {
 		return nil, fmt.Errorf("tests failed: %w", err)
 	}
 

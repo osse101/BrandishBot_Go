@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -304,27 +302,16 @@ func backupDatabase(env, composeFile string) error {
 	PrintInfo("Waiting for database to be ready...")
 	time.Sleep(5 * time.Second)
 
-	// Use docker compose exec which is more robust than finding IDs
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName)
-
-	// Pass password if available
-	dbPass := os.Getenv("DB_PASSWORD")
-	if dbPass != "" {
-		cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", dbPass))
-	}
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer outfile.Close()
-	cmd.Stdout = outfile
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump failed: %w\nStderr: %s", err, stderr.String())
+	// Use docker compose exec which is more robust than finding IDs
+	// nolint:forbidigo
+	if err := runCommandToFile(outfile, "docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName); err != nil {
+		return fmt.Errorf("pg_dump failed: %w", err)
 	}
 	PrintSuccess("Database backup created: %s", filename)
 
@@ -382,8 +369,8 @@ func cleanupOldImages(imageName string) {
 	}
 
 	// 1. Get tags for the image, excluding 'latest'
-	// nolint:gosec // G204: imageName is validated above
-	out, err := exec.Command("docker", "images", imageName, "--format", "{{.Tag}}").Output()
+	//nolint:forbidigo // G204: imageName is validated above
+	out, err := getCommandOutput("docker", "images", imageName, "--format", "{{.Tag}}")
 	if err != nil {
 		PrintWarning("Failed to list Docker images for cleanup: %v", err)
 		return
@@ -406,8 +393,9 @@ func cleanupOldImages(imageName string) {
 	PrintInfo("Removing %d old images for %s...", len(tagsToRemove), imageName)
 
 	for _, tag := range tagsToRemove {
-		// nolint:gosec // G204: imageName and tag are safe
-		if err := exec.Command("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)).Run(); err != nil {
+		//nolint:gosec // G204: imageName and tag are safe
+		//nolint:forbidigo
+		if err := runCommand("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)); err != nil {
 			PrintWarning("Failed to remove image %s:%s: %v", imageName, tag, err)
 		}
 	}
