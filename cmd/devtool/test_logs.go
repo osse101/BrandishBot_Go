@@ -51,7 +51,7 @@ func (c *TestLogsCommand) Run(args []string) error {
 
 func (c *TestLogsCommand) buildApp() (string, error) {
 	PrintInfo("Building the application...")
-	//nolint:forbidigo // Safe usage of wrapper
+	// Safe usage of wrapper
 	if err := runCommandVerbose("make", "build"); err != nil {
 		return "", fmt.Errorf("failed to build app: %w", err)
 	}
@@ -113,7 +113,6 @@ func (c *TestLogsCommand) verifyLogs(logDir string) error {
 
 // runCommandAsyncAndKill starts a process and kills it after a timeout
 func runCommandAsyncAndKill(path string, timeout time.Duration) error {
-	// nolint:forbidigo
 	cmd, err := runCommandAsync(filepath.Clean(path))
 	if err != nil {
 		return err

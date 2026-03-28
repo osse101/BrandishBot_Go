@@ -44,7 +44,7 @@ func (c *BenchCommand) Run(args []string) error {
 
 func (c *BenchCommand) runAll() error {
 	PrintHeader("Running all benchmarks...")
-	//nolint:forbidigo
+
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
 }
 
@@ -62,7 +62,7 @@ func (c *BenchCommand) runHot() error {
 
 	fmt.Println("  → Utils: Inventory operations (existing)")
 	// This one shouldn't fail silently as it catches all in utils
-	//nolint:forbidigo
+
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./internal/utils")
 }
 
@@ -77,7 +77,6 @@ func (c *BenchCommand) runBenchOrWarn(dir, pattern string) {
 		return
 	}
 
-	// nolint:forbidigo
 	if err := runCommandExt(nil, os.Stdout, nil, "go", "test", "-bench="+pattern, "-benchmem", "-benchtime=2s", dir); err != nil {
 		fmt.Println("    (benchmark not yet implemented)")
 	}
@@ -107,7 +106,6 @@ func (c *BenchCommand) runAndSave(filename string) error {
 	// We want to write to both stdout and file
 	mw := io.MultiWriter(os.Stdout, f)
 
-	// nolint:forbidigo
 	if err := runCommandExt(nil, mw, mw, "go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./..."); err != nil {
 		return fmt.Errorf("benchmark execution failed: %w", err)
 	}
@@ -135,12 +133,11 @@ func (c *BenchCommand) compare() error {
 	}
 	defer f.Close()
 
-	// nolint:forbidigo
 	_ = runCommandToFile(f, "go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
 	f.Close() // Close before reading
 
 	// Check benchstat
-	// nolint:forbidigo
+
 	if err := runCommandVerbose("benchstat", "benchmarks/results/baseline.txt", currentPath); err == nil {
 		return nil
 	}
@@ -185,19 +182,19 @@ func (c *BenchCommand) profile() error {
 
 	fmt.Println("  → CPU profile (if benchmark exists)...")
 	// Try Handler
-	// nolint:forbidigo
+
 	if err := runCommand("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/handler"); err != nil {
 		// Try Utils
-		// nolint:forbidigo
+
 		_ = runCommand("go", "test", "-bench=BenchmarkAddItems", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/utils")
 	}
 
 	fmt.Println("  → Memory profile (if benchmark exists)...")
 	// Try Handler
-	// nolint:forbidigo
+
 	if err := runCommand("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/handler"); err != nil {
 		// Try Utils
-		// nolint:forbidigo
+
 		_ = runCommand("go", "test", "-bench=BenchmarkAddItems", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/utils")
 	}
 

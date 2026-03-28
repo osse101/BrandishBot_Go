@@ -13,7 +13,7 @@ import (
 
 func getCoveragePercent(file string) (float64, error) {
 	// Run go tool cover -func=file
-	//nolint:forbidigo // file is validated in parseConfig
+	// file is validated in parseConfig
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file)) // #nosec G204
 	if err != nil {
 		return 0, fmt.Errorf("error running go tool cover: %w", err)
@@ -57,7 +57,7 @@ func generateHTMLReport(file string) error {
 	}
 
 	PrintInfo("Generating HTML report: %s", htmlFile)
-	// nolint:forbidigo
+
 	if err := runCommand("go", "tool", "cover", "-html="+file, "-o", htmlFile); err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ type funcCoverage struct {
 }
 
 func printTopMissingFunctions(file string) error {
-	//nolint:forbidigo // file is validated
+	// file is validated
 	out, err := getCommandOutput("go", "tool", "cover", fmt.Sprintf("-func=%s", file)) // #nosec G204
 	if err != nil {
 		return err

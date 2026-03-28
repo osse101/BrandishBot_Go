@@ -340,9 +340,6 @@ func TestHandleAwardXP_Cases(t *testing.T) {
 					assert.Equal(t, 50, result.XPGained)
 				}
 			} else if tt.expectedBody != "" {
-				// We expect handler.RespondError or DecodeAndValidateRequest to format an error response
-				// However invalid json returns `Invalid request body` via decoder usually, let's just do Contains for safety
-				// OR properly unmarshal generic error JSON since this is the project standard
 				var errResp handlerErrorResponse
 				json.NewDecoder(resp.Body).Decode(&errResp)
 				if errResp.Error != "" {

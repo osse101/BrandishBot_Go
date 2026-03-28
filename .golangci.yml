@@ -89,8 +89,8 @@ linters-settings:
   # Forbid specific identifiers
   forbidigo:
     forbid:
-      - p: ^(runCommand|runCommandVerbose|runCommandWithStdin|runCommandToFile|runCommandAsync|runCommandWithStdoutPipe|runCommandExt|getCommandOutput)$
-        msg: 'Use of generic command wrappers is discouraged. If used, ensure input is validated and add // #nosec G204'
+      - p: ^exec\.Command$
+        msg: 'Use of direct exec.Command is forbidden. Use secure wrappers in cmd/devtool/exec.go instead.'
 
   # Import organization
   gci:
@@ -143,6 +143,11 @@ issues:
         - gocyclo
         - funlen
         - goconst
+
+    - path: cmd/devtool/exec\.go
+      linters:
+        - forbidigo
+      text: 'Use of direct exec\.Command is forbidden'
 
     # Exclude all linters from migrations (schema-only SQL)
     - path: migrations/

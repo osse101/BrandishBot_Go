@@ -64,7 +64,6 @@ func (c *TestCommand) Run(args []string) error {
 		testArgs = append(testArgs, "-race")
 	}
 
-	// nolint:forbidigo
 	stdoutPipe, cmd, err := runCommandWithStdoutPipe("go", testArgs...)
 	if err != nil {
 		return fmt.Errorf("failed to start tests: %w", err)

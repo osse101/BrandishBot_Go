@@ -97,7 +97,7 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 		"-f", "Dockerfile",
 		".",
 	}
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", buildArgs...); err != nil { // #nosec G204
 		return fmt.Errorf("docker build failed: %w", err)
 	}
@@ -106,10 +106,10 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 	// Step 4: Deploy new containers
 	PrintInfo("Step 4/7: Deploying new containers")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		PrintError("Deployment failed, attempting rollback...")
-		//nolint:forbidigo
+
 		_ = runCommand("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord") // #nosec G204
 		return fmt.Errorf("deployment failed: %w", err)
 	}
@@ -144,16 +144,15 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 
 func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 1. Docker Login
-	//nolint:forbidigo
+
 	isLoggedIn := func() bool {
-		//nolint:forbidigo
 		out, _ := getCommandOutput("docker", "system", "info")
 		return strings.Contains(out, "Username")
 	}
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "system", "info"); err != nil || !isLoggedIn() {
 		PrintWarning("Not logged in. Attempting docker login...")
-		//nolint:forbidigo
+
 		if err := runCommandVerbose("docker", "login"); err != nil {
 			return fmt.Errorf("docker login failed: %w", err)
 		}
@@ -162,19 +161,19 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 2. Pull images
 	PrintInfo("Pulling images...")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "pull", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to pull images: %w", err)
 	}
 
 	// 3. Restart services
 	PrintInfo("Starting services...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start database: %w", err)
 	}
 	time.Sleep(2 * time.Second)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start services: %w", err)
 	}
@@ -182,7 +181,7 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 
 	// 4. Prune old images
 	PrintInfo("Cleaning up old images...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "image", "prune", "-f"); err != nil {
 		PrintWarning("Failed to prune old images: %v", err)
 	}
@@ -205,7 +204,6 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 func (c *DeployCommand) announceRelease(version string) {
 	PrintInfo("Generating release notes for version %s...", version)
 
-	//nolint:forbidigo
 	lastTag, err := getCommandOutput("git", "describe", "--tags", "--abbrev=0")
 	rangeSpec := "HEAD~5..HEAD"
 	title := fmt.Sprintf("Deployment Update (%s)", version)
@@ -215,7 +213,6 @@ func (c *DeployCommand) announceRelease(version string) {
 		title = fmt.Sprintf("Deployment Update (%s -> HEAD)", lastTag)
 	}
 
-	//nolint:forbidigo
 	notes, _ := getCommandOutput("git", "log", "--pretty=format:• %s (%an)", rangeSpec, "-n", "20") // #nosec G204
 	if notes == "" {
 		notes = "No new commits in this deployment."
@@ -293,7 +290,7 @@ func backupDatabase(env, composeFile string) error {
 	}
 	// Ensure DB is running before backup
 	PrintInfo("Ensuring database service is running...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil {
 		return fmt.Errorf("failed to start database service: %w", err)
 	}
@@ -309,7 +306,7 @@ func backupDatabase(env, composeFile string) error {
 	defer outfile.Close()
 
 	// Use docker compose exec which is more robust than finding IDs
-	// nolint:forbidigo
+
 	if err := runCommandToFile(outfile, "docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName); err != nil {
 		return fmt.Errorf("pg_dump failed: %w", err)
 	}
@@ -369,14 +366,14 @@ func cleanupOldImages(imageName string) {
 	}
 
 	// 1. Get tags for the image, excluding 'latest'
-	//nolint:forbidigo // G204: imageName is validated above
+	// G204: imageName is validated above
 	out, err := getCommandOutput("docker", "images", imageName, "--format", "{{.Tag}}")
 	if err != nil {
 		PrintWarning("Failed to list Docker images for cleanup: %v", err)
 		return
 	}
 
-	tags := strings.Split(strings.TrimSpace(string(out)), "\n")
+	tags := strings.Split(strings.TrimSpace(out), "\n")
 	var oldTags []string
 	for _, tag := range tags {
 		if tag != "" && !strings.Contains(tag, "latest") {
@@ -393,8 +390,6 @@ func cleanupOldImages(imageName string) {
 	PrintInfo("Removing %d old images for %s...", len(tagsToRemove), imageName)
 
 	for _, tag := range tagsToRemove {
-		//nolint:gosec // G204: imageName and tag are safe
-		//nolint:forbidigo
 		if err := runCommand("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)); err != nil {
 			PrintWarning("Failed to remove image %s:%s: %v", imageName, tag, err)
 		}

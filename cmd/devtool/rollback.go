@@ -83,7 +83,6 @@ func (c *RollbackCommand) promptForVersion() (string, error) {
 		return "", fmt.Errorf("invalid app name constant")
 	}
 
-	// nolint:forbidigo
 	out, err := getCommandOutput("docker", "images", appName, "--format", "table {{.Tag}}\t{{.CreatedAt}}")
 	if err != nil {
 		PrintWarning("Failed to list images: %v", err)
@@ -111,7 +110,6 @@ func (c *RollbackCommand) promptForVersion() (string, error) {
 }
 
 func (c *RollbackCommand) verifyImageExists(version string) error {
-	//nolint:forbidigo
 	out, err := getCommandOutput("docker", "images", fmt.Sprintf("%s:%s", appName, version), "--format", "{{.Tag}}") // #nosec G204
 	if err != nil || out == "" {
 		PrintError("Docker image %s:%s not found", appName, version)
@@ -136,7 +134,7 @@ func (c *RollbackCommand) confirmProductionRollback(version string) error {
 func (c *RollbackCommand) executeRollback(env, version, composeFile string) error {
 	// Step 1: Stop current containers
 	PrintInfo("Step 1/3: Stopping current containers")
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "stop", "app", "discord"); err != nil { // #nosec G204
 		PrintWarning("Failed to stop containers cleanly: %v", err)
 	}
@@ -144,7 +142,7 @@ func (c *RollbackCommand) executeRollback(env, version, composeFile string) erro
 	// Step 2: Rollback
 	PrintInfo("Step 2/3: Rolling back to version %s", version)
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("rollback failed: %w", err)
 	}
@@ -239,7 +237,7 @@ func (c *RollbackCommand) restoreDatabase(backupFile, composeFile string) error 
 	}
 
 	PrintInfo("Restoring database from %s...", backupFile)
-	//nolint:forbidigo
+
 	dbContainerID, _ := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db") // #nosec G204
 	if dbContainerID == "" {
 		PrintError("Database container not running")
@@ -263,7 +261,6 @@ func (c *RollbackCommand) restoreDatabase(backupFile, composeFile string) error 
 	}
 	defer f.Close()
 
-	// nolint:forbidigo
 	if err := runCommandWithStdin(f, "docker", "exec", "-i", dbContainerID, "psql", "-U", appName, "-d", appName); err != nil {
 		PrintError("Database restore failed: %v", err)
 		return err
