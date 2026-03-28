@@ -346,6 +346,11 @@ func (h *EventHandler) HandleEngagement(ctx context.Context, evt event.Event) er
 		return nil
 	}
 
+	// Skip if NOT recorded by the progression service to ensure we only award XP once
+	if recorded, ok := evt.GetMetadataValue(domain.MetadataKeyRecorded).(bool); !ok || !recorded {
+		return nil
+	}
+
 	result, err := h.service.AwardXP(ctx, metric.UserID, JobKeyScholar, ScholarXPPerEngagement, SourceEngagement, domain.JobXPMetadata{
 		Source:     SourceEngagement,
 		MetricType: metric.MetricType,
