@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,21 +95,20 @@ func TestAddTimeout_Concurrency(t *testing.T) {
 	ctx := context.Background()
 
 	// Try to add many timeouts concurrently to check for map panics
-	done := make(chan bool)
+	var wg sync.WaitGroup
 	concurrency := 50
+	wg.Add(concurrency)
 
 	for i := 0; i < concurrency; i++ {
 		go func() {
+			defer wg.Done()
 			_ = svc.AddTimeout(ctx, domain.PlatformTwitch, "concurrent_user", 100*time.Millisecond, "concurrent")
 			_, _ = svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
 			_ = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user", 50*time.Millisecond)
-			done <- true
 		}()
 	}
 
-	for i := 0; i < concurrency; i++ {
-		<-done
-	}
+	wg.Wait()
 
 	// Simply surviving without panic proves thread-safety
 	timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "concurrent_user")
@@ -132,70 +132,127 @@ func TestTimeoutUser(t *testing.T) {
 }
 
 func TestClearTimeout(t *testing.T) {
-	t.Run("Best Case - Clear Existing Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+	tests := []struct {
+		name           string
+		initialTimeout time.Duration
+		userToClear    string
+	}{
+		{
+			name:           "Best Case - Clear Existing Timeout",
+			initialTimeout: 10 * time.Second,
+			userToClear:    "eve",
+		},
+		{
+			name:           "Invalid Case - Clear Non-existent Timeout",
+			initialTimeout: 0,
+			userToClear:    "frank",
+		},
+	}
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "eve", 10*time.Second, "To be cleared")
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := setupTimeoutService()
+			ctx := context.Background()
 
-		err = svc.ClearTimeout(ctx, domain.PlatformTwitch, "eve")
-		require.NoError(t, err)
+			if tt.initialTimeout > 0 {
+				err := svc.AddTimeout(ctx, domain.PlatformTwitch, tt.userToClear, tt.initialTimeout, "To be cleared")
+				require.NoError(t, err)
+			}
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "eve")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
+			err := svc.ClearTimeout(ctx, domain.PlatformTwitch, tt.userToClear)
+			require.NoError(t, err)
 
-	t.Run("Invalid Case - Clear Non-existent Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+			timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, tt.userToClear)
+			require.NoError(t, err)
+			assert.Equal(t, time.Duration(0), timeout)
+		})
+	}
+}
 
-		// Should not error, just return early
-		err := svc.ClearTimeout(ctx, domain.PlatformTwitch, "frank")
-		require.NoError(t, err)
+func TestClearTimeout_Concurrency(t *testing.T) {
+	svc := setupTimeoutService()
+	ctx := context.Background()
+	username := "clear_concurrent_user"
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "frank")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
+	err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, 100*time.Hour, "Initial")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	concurrency := 50
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			_ = svc.ClearTimeout(ctx, domain.PlatformTwitch, username)
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify the final timeout is correctly cleared and didn't panic
+	timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(0), timeout)
 }
 
 func TestGetTimeout(t *testing.T) {
-	t.Run("Best Case - Get Active Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+	tests := []struct {
+		name             string
+		initialPlatform  string
+		initialTimeout   time.Duration
+		queryPlatform    string
+		queryUser        string
+		expectedMinDur   time.Duration
+		expectedMaxDur   time.Duration
+		expectedDurExact time.Duration
+	}{
+		{
+			name:            "Best Case - Get Active Timeout",
+			initialPlatform: domain.PlatformDiscord,
+			initialTimeout:  10 * time.Second,
+			queryPlatform:   domain.PlatformDiscord,
+			queryUser:       "grace",
+			expectedMinDur:  9 * time.Second,
+			expectedMaxDur:  10 * time.Second,
+		},
+		{
+			name:             "Edge Case - Cross Platform Isolation",
+			initialPlatform:  domain.PlatformTwitch,
+			initialTimeout:   10 * time.Second,
+			queryPlatform:    domain.PlatformDiscord,
+			queryUser:        "heidi",
+			expectedDurExact: 0,
+		},
+		{
+			name:             "Boundary Case - No Timeout",
+			queryPlatform:    domain.PlatformTwitch,
+			queryUser:        "ivan",
+			expectedDurExact: 0,
+		},
+	}
 
-		err := svc.AddTimeout(ctx, domain.PlatformDiscord, "grace", 10*time.Second, "Discord timeout")
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := setupTimeoutService()
+			ctx := context.Background()
 
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformDiscord, "grace")
-		require.NoError(t, err)
-		assert.Greater(t, timeout, time.Duration(0))
-		assert.LessOrEqual(t, timeout, 10*time.Second)
-	})
+			if tt.initialTimeout > 0 {
+				err := svc.AddTimeout(ctx, tt.initialPlatform, tt.queryUser, tt.initialTimeout, "Test timeout")
+				require.NoError(t, err)
+			}
 
-	t.Run("Edge Case - Cross Platform Isolation", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
+			timeout, err := svc.GetTimeoutPlatform(ctx, tt.queryPlatform, tt.queryUser)
+			require.NoError(t, err)
 
-		err := svc.AddTimeout(ctx, domain.PlatformTwitch, "heidi", 10*time.Second, "Twitch timeout")
-		require.NoError(t, err)
-
-		// Check Discord platform for same user - should be 0
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformDiscord, "heidi")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
-
-	t.Run("Boundary Case - No Timeout", func(t *testing.T) {
-		svc := setupTimeoutService()
-		ctx := context.Background()
-
-		timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, "ivan")
-		require.NoError(t, err)
-		assert.Equal(t, time.Duration(0), timeout)
-	})
+			if tt.expectedDurExact == 0 && tt.expectedMaxDur > 0 {
+				assert.GreaterOrEqual(t, timeout, tt.expectedMinDur)
+				assert.LessOrEqual(t, timeout, tt.expectedMaxDur)
+			} else {
+				assert.Equal(t, tt.expectedDurExact, timeout)
+			}
+		})
+	}
 }
 
 func TestReduceTimeout(t *testing.T) {
@@ -282,6 +339,34 @@ func TestReduceTimeout(t *testing.T) {
 		assert.Greater(t, timeout, time.Duration(0))
 		assert.LessOrEqual(t, timeout, 5*time.Second)
 	})
+}
+
+func TestReduceTimeout_Concurrency(t *testing.T) {
+	svc := setupTimeoutService()
+	ctx := context.Background()
+	username := "reduce_concurrent_user"
+
+	// Give the user a massive timeout so reducing it won't drop it to 0 before we finish
+	err := svc.AddTimeout(ctx, domain.PlatformTwitch, username, 100*time.Hour, "Initial")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	concurrency := 50
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			_ = svc.ReduceTimeoutPlatform(ctx, domain.PlatformTwitch, username, 1*time.Second)
+		}()
+	}
+
+	wg.Wait()
+
+	// Verify the final timeout is correctly decremented and didn't panic
+	timeout, err := svc.GetTimeoutPlatform(ctx, domain.PlatformTwitch, username)
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, timeout, 99*time.Hour)
 }
 
 func TestHandleBlaster_Timeout(t *testing.T) {
