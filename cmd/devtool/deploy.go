@@ -382,7 +382,6 @@ func cleanupOldImages(imageName string) {
 	}
 
 	// 1. Get tags for the image, excluding 'latest'
-	// nolint:gosec // G204: imageName is validated above
 	out, err := exec.Command("docker", "images", imageName, "--format", "{{.Tag}}").Output()
 	if err != nil {
 		PrintWarning("Failed to list Docker images for cleanup: %v", err)
@@ -406,8 +405,7 @@ func cleanupOldImages(imageName string) {
 	PrintInfo("Removing %d old images for %s...", len(tagsToRemove), imageName)
 
 	for _, tag := range tagsToRemove {
-		// nolint:gosec // G204: imageName and tag are safe
-		if err := exec.Command("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)).Run(); err != nil {
+		if err := exec.Command("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)).Run(); err != nil { //nolint:gosec // G204: imageName and tag are safe
 			PrintWarning("Failed to remove image %s:%s: %v", imageName, tag, err)
 		}
 	}
