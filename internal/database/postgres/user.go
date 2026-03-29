@@ -104,39 +104,8 @@ func (r *UserRepository) UpsertUser(ctx context.Context, user *domain.User) erro
 		}
 	}
 
-	platforms := map[string]string{
-		domain.PlatformTwitch:  user.TwitchID,
-		domain.PlatformYoutube: user.YoutubeID,
-		domain.PlatformDiscord: user.DiscordID,
-	}
-
-	for platformName, externalID := range platforms {
-		if externalID == "" {
-			continue
-		}
-
-		platformID, err := q.GetPlatformID(ctx, platformName)
-		if err != nil {
-			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
-		}
-
-		platformUsername := ""
-		if user.PlatformUsernames != nil {
-			platformUsername = user.PlatformUsernames[platformName]
-		}
-
-		err = q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
-			UserID:         userUUID,
-			PlatformID:     platformID,
-			PlatformUserID: externalID,
-			PlatformUsername: pgtype.Text{
-				String: platformUsername,
-				Valid:  platformUsername != "",
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("failed to upsert link for %s: %w", platformName, err)
-		}
+	if err := upsertUserPlatformLinks(ctx, q, user, userUUID); err != nil {
+		return err
 	}
 
 	// Ensure inventory row exists to allow row-level locking
@@ -159,7 +128,7 @@ func (r *UserRepository) GetUserByPlatformID(ctx context.Context, platform, plat
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrUserNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, platformID)
 		}
 		return nil, fmt.Errorf("failed to get user core data: %w", err)
 	}
@@ -175,7 +144,7 @@ func (r *UserRepository) GetUserByPlatformUsername(ctx context.Context, platform
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrUserNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrUserNotFound, username)
 		}
 		return nil, fmt.Errorf("failed to get user by username: %w", err)
 	}
@@ -203,7 +172,7 @@ func (r *UserRepository) GetItemByPublicName(ctx context.Context, publicName str
 	row, err := r.q.GetItemByPublicName(ctx, pgtype.Text{String: publicName, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrItemNotFound
+			return nil, fmt.Errorf("%w: %s", domain.ErrItemNotFound, publicName)
 		}
 		return nil, fmt.Errorf("failed to get item by public name: %w", err)
 	}
@@ -358,6 +327,44 @@ func (r *UserRepository) UpdateCooldownTx(ctx context.Context, tx pgx.Tx, userID
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update cooldown: %w", err)
+	}
+	return nil
+}
+
+func upsertUserPlatformLinks(ctx context.Context, q *generated.Queries, user *domain.User, userUUID uuid.UUID) error {
+	platforms := map[string]string{
+		domain.PlatformTwitch:  user.TwitchID,
+		domain.PlatformYoutube: user.YoutubeID,
+		domain.PlatformDiscord: user.DiscordID,
+	}
+
+	for platformName, externalID := range platforms {
+		if externalID == "" {
+			continue
+		}
+
+		platformID, err := q.GetPlatformID(ctx, platformName)
+		if err != nil {
+			return fmt.Errorf("failed to get platform id for %s: %w", platformName, err)
+		}
+
+		platformUsername := ""
+		if user.PlatformUsernames != nil {
+			platformUsername = user.PlatformUsernames[platformName]
+		}
+
+		err = q.UpsertUserPlatformLink(ctx, generated.UpsertUserPlatformLinkParams{
+			UserID:         userUUID,
+			PlatformID:     platformID,
+			PlatformUserID: externalID,
+			PlatformUsername: pgtype.Text{
+				String: platformUsername,
+				Valid:  platformUsername != "",
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert link for %s: %w", platformName, err)
+		}
 	}
 	return nil
 }

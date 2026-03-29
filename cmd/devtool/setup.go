@@ -53,7 +53,7 @@ func (c *SetupCommand) Run(args []string) error {
 
 	// 5. Generate Code
 	PrintInfo("Step 5/6: Generating code...")
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("make", "generate"); err != nil {
 		return fmt.Errorf("code generation failed: %w", err)
 	}

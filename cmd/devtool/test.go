@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -65,17 +64,11 @@ func (c *TestCommand) Run(args []string) error {
 		testArgs = append(testArgs, "-race")
 	}
 
-	cmd := exec.Command("go", testArgs...)
-
-	stdoutPipe, err := cmd.StdoutPipe()
+	stdoutPipe, cmd, err := runCommandWithStdoutPipe("go", testArgs...)
 	if err != nil {
-		return fmt.Errorf("failed to get stdout pipe: %w", err)
-	}
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start tests: %w", err)
 	}
+	cmd.Stderr = os.Stderr
 
 	scanner := bufio.NewScanner(stdoutPipe)
 	buf := make([]byte, 0, 64*1024)

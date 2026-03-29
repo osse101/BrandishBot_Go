@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -84,12 +83,17 @@ func (c *RollbackCommand) promptForVersion() (string, error) {
 		return "", fmt.Errorf("invalid app name constant")
 	}
 
-	//nolint:gosec // G204: appName is validated above
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker images %s --format \"table {{.Tag}}\t{{.CreatedAt}}\" | head -n 11", appName))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	out, err := getCommandOutput("docker", "images", appName, "--format", "table {{.Tag}}\t{{.CreatedAt}}")
+	if err != nil {
 		PrintWarning("Failed to list images: %v", err)
+	} else {
+		lines := strings.Split(out, "\n")
+		for i, line := range lines {
+			if i >= 11 {
+				break
+			}
+			fmt.Println(line)
+		}
 	}
 
 	fmt.Println()
@@ -106,7 +110,6 @@ func (c *RollbackCommand) promptForVersion() (string, error) {
 }
 
 func (c *RollbackCommand) verifyImageExists(version string) error {
-	//nolint:forbidigo
 	out, err := getCommandOutput("docker", "images", fmt.Sprintf("%s:%s", appName, version), "--format", "{{.Tag}}") // #nosec G204
 	if err != nil || out == "" {
 		PrintError("Docker image %s:%s not found", appName, version)
@@ -131,7 +134,7 @@ func (c *RollbackCommand) confirmProductionRollback(version string) error {
 func (c *RollbackCommand) executeRollback(env, version, composeFile string) error {
 	// Step 1: Stop current containers
 	PrintInfo("Step 1/3: Stopping current containers")
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "stop", "app", "discord"); err != nil { // #nosec G204
 		PrintWarning("Failed to stop containers cleanly: %v", err)
 	}
@@ -139,7 +142,7 @@ func (c *RollbackCommand) executeRollback(env, version, composeFile string) erro
 	// Step 2: Rollback
 	PrintInfo("Step 2/3: Rolling back to version %s", version)
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("rollback failed: %w", err)
 	}
@@ -165,11 +168,26 @@ func (c *RollbackCommand) handleDatabaseRestore(env, composeFile string) error {
 		return fmt.Errorf("invalid environment for database restore")
 	}
 
-	//nolint:gosec // G204: env is validated above against constants
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("ls -lth backups/backup_%s_*.sql 2>/dev/null | head -n 5 || echo 'No backups found'", env))
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
+	files, err := os.ReadDir("backups")
+	if err != nil {
 		PrintWarning("Failed to list backups: %v", err)
+	} else {
+		count := 0
+		for _, f := range files {
+			if count >= 5 {
+				break
+			}
+			if !f.IsDir() && strings.HasPrefix(f.Name(), fmt.Sprintf("backup_%s_", env)) && strings.HasSuffix(f.Name(), ".sql") {
+				info, err := f.Info()
+				if err == nil {
+					fmt.Printf("%s\t%s\t%s\n", info.Mode(), info.ModTime().Format(time.RFC822), f.Name())
+					count++
+				}
+			}
+		}
+		if count == 0 {
+			fmt.Println("No backups found")
+		}
 	}
 
 	fmt.Println()
@@ -219,7 +237,7 @@ func (c *RollbackCommand) restoreDatabase(backupFile, composeFile string) error 
 	}
 
 	PrintInfo("Restoring database from %s...", backupFile)
-	//nolint:forbidigo
+
 	dbContainerID, _ := getCommandOutput("docker", "compose", "-f", composeFile, "ps", "-q", "db") // #nosec G204
 	if dbContainerID == "" {
 		PrintError("Database container not running")
@@ -236,11 +254,14 @@ func (c *RollbackCommand) restoreDatabase(backupFile, composeFile string) error 
 		return nil
 	}
 
-	//nolint:gosec // G204: all parameters are validated above
-	restoreCmd := exec.Command("sh", "-c", fmt.Sprintf("docker exec -i %s psql -U %s -d %s < %s", dbContainerID, appName, appName, backupFile))
-	restoreCmd.Stdout = os.Stdout
-	restoreCmd.Stderr = os.Stderr
-	if err := restoreCmd.Run(); err != nil {
+	f, err := os.Open(backupFile)
+	if err != nil {
+		PrintError("Failed to open backup file: %v", err)
+		return err
+	}
+	defer f.Close()
+
+	if err := runCommandWithStdin(f, "docker", "exec", "-i", dbContainerID, "psql", "-U", appName, "-d", appName); err != nil {
 		PrintError("Database restore failed: %v", err)
 		return err
 	}

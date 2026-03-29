@@ -1,3 +1,5 @@
 Gamble start and join is complicated
 Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
+Junkboxes show money items with different flavour names when they should be merged under 1 name first.
+Bomb usage message is outdated.

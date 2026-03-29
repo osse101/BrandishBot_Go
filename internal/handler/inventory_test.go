@@ -18,6 +18,8 @@ import (
 )
 
 func TestHandleAddItem(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -110,7 +112,10 @@ func TestHandleAddItem(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
@@ -137,6 +142,8 @@ func TestHandleAddItem(t *testing.T) {
 }
 
 func TestHandleRemoveItem(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name           string
 		requestBody    interface{}
@@ -207,7 +214,10 @@ func TestHandleRemoveItem(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
@@ -234,6 +244,8 @@ func TestHandleRemoveItem(t *testing.T) {
 }
 
 func TestHandleGetInventory(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		username         string
@@ -429,7 +441,10 @@ func TestHandleGetInventory(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockUser := mocks.NewMockUserService(t)
 			mockProg := mocks.NewMockProgressionService(t)
 			tt.setupMock(mockUser, mockProg)
@@ -475,6 +490,8 @@ func TestHandleGetInventory(t *testing.T) {
 }
 
 func TestHandleGetInventoryByUsername(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name             string
 		username         string
@@ -567,7 +584,10 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockUser := mocks.NewMockUserService(t)
 			mockProg := mocks.NewMockProgressionService(t)
 			tt.setupMock(mockUser, mockProg)

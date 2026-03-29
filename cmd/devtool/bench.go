@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -45,7 +44,7 @@ func (c *BenchCommand) Run(args []string) error {
 
 func (c *BenchCommand) runAll() error {
 	PrintHeader("Running all benchmarks...")
-	//nolint:forbidigo
+
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
 }
 
@@ -63,7 +62,7 @@ func (c *BenchCommand) runHot() error {
 
 	fmt.Println("  → Utils: Inventory operations (existing)")
 	// This one shouldn't fail silently as it catches all in utils
-	//nolint:forbidigo
+
 	return runCommandVerbose("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./internal/utils")
 }
 
@@ -78,11 +77,7 @@ func (c *BenchCommand) runBenchOrWarn(dir, pattern string) {
 		return
 	}
 
-	//nolint:gosec // G204: pattern and dir are validated above
-	cmd := exec.Command("go", "test", "-bench="+pattern, "-benchmem", "-benchtime=2s", dir)
-	cmd.Stdout = os.Stdout
-	// Stderr is discarded to match Makefile's 2>/dev/null
-	if err := cmd.Run(); err != nil {
+	if err := runCommandExt(nil, os.Stdout, nil, "go", "test", "-bench="+pattern, "-benchmem", "-benchtime=2s", dir); err != nil {
 		fmt.Println("    (benchmark not yet implemented)")
 	}
 }
@@ -111,11 +106,7 @@ func (c *BenchCommand) runAndSave(filename string) error {
 	// We want to write to both stdout and file
 	mw := io.MultiWriter(os.Stdout, f)
 
-	cmd := exec.Command("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
-	cmd.Stdout = mw
-	cmd.Stderr = mw // preserve stderr and save to file
-
-	if err := cmd.Run(); err != nil {
+	if err := runCommandExt(nil, mw, mw, "go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./..."); err != nil {
 		return fmt.Errorf("benchmark execution failed: %w", err)
 	}
 
@@ -142,19 +133,13 @@ func (c *BenchCommand) compare() error {
 	}
 	defer f.Close()
 
-	cmd := exec.Command("go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
-	cmd.Stdout = f
-	cmd.Stderr = f // redirect stderr too, as per Makefile logic
-
-	_ = cmd.Run() // Ignore error as we want to compare even if some fail
-	f.Close()     // Close before reading
+	_ = runCommandToFile(f, "go", "test", "-bench=.", "-benchmem", "-benchtime=2s", "./...")
+	f.Close() // Close before reading
 
 	// Check benchstat
-	if _, err := exec.LookPath("benchstat"); err == nil {
-		cmdStat := exec.Command("benchstat", "benchmarks/results/baseline.txt", currentPath)
-		cmdStat.Stdout = os.Stdout
-		cmdStat.Stderr = os.Stderr
-		return cmdStat.Run()
+
+	if err := runCommandVerbose("benchstat", "benchmarks/results/baseline.txt", currentPath); err == nil {
+		return nil
 	}
 
 	PrintWarning("benchstat not installed. Install with: go install golang.org/x/perf/cmd/benchstat@latest")
@@ -197,20 +182,20 @@ func (c *BenchCommand) profile() error {
 
 	fmt.Println("  → CPU profile (if benchmark exists)...")
 	// Try Handler
-	cmd1 := exec.Command("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/handler")
-	if err := cmd1.Run(); err != nil {
+
+	if err := runCommand("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/handler"); err != nil {
 		// Try Utils
-		cmd2 := exec.Command("go", "test", "-bench=BenchmarkAddItems", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/utils")
-		_ = cmd2.Run()
+
+		_ = runCommand("go", "test", "-bench=BenchmarkAddItems", "-cpuprofile=benchmarks/profiles/cpu.prof", "./internal/utils")
 	}
 
 	fmt.Println("  → Memory profile (if benchmark exists)...")
 	// Try Handler
-	cmd3 := exec.Command("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/handler")
-	if err := cmd3.Run(); err != nil {
+
+	if err := runCommand("go", "test", "-bench=BenchmarkHandler_HandleMessage", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/handler"); err != nil {
 		// Try Utils
-		cmd4 := exec.Command("go", "test", "-bench=BenchmarkAddItems", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/utils")
-		_ = cmd4.Run()
+
+		_ = runCommand("go", "test", "-bench=BenchmarkAddItems", "-memprofile=benchmarks/profiles/mem.prof", "-benchmem", "./internal/utils")
 	}
 
 	PrintSuccess("Profiles saved to benchmarks/profiles/")

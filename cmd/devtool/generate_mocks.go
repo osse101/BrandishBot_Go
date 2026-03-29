@@ -36,7 +36,6 @@ func (c *GenerateMocksCommand) Run(args []string) error {
 
 	PrintHeader("Generating mocks...")
 
-	//nolint:forbidigo
 	if err := runCommand("go", "run", "github.com/vektra/mockery/v2"); err != nil {
 		PrintError("Failed to generate mocks: %v", err)
 		return fmt.Errorf("mockery failed: %w", err)

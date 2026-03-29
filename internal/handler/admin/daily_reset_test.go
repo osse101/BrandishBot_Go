@@ -34,7 +34,7 @@ func TestHandleManualReset(t *testing.T) {
 		verifyBody     func(t *testing.T, body map[string]interface{})
 	}{
 		{
-			name: "Success",
+			name: "Best Case - Success",
 			setupMock: func(svc *mocks.MockJobService) {
 				svc.On("ResetDailyJobXP", mock.Anything).Return(int64(10), nil)
 			},
@@ -46,7 +46,19 @@ func TestHandleManualReset(t *testing.T) {
 			},
 		},
 		{
-			name: "ServiceError",
+			name: "Boundary Case - 0 Records Affected",
+			setupMock: func(svc *mocks.MockJobService) {
+				svc.On("ResetDailyJobXP", mock.Anything).Return(int64(0), nil)
+			},
+			expectedStatus: http.StatusOK,
+			verifyBody: func(t *testing.T, body map[string]interface{}) {
+				assert.Equal(t, true, body["success"])
+				assert.Equal(t, float64(0), body["records_affected"])
+				assert.Equal(t, "Daily XP reset completed", body["message"])
+			},
+		},
+		{
+			name: "Invalid Case - Service Error",
 			setupMock: func(svc *mocks.MockJobService) {
 				svc.On("ResetDailyJobXP", mock.Anything).Return(int64(0), errors.New("database error"))
 			},
@@ -95,10 +107,10 @@ func TestHandleGetResetStatus(t *testing.T) {
 		name           string
 		setupMock      func(*mocks.MockJobService)
 		expectedStatus int
-		verifyBody     func(t *testing.T, body map[string]interface{})
+		verifyBody     func(t *testing.T, respBytes []byte)
 	}{
 		{
-			name: "Success",
+			name: "Best Case - Success",
 			setupMock: func(svc *mocks.MockJobService) {
 				expectedStatus := &domain.DailyResetStatus{
 					LastResetTime:   fixedTime.Add(-1 * time.Hour),
@@ -108,22 +120,48 @@ func TestHandleGetResetStatus(t *testing.T) {
 				svc.On("GetDailyResetStatus", mock.Anything).Return(expectedStatus, nil)
 			},
 			expectedStatus: http.StatusOK,
-			verifyBody: func(t *testing.T, body map[string]interface{}) {
-				// Check that fields exist. Exact time parsing might be tricky due to float64 vs string
-				// depending on how it's marshaled, but usually time.Time marshals to RFC3339 string.
-				assert.NotEmpty(t, body["last_reset_time"])
-				assert.NotEmpty(t, body["next_reset_time"])
-				assert.Equal(t, float64(5), body["records_affected"])
+			verifyBody: func(t *testing.T, respBytes []byte) {
+				var status domain.DailyResetStatus
+				err := json.Unmarshal(respBytes, &status)
+				require.NoError(t, err)
+
+				assert.Equal(t, fixedTime.Add(-1*time.Hour).UTC(), status.LastResetTime.UTC())
+				assert.Equal(t, fixedTime.Add(23*time.Hour).UTC(), status.NextResetTime.UTC())
+				assert.Equal(t, int64(5), status.RecordsAffected)
 			},
 		},
 		{
-			name: "ServiceError",
+			name: "Boundary Case - Zero Time",
+			setupMock: func(svc *mocks.MockJobService) {
+				expectedStatus := &domain.DailyResetStatus{
+					LastResetTime:   time.Time{},
+					NextResetTime:   fixedTime,
+					RecordsAffected: 0,
+				}
+				svc.On("GetDailyResetStatus", mock.Anything).Return(expectedStatus, nil)
+			},
+			expectedStatus: http.StatusOK,
+			verifyBody: func(t *testing.T, respBytes []byte) {
+				var status domain.DailyResetStatus
+				err := json.Unmarshal(respBytes, &status)
+				require.NoError(t, err)
+
+				assert.True(t, status.LastResetTime.IsZero())
+				assert.Equal(t, fixedTime.UTC(), status.NextResetTime.UTC())
+				assert.Equal(t, int64(0), status.RecordsAffected)
+			},
+		},
+		{
+			name: "Invalid Case - Service Error",
 			setupMock: func(svc *mocks.MockJobService) {
 				svc.On("GetDailyResetStatus", mock.Anything).Return(nil, errors.New("database error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			verifyBody: func(t *testing.T, body map[string]interface{}) {
-				assert.Contains(t, body["error"], "Failed to get reset status")
+			verifyBody: func(t *testing.T, respBytes []byte) {
+				var errorResp map[string]interface{}
+				err := json.Unmarshal(respBytes, &errorResp)
+				require.NoError(t, err)
+				assert.Contains(t, errorResp["error"], "Failed to get reset status")
 			},
 		},
 	}
@@ -146,12 +184,8 @@ func TestHandleGetResetStatus(t *testing.T) {
 			resp := w.Result()
 			assert.Equal(t, tc.expectedStatus, resp.StatusCode)
 
-			var body map[string]interface{}
-			err := json.NewDecoder(w.Body).Decode(&body)
-			require.NoError(t, err)
-
 			if tc.verifyBody != nil {
-				tc.verifyBody(t, body)
+				tc.verifyBody(t, w.Body.Bytes())
 			}
 		})
 	}

@@ -1,12 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -101,7 +97,7 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 		"-f", "Dockerfile",
 		".",
 	}
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", buildArgs...); err != nil { // #nosec G204
 		return fmt.Errorf("docker build failed: %w", err)
 	}
@@ -110,10 +106,10 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 	// Step 4: Deploy new containers
 	PrintInfo("Step 4/7: Deploying new containers")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		PrintError("Deployment failed, attempting rollback...")
-		//nolint:forbidigo
+
 		_ = runCommand("docker", "compose", "-f", composeFile, "up", "-d", "--no-deps", "app", "discord") // #nosec G204
 		return fmt.Errorf("deployment failed: %w", err)
 	}
@@ -148,16 +144,15 @@ func (c *DeployCommand) deployLocal(env, version, composeFile string) error {
 
 func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 1. Docker Login
-	//nolint:forbidigo
+
 	isLoggedIn := func() bool {
-		//nolint:forbidigo
 		out, _ := getCommandOutput("docker", "system", "info")
 		return strings.Contains(out, "Username")
 	}
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "system", "info"); err != nil || !isLoggedIn() {
 		PrintWarning("Not logged in. Attempting docker login...")
-		//nolint:forbidigo
+
 		if err := runCommandVerbose("docker", "login"); err != nil {
 			return fmt.Errorf("docker login failed: %w", err)
 		}
@@ -166,19 +161,19 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 	// 2. Pull images
 	PrintInfo("Pulling images...")
 	os.Setenv("DOCKER_IMAGE_TAG", version)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "pull", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to pull images: %w", err)
 	}
 
 	// 3. Restart services
 	PrintInfo("Starting services...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start database: %w", err)
 	}
 	time.Sleep(2 * time.Second)
-	//nolint:forbidigo
+
 	if err := runCommandVerbose("docker", "compose", "-f", composeFile, "up", "-d", "app", "discord"); err != nil { // #nosec G204
 		return fmt.Errorf("failed to start services: %w", err)
 	}
@@ -186,7 +181,7 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 
 	// 4. Prune old images
 	PrintInfo("Cleaning up old images...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "image", "prune", "-f"); err != nil {
 		PrintWarning("Failed to prune old images: %v", err)
 	}
@@ -209,7 +204,6 @@ func (c *DeployCommand) deployRemote(env, version, composeFile string) error {
 func (c *DeployCommand) announceRelease(version string) {
 	PrintInfo("Generating release notes for version %s...", version)
 
-	//nolint:forbidigo
 	lastTag, err := getCommandOutput("git", "describe", "--tags", "--abbrev=0")
 	rangeSpec := "HEAD~5..HEAD"
 	title := fmt.Sprintf("Deployment Update (%s)", version)
@@ -219,7 +213,6 @@ func (c *DeployCommand) announceRelease(version string) {
 		title = fmt.Sprintf("Deployment Update (%s -> HEAD)", lastTag)
 	}
 
-	//nolint:forbidigo
 	notes, _ := getCommandOutput("git", "log", "--pretty=format:• %s (%an)", rangeSpec, "-n", "20") // #nosec G204
 	if notes == "" {
 		notes = "No new commits in this deployment."
@@ -230,21 +223,18 @@ func (c *DeployCommand) announceRelease(version string) {
 		"description": notes,
 		"color":       65280,
 	}
-	jsonPayload, _ := json.Marshal(payload)
 
-	discordURL := "http://localhost:8082/admin/announce"
-	resp, err := http.Post(discordURL, "application/json", bytes.NewBuffer(jsonPayload))
-	if err != nil {
+	discordURL := os.Getenv("DISCORD_ANNOUNCE_URL")
+	if discordURL == "" {
+		discordURL = "http://localhost:8082/admin/announce"
+	}
+
+	if err := postJSON(discordURL, payload, "", nil); err != nil {
 		PrintWarning("Failed to send release notes: %v", err)
 		return
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		PrintSuccess("Release notes sent successfully")
-	} else {
-		PrintWarning("Failed to send release notes (Status: %d)", resp.StatusCode)
-	}
+	PrintSuccess("Release notes sent successfully")
 }
 
 func checkHealth(env string) error {
@@ -254,12 +244,11 @@ func checkHealth(env string) error {
 	}
 	url := fmt.Sprintf("http://localhost:%s/healthz", port)
 
-	client := http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+	resp, err := makeHTTPRequest("GET", url, nil, "")
 	if err != nil {
 		// Try 127.0.0.1
 		url = fmt.Sprintf("http://127.0.0.1:%s/healthz", port)
-		resp, err = client.Get(url)
+		resp, err = makeHTTPRequest("GET", url, nil, "")
 		if err != nil {
 			return err
 		}
@@ -301,7 +290,7 @@ func backupDatabase(env, composeFile string) error {
 	}
 	// Ensure DB is running before backup
 	PrintInfo("Ensuring database service is running...")
-	//nolint:forbidigo
+
 	if err := runCommand("docker", "compose", "-f", composeFile, "up", "-d", "db"); err != nil {
 		return fmt.Errorf("failed to start database service: %w", err)
 	}
@@ -310,27 +299,16 @@ func backupDatabase(env, composeFile string) error {
 	PrintInfo("Waiting for database to be ready...")
 	time.Sleep(5 * time.Second)
 
-	// Use docker compose exec which is more robust than finding IDs
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName)
-
-	// Pass password if available
-	dbPass := os.Getenv("DB_PASSWORD")
-	if dbPass != "" {
-		cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", dbPass))
-	}
-
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
 	outfile, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer outfile.Close()
-	cmd.Stdout = outfile
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump failed: %w\nStderr: %s", err, stderr.String())
+	// Use docker compose exec which is more robust than finding IDs
+
+	if err := runCommandToFile(outfile, "docker", "compose", "-f", composeFile, "exec", "-T", "db", "pg_dump", "-U", dbUser, "-d", dbName); err != nil {
+		return fmt.Errorf("pg_dump failed: %w", err)
 	}
 	PrintSuccess("Database backup created: %s", filename)
 
@@ -387,10 +365,33 @@ func cleanupOldImages(imageName string) {
 		return
 	}
 
-	// This is a bit complex to do cross-platform with just exec,
-	// simpler to shell out or use docker Go SDK.
-	// For now, mirroring the shell script logic roughly.
-	//nolint:gosec // G204: imageName is validated above
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker images \"%s\" --format \"{{.Tag}}\" | grep -v \"latest\" | tail -n +6 | xargs -r -I {} docker rmi \"%s:{}\"", imageName, imageName))
-	_ = cmd.Run()
+	// 1. Get tags for the image, excluding 'latest'
+	// G204: imageName is validated above
+	out, err := getCommandOutput("docker", "images", imageName, "--format", "{{.Tag}}")
+	if err != nil {
+		PrintWarning("Failed to list Docker images for cleanup: %v", err)
+		return
+	}
+
+	tags := strings.Split(strings.TrimSpace(out), "\n")
+	var oldTags []string
+	for _, tag := range tags {
+		if tag != "" && !strings.Contains(tag, "latest") {
+			oldTags = append(oldTags, tag)
+		}
+	}
+
+	// Keep last 5 tags
+	if len(oldTags) <= 5 {
+		return
+	}
+
+	tagsToRemove := oldTags[5:]
+	PrintInfo("Removing %d old images for %s...", len(tagsToRemove), imageName)
+
+	for _, tag := range tagsToRemove {
+		if err := runCommand("docker", "rmi", fmt.Sprintf("%s:%s", imageName, tag)); err != nil {
+			PrintWarning("Failed to remove image %s:%s: %v", imageName, tag, err)
+		}
+	}
 }
