@@ -20,14 +20,15 @@ import (
 func TestHandleBuyItem(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		requestBody    interface{}
-		setupMock      func(*mocks.MockEconomyService, *mocks.MockProgressionService, *mocks.MockUserService)
-		expectedStatus int
-		expectedBody   string
+		name             string
+		requestBody      interface{}
+		setupMock        func(*mocks.MockEconomyService, *mocks.MockProgressionService, *mocks.MockUserService)
+		expectedStatus   int
+		expectedErrorMsg string
+		expectedItems    int
 	}{
 		{
-			name: "Success",
+			name: "Success (Typical Quantity)",
 			requestBody: BuyItemRequest{
 				Platform:   domain.PlatformTwitch,
 				PlatformID: "test-id",
@@ -42,7 +43,88 @@ func TestHandleBuyItem(t *testing.T) {
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 1).Return(1, nil)
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `"items_bought":1`,
+			expectedItems:  1,
+		},
+		{
+			name: "Quantity Boundary: Just Inside (1)",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
+				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 1).Return(1, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedItems:  1,
+		},
+		{
+			name: "Quantity Boundary: Max Value (10000)",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   10000,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+				p.On("RecordEngagement", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+				u.On("GetUserIDByPlatformID", mock.Anything, domain.PlatformTwitch, "test-id").Return("", nil)
+				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", domain.ItemMissile, 10000).Return(10000, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedItems:  10000,
+		},
+		{
+			name: "Quantity Boundary: On Lower Boundary (0)",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   0,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
+		},
+		{
+			name: "Quantity Boundary: Negative (Beyond Lower, -1)",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   -1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
+		},
+		{
+			name: "Quantity Boundary: Beyond Upper (10001)",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "testuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   10001,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
 		},
 		{
 			name: "Feature Locked",
@@ -59,8 +141,8 @@ func TestHandleBuyItem(t *testing.T) {
 					{DisplayName: "Buy System"},
 				}, nil)
 			},
-			expectedStatus: http.StatusForbidden,
-			expectedBody:   "LOCKED_NODES: Buy System",
+			expectedStatus:   http.StatusForbidden,
+			expectedErrorMsg: "LOCKED_NODES: Buy System",
 		},
 		{
 			name: "Feature Check Error",
@@ -74,8 +156,8 @@ func TestHandleBuyItem(t *testing.T) {
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(false, errors.New(ErrMsgGenericServerError))
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgGenericServerError,
+			expectedStatus:   http.StatusInternalServerError,
+			expectedErrorMsg: ErrMsgGenericServerError,
 		},
 		{
 			name:        "Invalid Request Body",
@@ -83,8 +165,38 @@ func TestHandleBuyItem(t *testing.T) {
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request body",
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request body",
+		},
+		{
+			name: "Hostile Case: Control characters in username",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "test\nuser",
+				ItemName:   domain.ItemMissile,
+				Quantity:   1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
+		},
+		{
+			name: "Hostile Case: Null byte in username",
+			requestBody: BuyItemRequest{
+				Platform:   domain.PlatformTwitch,
+				PlatformID: "test-id",
+				Username:   "test\x00user",
+				ItemName:   domain.ItemMissile,
+				Quantity:   1,
+			},
+			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
+				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
+			},
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
 		},
 		{
 			name: "Missing PlatformID",
@@ -97,23 +209,8 @@ func TestHandleBuyItem(t *testing.T) {
 			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
 				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
 			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Zero Quantity",
-			requestBody: BuyItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				ItemName:   domain.ItemMissile,
-				Quantity:   0,
-			},
-			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedStatus:   http.StatusBadRequest,
+			expectedErrorMsg: "Invalid request",
 		},
 		{
 			name: "Service Error - Insufficient Money",
@@ -129,8 +226,8 @@ func TestHandleBuyItem(t *testing.T) {
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "pooruser", domain.ItemMissile, 1).
 					Return(0, errors.New(ErrMsgNotEnoughMoneyError))
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgNotEnoughMoneyError,
+			expectedStatus:   http.StatusInternalServerError,
+			expectedErrorMsg: ErrMsgNotEnoughMoneyError,
 		},
 		{
 			name: "Service Error - Item Not Available",
@@ -146,38 +243,8 @@ func TestHandleBuyItem(t *testing.T) {
 				e.On("BuyItem", mock.Anything, domain.PlatformTwitch, "test-id", "testuser", "RareItem", 1).
 					Return(0, errors.New(ErrMsgGenericServerError))
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   ErrMsgGenericServerError,
-		},
-		{
-			name: "Negative Quantity",
-			requestBody: BuyItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				ItemName:   domain.ItemMissile,
-				Quantity:   -1,
-			},
-			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
-		},
-		{
-			name: "Quantity Too Large",
-			requestBody: BuyItemRequest{
-				Platform:   domain.PlatformTwitch,
-				PlatformID: "test-id",
-				Username:   "testuser",
-				ItemName:   domain.ItemMissile,
-				Quantity:   10001,
-			},
-			setupMock: func(e *mocks.MockEconomyService, p *mocks.MockProgressionService, u *mocks.MockUserService) {
-				p.On("IsFeatureUnlocked", mock.Anything, progression.FeatureEconomy).Return(true, nil)
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid request",
+			expectedStatus:   http.StatusInternalServerError,
+			expectedErrorMsg: ErrMsgGenericServerError,
 		},
 	}
 
@@ -203,9 +270,23 @@ func TestHandleBuyItem(t *testing.T) {
 			handler.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
+
+			if tt.expectedErrorMsg != "" {
+				var errResp ErrorResponse
+				err := json.Unmarshal(w.Body.Bytes(), &errResp)
+				if err == nil && errResp.Error != "" {
+					assert.Contains(t, errResp.Error, tt.expectedErrorMsg)
+				} else {
+					// Fallback for cases where response might not be standard ErrorResponse JSON
+					assert.Contains(t, w.Body.String(), tt.expectedErrorMsg)
+				}
+			} else {
+				var successResp BuyItemResponse
+				err := json.Unmarshal(w.Body.Bytes(), &successResp)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedItems, successResp.ItemsBought)
 			}
+
 			mockEco.AssertExpectations(t)
 			mockProg.AssertExpectations(t)
 		})
