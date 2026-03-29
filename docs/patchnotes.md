@@ -1,3 +1,13 @@
+# Patch Notes (Week of March 27, 2026)
+
+## New Features & Gameplay Updates
+
+- **Progression**: The progression system now checks to ensure you don't receive duplicate XP awards for certain events.
+
+## System Updates & Bug Fixes
+
+- **Behind the Scenes**: Another huge week for internal polish! We streamlined our code across several systems (like the Gamble system, Inventory, and Handlers). We also expanded our testing for Streamer.bot, Predictions, and Validation, and supercharged our developer tools with better timeouts and buffering.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
