@@ -144,10 +144,10 @@ func TestHandleStartExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
 				var resp StartExpeditionResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
@@ -224,10 +224,10 @@ func TestHandleGetStatusExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
 				var resp domain.ExpeditionStatus
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
@@ -332,10 +332,10 @@ func TestHandleGetJournalExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
 				var resp []domain.ExpeditionJournalEntry
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
@@ -415,10 +415,10 @@ func TestHandleGetActiveExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
 				var resp domain.ExpeditionDetails
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
@@ -522,10 +522,10 @@ func TestHandleGetExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
 				var resp domain.ExpeditionDetails
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
@@ -667,15 +667,15 @@ func TestHandleJoinExpedition(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, rr.Code)
 
 			if tt.expectedError != "" {
-				var resp map[string]string
+				var resp ErrorResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Contains(t, resp["error"], tt.expectedError)
+				assert.Contains(t, resp.Error, tt.expectedError)
 			} else {
-				var resp map[string]string
+				var resp SuccessResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				require.NoError(t, err)
-				assert.Equal(t, "Joined expedition!", resp["message"])
+				assert.Equal(t, "Joined expedition!", resp.Message)
 			}
 
 			mockExp.AssertExpectations(t)
