@@ -11,8 +11,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/osse101/BrandishBot_Go/internal/progression"
 	"github.com/osse101/BrandishBot_Go/internal/user"
 	"github.com/osse101/BrandishBot_Go/mocks"
 )
@@ -111,6 +113,17 @@ func TestHandleAddItem(t *testing.T) {
 		},
 	}
 
+	executeItemTest(t, tests, "/user/item/add-by-username", HandleAddItemByUsername)
+}
+
+func executeItemTest(t *testing.T, tests []struct {
+	name           string
+	requestBody    interface{}
+	rawBody        string // For sending raw/invalid JSON
+	setupMock      func(*mocks.MockUserService)
+	expectedStatus int
+	expectedBody   string
+}, endpoint string, handlerFunc func(user.Service) http.HandlerFunc) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,15 +132,17 @@ func TestHandleAddItem(t *testing.T) {
 			mockSvc := mocks.NewMockUserService(t)
 			tt.setupMock(mockSvc)
 
-			handler := HandleAddItemByUsername(mockSvc)
+			handler := handlerFunc(mockSvc)
 
 			var body []byte
 			if tt.rawBody != "" {
 				body = []byte(tt.rawBody)
 			} else {
-				body, _ = json.Marshal(tt.requestBody)
+				var err error
+				body, err = json.Marshal(tt.requestBody)
+				require.NoError(t, err)
 			}
-			req := httptest.NewRequest("POST", "/user/item/add-by-username", bytes.NewBuffer(body))
+			req := httptest.NewRequest("POST", endpoint, bytes.NewBuffer(body))
 			w := httptest.NewRecorder()
 
 			handler.ServeHTTP(w, req)
@@ -212,35 +227,7 @@ func TestHandleRemoveItem(t *testing.T) {
 			expectedBody:   ErrMsgInvalidRequest,
 		},
 	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			mockSvc := mocks.NewMockUserService(t)
-			tt.setupMock(mockSvc)
-
-			handler := HandleRemoveItemByUsername(mockSvc)
-
-			var body []byte
-			if tt.rawBody != "" {
-				body = []byte(tt.rawBody)
-			} else {
-				body, _ = json.Marshal(tt.requestBody)
-			}
-			req := httptest.NewRequest("POST", "/user/item/remove-by-username", bytes.NewBuffer(body))
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-			if tt.expectedBody != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedBody)
-			}
-			mockSvc.AssertExpectations(t)
-		})
-	}
+	executeItemTest(t, tests, "/user/item/remove-by-username", HandleRemoveItemByUsername)
 }
 
 func TestHandleGetInventory(t *testing.T) {
@@ -444,47 +431,7 @@ func TestHandleGetInventory(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			mockUser := mocks.NewMockUserService(t)
-			mockProg := mocks.NewMockProgressionService(t)
-			tt.setupMock(mockUser, mockProg)
-
-			handler := HandleGetInventory(mockUser, mockProg)
-
-			// Build URL with query parameters
-			u, _ := url.Parse("/user/inventory")
-			q := u.Query()
-			if tt.platform != "" {
-				q.Set("platform", tt.platform)
-			}
-			if tt.platformID != "" {
-				q.Set("platform_id", tt.platformID)
-			}
-			if tt.username != "" {
-				q.Set("username", tt.username)
-			}
-			if tt.filter != "" {
-				q.Set("filter", tt.filter)
-			}
-			u.RawQuery = q.Encode()
-
-			req := httptest.NewRequest("GET", u.String(), nil)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, req)
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			if tt.expectedResponse != nil {
-				var resp GetInventoryResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedResponse, &resp)
-			}
-			if tt.expectedError != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedError)
-			}
-			mockUser.AssertExpectations(t)
-			mockProg.AssertExpectations(t)
+			executeGetInventoryTest(t, "/user/inventory", tt.username, tt.platform, tt.platformID, tt.filter, tt.setupMock, tt.expectedStatus, tt.expectedResponse, tt.expectedError, HandleGetInventory)
 		})
 	}
 }
@@ -587,44 +534,51 @@ func TestHandleGetInventoryByUsername(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			mockUser := mocks.NewMockUserService(t)
-			mockProg := mocks.NewMockProgressionService(t)
-			tt.setupMock(mockUser, mockProg)
-
-			handler := HandleGetInventoryByUsername(mockUser, mockProg)
-
-			// Build URL with query parameters
-			u, _ := url.Parse("/user/inventory-by-username")
-			q := u.Query()
-			if tt.platform != "" {
-				q.Set("platform", tt.platform)
-			}
-			if tt.username != "" {
-				q.Set("username", tt.username)
-			}
-			if tt.filter != "" {
-				q.Set("filter", tt.filter)
-			}
-			u.RawQuery = q.Encode()
-
-			req := httptest.NewRequest("GET", u.String(), nil)
-			w := httptest.NewRecorder()
-
-			handler.ServeHTTP(w, req)
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			if tt.expectedResponse != nil {
-				var resp GetInventoryResponse
-				err := json.Unmarshal(w.Body.Bytes(), &resp)
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedResponse, &resp)
-			}
-			if tt.expectedError != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedError)
-			}
-			mockUser.AssertExpectations(t)
-			mockProg.AssertExpectations(t)
+			executeGetInventoryTest(t, "/user/inventory-by-username", tt.username, tt.platform, "", tt.filter, tt.setupMock, tt.expectedStatus, tt.expectedResponse, tt.expectedError, HandleGetInventoryByUsername)
 		})
 	}
+}
+
+func executeGetInventoryTest(t *testing.T, endpoint, username, platform, platformID, filter string, setupMock func(*mocks.MockUserService, *mocks.MockProgressionService), expectedStatus int, expectedResponse *GetInventoryResponse, expectedError string, handlerFunc func(user.Service, progression.Service) http.HandlerFunc) {
+	mockUser := mocks.NewMockUserService(t)
+	mockProg := mocks.NewMockProgressionService(t)
+	setupMock(mockUser, mockProg)
+
+	handler := handlerFunc(mockUser, mockProg)
+
+	u, err := url.Parse(endpoint)
+	require.NoError(t, err)
+
+	q := u.Query()
+	if platform != "" {
+		q.Set("platform", platform)
+	}
+	if platformID != "" {
+		q.Set("platform_id", platformID)
+	}
+	if username != "" {
+		q.Set("username", username)
+	}
+	if filter != "" {
+		q.Set("filter", filter)
+	}
+	u.RawQuery = q.Encode()
+
+	req := httptest.NewRequest("GET", u.String(), nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+	assert.Equal(t, expectedStatus, w.Code)
+
+	if expectedResponse != nil {
+		var resp GetInventoryResponse
+		err := json.Unmarshal(w.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, expectedResponse, &resp)
+	}
+	if expectedError != "" {
+		assert.Contains(t, w.Body.String(), expectedError)
+	}
+	mockUser.AssertExpectations(t)
+	mockProg.AssertExpectations(t)
 }
