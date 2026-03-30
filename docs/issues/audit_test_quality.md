@@ -82,3 +82,5 @@ internal/user -> mocks -> internal/user (IMPORT CYCLE!)
 **Status Update 2026-01-30**: Checked `internal/crafting/service_test.go` and `internal/gamble/service_test.go` and confirmed no benchmarks exist. This item remains open.
 
 **Status Update 2026-02-15**: Benchmarks are still missing in `internal/crafting` and `internal/gamble`.
+
+**Status Update 2026-03-29**: Tests in internal/handler (buy_test.go, expedition_test.go, job_test.go) and internal/user (timeout_test.go) have been refactored to use struct validation, the 5-Case model, and table-driven concurrency tests.
