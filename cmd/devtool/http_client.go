@@ -51,11 +51,7 @@ func makeHTTPRequest(method, url string, payload interface{}, apiKey string) (*h
 	return client.Do(req)
 }
 
-func getJSON(url string, apiKey string, target interface{}) error {
-	resp, err := makeHTTPRequest("GET", url, nil, apiKey)
-	if err != nil {
-		return err
-	}
+func handleJSONResponse(resp *http.Response, target interface{}) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
@@ -72,25 +68,20 @@ func getJSON(url string, apiKey string, target interface{}) error {
 	return nil
 }
 
+func getJSON(url string, apiKey string, target interface{}) error {
+	resp, err := makeHTTPRequest("GET", url, nil, apiKey)
+	if err != nil {
+		return err
+	}
+	return handleJSONResponse(resp, target)
+}
+
 func postJSON(url string, payload interface{}, apiKey string, target interface{}) error {
 	resp, err := makeHTTPRequest("POST", url, payload, apiKey)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	if target != nil {
-		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-			return fmt.Errorf("failed to decode response: %w", err)
-		}
-	}
-
-	return nil
+	return handleJSONResponse(resp, target)
 }
 
 func postJSONStr(url string, payload interface{}, apiKey string) (string, error) {
@@ -100,14 +91,13 @@ func postJSONStr(url string, payload interface{}, apiKey string) (string, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return string(bodyBytes), nil
