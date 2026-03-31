@@ -1,3 +1,10 @@
+# Patch Notes (Week of March 27, 2026)
+
+## Behind the Scenes
+
+- **Robust Testing**: This week, we focused heavily on testing to ensure the bot's stability and reliability. We added comprehensive test coverage for stats, buying items, user timeouts, daily resets, inventory updates, prices, jobs, schema validation, and prediction outcomes.
+- **Refactored Components**: We improved internal code for handling daily resets, inventory, schema validation, prices, jobs, and predictions. We also improved developer tooling with optimized timeouts to speed up feature development.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
