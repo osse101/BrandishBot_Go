@@ -107,10 +107,10 @@ func TestHandleGetUserStats(t *testing.T) {
 			expectedBody:   `"total_events":10`,
 		},
 		{
-			name:       "Success with username",
-			platform:   domain.PlatformTwitch,
-			username:   "someuser",
-			period:     domain.PeriodDaily,
+			name:     "Success with username",
+			platform: domain.PlatformTwitch,
+			username: "someuser",
+			period:   domain.PeriodDaily,
 			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
 				user := &domain.User{ID: "user123"}
 				repo.On("GetUserByPlatformUsername", mock.Anything, domain.PlatformTwitch, "someuser").Return(user, nil)
@@ -121,9 +121,9 @@ func TestHandleGetUserStats(t *testing.T) {
 			expectedBody:   `"total_events":20`,
 		},
 		{
-			name:       "Target-mode User Not Found",
-			platform:   domain.PlatformTwitch,
-			username:   "someuser",
+			name:     "Target-mode User Not Found",
+			platform: domain.PlatformTwitch,
+			username: "someuser",
 			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
 				repo.On("GetUserByPlatformUsername", mock.Anything, domain.PlatformTwitch, "someuser").Return(nil, errors.New("not found"))
 			},
