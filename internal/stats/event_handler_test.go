@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/crafting"
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
 	"github.com/osse101/BrandishBot_Go/internal/stats"
 	"github.com/osse101/BrandishBot_Go/mocks"
@@ -40,7 +40,6 @@ func TestEventHandler_HandleItemSold(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
 func TestEventHandler_HandleItemBought(t *testing.T) {
 	ctx := context.Background()
 	mockSvc := mocks.NewMockStatsService(t)
@@ -66,7 +65,6 @@ func TestEventHandler_HandleItemBought(t *testing.T) {
 	err := handler.HandleItemBought(ctx, evt)
 	require.NoError(t, err)
 }
-
 
 func TestEventHandler_HandleItemAdded(t *testing.T) {
 	ctx := context.Background()
@@ -201,7 +199,7 @@ func TestEventHandler_HandleJobLevelUp(t *testing.T) {
 
 	payload := event.JobLevelUpPayloadV1{
 		UserID:   "user-1",
-		JobKey: "job_miner",
+		JobKey:   "job_miner",
 		NewLevel: 5,
 	}
 
@@ -210,7 +208,7 @@ func TestEventHandler_HandleJobLevelUp(t *testing.T) {
 		Payload: payload,
 	}
 
-	mockSvc.On("RecordUserEvent", ctx, "user-1", domain.EventType(domain.EventTypeJobLevelUp), payload).Return(nil)
+	mockSvc.On("RecordUserEvent", ctx, "user-1", domain.EventTypeJobLevelUp, payload).Return(nil)
 
 	err := handler.HandleJobLevelUp(ctx, evt)
 	require.NoError(t, err)
@@ -222,11 +220,11 @@ func TestEventHandler_HandleJobXPCritical(t *testing.T) {
 	handler := stats.NewEventHandler(mockSvc)
 
 	payload := event.JobXPCriticalPayloadV1{
-		UserID:      "user-1",
-		JobKey:     "job_miner",
-		BaseXP:      10,
-		BonusXP:     5,
-		Source: "epiphany",
+		UserID:  "user-1",
+		JobKey:  "job_miner",
+		BaseXP:  10,
+		BonusXP: 5,
+		Source:  "epiphany",
 	}
 
 	evt := event.Event{
@@ -367,7 +365,6 @@ func TestEventHandler_HandleGambleCompleted(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
 func TestEventHandler_HandleItemUpgraded(t *testing.T) {
 	ctx := context.Background()
 	mockSvc := mocks.NewMockStatsService(t)
@@ -430,7 +427,6 @@ func TestEventHandler_HandleItemDisassembled(t *testing.T) {
 	err := handler.HandleItemDisassembled(ctx, evt)
 	require.NoError(t, err)
 }
-
 
 func TestEventHandler_HandleItemSold_Error(t *testing.T) {
 	ctx := context.Background()

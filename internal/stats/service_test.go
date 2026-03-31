@@ -1,29 +1,30 @@
 package stats
 
 import (
-	"github.com/stretchr/testify/require"
-	"errors"
 	"context"
+	"errors"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // mockStatsRepository implements Repository interface for testing
 type mockStatsRepository struct {
-	getTotalEventCountError error
-	getEventCountsError error
-	getTopUsersError error
-	getUserEventCountsError error
-	getUserEventsByTypeError error
-	getUserSlotsStatsError error
-	getSlotsLeaderboardByProfitError error
-	getSlotsLeaderboardByWinRateError error
+	getTotalEventCountError                error
+	getEventCountsError                    error
+	getTopUsersError                       error
+	getUserEventCountsError                error
+	getUserEventsByTypeError               error
+	getUserSlotsStatsError                 error
+	getSlotsLeaderboardByProfitError       error
+	getSlotsLeaderboardByWinRateError      error
 	getSlotsLeaderboardByMegaJackpotsError error
-	events           []domain.StatsEvent
-	recordEventError error
+	events                                 []domain.StatsEvent
+	recordEventError                       error
 }
 
 func (m *mockStatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEvent) error {
@@ -56,7 +57,9 @@ func (m *mockStatsRepository) GetEventsByType(ctx context.Context, eventType dom
 }
 
 func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
-	if m.getUserEventsByTypeError != nil { return nil, m.getUserEventsByTypeError }
+	if m.getUserEventsByTypeError != nil {
+		return nil, m.getUserEventsByTypeError
+	}
 	var filtered []domain.StatsEvent
 	for _, event := range m.events {
 		if event.UserID == userID && event.EventType == eventType {
@@ -75,7 +78,9 @@ func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID st
 }
 
 func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error) {
-	if m.getTopUsersError != nil { return nil, m.getTopUsersError }
+	if m.getTopUsersError != nil {
+		return nil, m.getTopUsersError
+	}
 	counts := make(map[string]int)
 	for _, event := range m.events {
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -96,7 +101,9 @@ func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.
 }
 
 func (m *mockStatsRepository) GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error) {
-	if m.getEventCountsError != nil { return nil, m.getEventCountsError }
+	if m.getEventCountsError != nil {
+		return nil, m.getEventCountsError
+	}
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -107,7 +114,9 @@ func (m *mockStatsRepository) GetEventCounts(ctx context.Context, startTime, end
 }
 
 func (m *mockStatsRepository) GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error) {
-	if m.getUserEventCountsError != nil { return nil, m.getUserEventCountsError }
+	if m.getUserEventCountsError != nil {
+		return nil, m.getUserEventCountsError
+	}
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.UserID == userID && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -118,7 +127,9 @@ func (m *mockStatsRepository) GetUserEventCounts(ctx context.Context, userID str
 }
 
 func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error) {
-	if m.getTotalEventCountError != nil { return 0, m.getTotalEventCountError }
+	if m.getTotalEventCountError != nil {
+		return 0, m.getTotalEventCountError
+	}
 	count := 0
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -129,22 +140,30 @@ func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime,
 }
 
 func (m *mockStatsRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error) {
-	if m.getUserSlotsStatsError != nil { return nil, m.getUserSlotsStatsError }
+	if m.getUserSlotsStatsError != nil {
+		return nil, m.getUserSlotsStatsError
+	}
 	return &domain.SlotsStats{}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
-	if m.getSlotsLeaderboardByProfitError != nil { return nil, m.getSlotsLeaderboardByProfitError }
+	if m.getSlotsLeaderboardByProfitError != nil {
+		return nil, m.getSlotsLeaderboardByProfitError
+	}
 	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error) {
-	if m.getSlotsLeaderboardByWinRateError != nil { return nil, m.getSlotsLeaderboardByWinRateError }
+	if m.getSlotsLeaderboardByWinRateError != nil {
+		return nil, m.getSlotsLeaderboardByWinRateError
+	}
 	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
-	if m.getSlotsLeaderboardByMegaJackpotsError != nil { return nil, m.getSlotsLeaderboardByMegaJackpotsError }
+	if m.getSlotsLeaderboardByMegaJackpotsError != nil {
+		return nil, m.getSlotsLeaderboardByMegaJackpotsError
+	}
 	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
@@ -726,12 +745,18 @@ func TestService_getPeriodRange(t *testing.T) {
 	mockRepo := &mockStatsRepository{}
 	svc := NewService(mockRepo)
 
-	stats, _ := svc.GetUserStats(ctx, "user-1", "hourly"); require.NotNil(t, stats)
-	stats, _ = svc.GetUserStats(ctx, "user-1", "weekly"); require.NotNil(t, stats)
-	stats, _ = svc.GetUserStats(ctx, "user-1", "monthly"); require.NotNil(t, stats)
-	stats, _ = svc.GetUserStats(ctx, "user-1", "yearly"); require.NotNil(t, stats)
-	stats, _ = svc.GetUserStats(ctx, "user-1", "all"); require.NotNil(t, stats)
-	stats, _ = svc.GetUserStats(ctx, "user-1", "unknown"); require.NotNil(t, stats)
+	stats, _ := svc.GetUserStats(ctx, "user-1", "hourly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "weekly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "monthly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "yearly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "all")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "unknown")
+	require.NotNil(t, stats)
 }
 
 func TestService_GetSlotsLeaderboardByWinRate_LimitZero(t *testing.T) {
@@ -739,7 +764,9 @@ func TestService_GetSlotsLeaderboardByWinRate_LimitZero(t *testing.T) {
 	mockRepo := &mockStatsRepository{}
 	svc := NewService(mockRepo)
 
-	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 0, 0); require.NoError(t, err); require.NotNil(t, lb)
+	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 0, 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
 }
 
 func TestService_getSlotsLeaderboard_LimitZero(t *testing.T) {
@@ -748,7 +775,9 @@ func TestService_getSlotsLeaderboard_LimitZero(t *testing.T) {
 	svc := NewService(mockRepo)
 
 	// Calls getSlotsLeaderboard internally with limit 0
-	lb, err := svc.GetSlotsLeaderboardByProfit(ctx, "daily", 0); require.NoError(t, err); require.NotNil(t, lb)
+	lb, err := svc.GetSlotsLeaderboardByProfit(ctx, "daily", 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
 }
 
 func TestService_GetSlotsLeaderboardByWinRate_LimitZero2(t *testing.T) {
@@ -757,9 +786,10 @@ func TestService_GetSlotsLeaderboardByWinRate_LimitZero2(t *testing.T) {
 	svc := NewService(mockRepo)
 
 	// ensure limit logic works
-	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 1, 0); require.NoError(t, err); require.NotNil(t, lb)
+	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 1, 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
 }
-
 
 func TestService_GetLeaderboard_Error2(t *testing.T) {
 	ctx := context.Background()
