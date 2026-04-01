@@ -1,3 +1,10 @@
+# Patch Notes (Week of March 31, 2026)
+
+## System Updates & Bug Fixes
+
+- **Daily Resets**: Added a startup check to automatically detect and trigger missed daily resets if the server was offline during the scheduled reset time.
+- **Behind the Scenes**: Improved internal tooling by simplifying HTTP client JSON parsing logic in `cmd/devtool` and increased unit test coverage for the stats and worker domains.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates

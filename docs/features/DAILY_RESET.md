@@ -7,7 +7,7 @@ The Daily Reset system manages the recurring daily tasks required for the game e
 ### Schedule
 
 - **Time**: The reset occurs daily at **00:00 UTC+7** (Indochina Time).
-- **Grace Period**: If the system is down at the scheduled time, the reset will run immediately upon startup if the last recorded reset was the previous day.
+- **Grace Period**: If the system is down at the scheduled time (00:00 UTC+7), a startup check automatically detects the missed reset and triggers it immediately to ensure daily limits are still applied correctly.
 
 ### Reset Operations
 

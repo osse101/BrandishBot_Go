@@ -4,6 +4,17 @@ A collection of practical insights gained from BrandishBot_Go development, parti
 
 ---
 
+## 2026-03-31: Startup Checks for Resilient Background Tasks
+
+### Context
+Implemented a startup check in the daily reset worker (`internal/worker/daily_reset_worker.go`) to detect and trigger missed daily resets (e.g., if the server was down at the scheduled time of 00:00 UTC+7).
+
+### Key Learnings
+- **Background Worker Resilience**: Relying solely on scheduled executions can be fragile to downtime.
+- **Startup Verification**: Workers should verify their state upon initialization. If a task was scheduled during downtime and was missed, it should be executed immediately on startup before scheduling the next occurrence.
+
+---
+
 ## 2026-01-04: Resilient Event Publishing - Fire-and-Forget with Retry
 
 ### Context
