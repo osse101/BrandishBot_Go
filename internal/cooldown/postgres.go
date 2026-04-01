@@ -48,7 +48,7 @@ func (b *postgresBackend) CheckCooldown(ctx context.Context, userID, action stri
 		return false, 0, nil
 	}
 
-	cooldownDuration := b.getEffectiveCooldown(ctx, action)
+	cooldownDuration := b.getEffectiveCooldown(ctx, userID, action)
 
 	onCooldown, remaining := b.checkCooldownInternal(time.Now(), lastUsed, cooldownDuration)
 	return onCooldown, remaining, nil
@@ -104,7 +104,7 @@ func (b *postgresBackend) EnforceCooldown(ctx context.Context, userID, action st
 	}
 
 	if lastUsed != nil {
-		cooldownDuration := b.getEffectiveCooldown(ctx, action)
+		cooldownDuration := b.getEffectiveCooldown(ctx, userID, action)
 		onCooldown, remaining := b.checkCooldownInternal(time.Now(), lastUsed, cooldownDuration)
 		if onCooldown {
 			log.Debug(LogMsgRaceConditionDetected,
@@ -195,12 +195,12 @@ func hashUserAction(userID, action string) int64 {
 	return int64(binary.BigEndian.Uint64(h[:8]) & HashMaskPositiveInt64)
 }
 
-func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, action string) time.Duration {
+func (b *postgresBackend) getEffectiveCooldown(ctx context.Context, userID, action string) time.Duration {
 	duration := b.config.GetCooldownDuration(action)
 
 	// Apply progression modifiers (e.g., cooldown reduction for search)
 	if b.progressionSvc != nil && action == domain.ActionSearch {
-		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, "", FeatureKeySearchCooldownReduction, float64(duration))
+		modifiedDuration, err := b.progressionSvc.GetModifiedValue(ctx, userID, FeatureKeySearchCooldownReduction, float64(duration))
 		if err == nil {
 			return time.Duration(modifiedDuration)
 		}
