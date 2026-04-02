@@ -12,6 +12,8 @@ import (
 
 const defaultAPIURL = "http://localhost:8080"
 
+var devtoolHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
 func getAPIURL() string {
 	url := os.Getenv("API_URL")
 	if url == "" {
@@ -47,8 +49,7 @@ func makeHTTPRequest(method, url string, payload interface{}, apiKey string) (*h
 		req.Header.Set("X-API-Key", apiKey)
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	return client.Do(req)
+	return devtoolHTTPClient.Do(req)
 }
 
 func handleJSONResponse(resp *http.Response, target interface{}) error {
