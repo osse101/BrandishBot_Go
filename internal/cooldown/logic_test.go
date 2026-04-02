@@ -151,7 +151,7 @@ func TestGetEffectiveCooldown(t *testing.T) {
 				progressionSvc: progSvc,
 			}
 
-			got := b.getEffectiveCooldown(context.Background(), tt.action)
+			got := b.getEffectiveCooldown(context.Background(), "testuser", tt.action)
 			assert.Equal(t, tt.want, got)
 		})
 	}
