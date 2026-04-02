@@ -1,3 +1,14 @@
+# Patch Notes (Week of March 27, 2026)
+
+## New Features & Gameplay Updates
+
+- **Daily Resets**: Added a new startup check to reliably detect and trigger missed daily resets, so you'll never miss out on your daily rewards!
+
+## System Updates & Bug Fixes
+
+- **General Fixes**: Resolved an issue where commands could crash or time out unexpectedly due to unhandled target parameters.
+- **Behind the Scenes**: A huge week for testing and stability! We significantly increased test coverage for the prediction, statistics, user, and worker systems to keep everything running smoothly. We also supercharged our developer tools with explicit HTTP timeouts and streamlined data parsing.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
