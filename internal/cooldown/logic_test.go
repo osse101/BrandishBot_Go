@@ -66,12 +66,12 @@ func TestConfig_GetCooldownDuration(t *testing.T) {
 
 // Mock for testing
 type mockProgressionService struct {
-	mockGetModifiedValue func(ctx context.Context, featureKey string, baseValue float64) (float64, error)
+	mockGetModifiedValue func(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error)
 }
 
 func (m *mockProgressionService) GetModifiedValue(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 	if m.mockGetModifiedValue != nil {
-		return m.mockGetModifiedValue(ctx, featureKey, baseValue)
+		return m.mockGetModifiedValue(ctx, userID, featureKey, baseValue)
 	}
 	return baseValue, nil
 }
@@ -102,7 +102,8 @@ func TestGetEffectiveCooldown(t *testing.T) {
 			action: domain.ActionSearch,
 			mockSetup: func() *mockProgressionService {
 				return &mockProgressionService{
-					mockGetModifiedValue: func(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+					mockGetModifiedValue: func(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
+						assert.Equal(t, "testuser", userID)
 						assert.Equal(t, FeatureKeySearchCooldownReduction, featureKey)
 						assert.Equal(t, float64(baseDuration), baseValue)
 						return float64(4 * time.Minute), nil
@@ -116,7 +117,8 @@ func TestGetEffectiveCooldown(t *testing.T) {
 			action: domain.ActionSearch,
 			mockSetup: func() *mockProgressionService {
 				return &mockProgressionService{
-					mockGetModifiedValue: func(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+					mockGetModifiedValue: func(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
+						assert.Equal(t, "testuser", userID)
 						return 0, errors.New("progression error")
 					},
 				}
@@ -128,7 +130,7 @@ func TestGetEffectiveCooldown(t *testing.T) {
 			action: "other",
 			mockSetup: func() *mockProgressionService {
 				return &mockProgressionService{
-					mockGetModifiedValue: func(ctx context.Context, featureKey string, baseValue float64) (float64, error) {
+					mockGetModifiedValue: func(ctx context.Context, userID string, featureKey string, baseValue float64) (float64, error) {
 						t.Fatal("should not be called")
 						return 0, nil
 					},
