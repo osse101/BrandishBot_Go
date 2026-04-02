@@ -104,6 +104,8 @@ func (l *Loader) parseFile(path string) (FeatureData, error) {
 	var description strings.Builder
 	var commands []string
 	scanner := bufio.NewScanner(file)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 10*1024*1024)
 	parsingCommands := false
 
 	for scanner.Scan() {
