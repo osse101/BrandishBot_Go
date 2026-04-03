@@ -36,7 +36,7 @@ func (h *HTTPServer) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	// Quick ping to check API
 	apiReachable := false
 	if h.bot.Client != nil {
-		resp, err := http.Get(h.bot.Client.BaseURL + "/healthz")
+		resp, err := h.bot.Client.Client.Get(h.bot.Client.BaseURL + "/healthz")
 		if err == nil {
 			apiReachable = resp.StatusCode == http.StatusOK
 			resp.Body.Close()
