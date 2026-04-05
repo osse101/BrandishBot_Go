@@ -49,8 +49,15 @@ func TestMapRandoClient(t *testing.T) {
 	assert.Equal(t, server.URL+"/seed/my-test-seed", seedURL)
 
 	// Test Unlock
-	err = client.Unlock("my-test-seed")
+	err = client.Unlock("my-test-seed", "test-preset")
 	assert.NoError(t, err)
+
+	// Test devonly domain switching
+	client.baseURL = "https://maprando.com"
+	client.devOnly["test-preset"] = true
+	assert.Equal(t, "https://dev.maprando.com/seed/my-seed", client.SeedURL("my-seed", "test-preset"))
+	client.devOnly["test-preset"] = false
+	assert.Equal(t, "https://maprando.com/seed/my-seed", client.SeedURL("my-seed", "test-preset"))
 
 	// Test unknown preset
 	_, err = client.Randomize("unknown")

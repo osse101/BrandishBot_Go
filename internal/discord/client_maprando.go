@@ -20,6 +20,7 @@ import (
 type MapRandoPreset struct {
 	File        string `yaml:"file"`
 	Description string `yaml:"description"`
+	DevOnly     bool   `yaml:"devonly"`
 }
 
 // MapRandoConfig configures presets
@@ -35,6 +36,7 @@ type MapRandoClient struct {
 	httpClient   *http.Client
 	presets      map[string]string // map of presetName -> json string
 	descriptions map[string]string // map of presetName -> description
+	devOnly      map[string]bool   // map of presetName -> is dev only
 	presetNames  []string
 }
 
@@ -52,6 +54,7 @@ func NewMapRandoClient(baseURL, spoilerToken string) *MapRandoClient {
 		},
 		presets:      make(map[string]string),
 		descriptions: make(map[string]string),
+		devOnly:      make(map[string]bool),
 		presetNames:  make([]string, 0),
 	}
 }
@@ -85,8 +88,9 @@ func (c *MapRandoClient) LoadConfig(configPath string) error {
 
 		c.presets[name] = string(jsonData)
 		c.descriptions[name] = preset.Description
+		c.devOnly[name] = preset.DevOnly
 		c.presetNames = append(c.presetNames, name)
-		slog.Debug("Loaded MapRando preset", "name", name, "file", preset.File)
+		slog.Debug("Loaded MapRando preset", "name", name, "file", preset.File, "devonly", preset.DevOnly)
 	}
 
 	slog.Info("Successfully loaded MapRando presets", "count", len(c.presetNames))
@@ -101,8 +105,18 @@ func (c *MapRandoClient) PresetDescription(name string) string {
 	return c.descriptions[name]
 }
 
-func (c *MapRandoClient) SeedURL(seedName string) string {
-	return fmt.Sprintf("%s/seed/%s", c.baseURL, seedName)
+func (c *MapRandoClient) getBaseURL(name string) string {
+	if c.devOnly[name] {
+		// If baseURL is maprando.com (with or without http/https), switch to dev.maprando.com
+		if strings.HasSuffix(c.baseURL, "maprando.com") && !strings.Contains(c.baseURL, "dev.maprando.com") {
+			return strings.Replace(c.baseURL, "maprando.com", "dev.maprando.com", 1)
+		}
+	}
+	return c.baseURL
+}
+
+func (c *MapRandoClient) SeedURL(seedName string, presetName string) string {
+	return fmt.Sprintf("%s/seed/%s", c.getBaseURL(presetName), seedName)
 }
 
 // Randomize requests a new seed using the provided preset name. Returns the full seed URL.
@@ -111,6 +125,8 @@ func (c *MapRandoClient) Randomize(presetName string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown preset: %s", presetName)
 	}
+
+	baseURL := c.getBaseURL(presetName)
 
 	// Prepare multipart form
 	var b bytes.Buffer
@@ -139,7 +155,7 @@ func (c *MapRandoClient) Randomize(presetName string) (string, error) {
 	w.Close()
 
 	// Make request
-	req, err := http.NewRequest("POST", c.baseURL+"/randomize", &b)
+	req, err := http.NewRequest("POST", baseURL+"/randomize", &b)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -169,15 +185,16 @@ func (c *MapRandoClient) Randomize(presetName string) (string, error) {
 	// Clean trailing slash for consistency
 	seedURL = strings.TrimRight(seedURL, "/")
 
-	return c.baseURL + seedURL, nil
+	return baseURL + seedURL, nil
 }
 
 // Unlock unlocks a generated seed using the global spoiler token
-func (c *MapRandoClient) Unlock(seedName string) error {
+func (c *MapRandoClient) Unlock(seedName string, presetName string) error {
 	data := url.Values{}
 	data.Set("spoiler_token", c.spoilerToken)
 
-	reqURL := fmt.Sprintf("%s/seed/%s/unlock", c.baseURL, seedName)
+	baseURL := c.getBaseURL(presetName)
+	reqURL := fmt.Sprintf("%s/seed/%s/unlock", baseURL, seedName)
 	req, err := http.NewRequest("POST", reqURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return fmt.Errorf("failed to create unlock request: %w", err)

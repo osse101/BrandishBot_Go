@@ -123,7 +123,7 @@ func MapRandoUnlockCommand(randoClient *MapRandoClient) (*discordgo.ApplicationC
 		}
 		seedName := options[0].StringValue()
 
-		err := randoClient.Unlock(seedName)
+		err := randoClient.Unlock(seedName, "")
 		if err != nil {
 			slog.Error("Failed to unlock seed", "error", err, "seed", seedName)
 			respondError(s, i, fmt.Sprintf("Failed to unlock seed: %v", err))
@@ -132,7 +132,7 @@ func MapRandoUnlockCommand(randoClient *MapRandoClient) (*discordgo.ApplicationC
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "Seed Unlocked!",
-			Description: fmt.Sprintf("Spoiler log for seed `%s` has been unlocked.\n\n[View Seed](%s)", seedName, randoClient.SeedURL(seedName)),
+			Description: fmt.Sprintf("Spoiler log for seed `%s` has been unlocked.\n\n[View Seed](%s)", seedName, randoClient.SeedURL(seedName, "")),
 			Color:       0x00FF00,
 		}
 

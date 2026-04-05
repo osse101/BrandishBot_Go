@@ -10,3 +10,4 @@ presets:
   mentor:
     file: 'Mentor Tournament.json'
     description: 'Mentor Tournament'
+    devonly: true
