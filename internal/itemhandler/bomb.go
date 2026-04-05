@@ -48,7 +48,7 @@ func handleBomb(ctx context.Context, ec EffectContext, _ *domain.User, inventory
 	}
 
 	log.Info("Bombs set successfully", "setter", username, "platform", platform, "count", totalQueued)
-	return fmt.Sprintf("%s set %s! Waiting for a crowd...", username, lastDisplayName), nil
+	return fmt.Sprintf("%s set %s! It will detonate when the crowd gathers...", username, lastDisplayName), nil
 }
 
 // BombHandler handles bomb items.

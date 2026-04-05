@@ -128,7 +128,12 @@ func aggregateDropsAndUpdateInventory(ec EffectContext, inventory *domain.Invent
 		})
 
 		// Get display name
-		itemDisplayName := ec.GetDisplayName(drop.ItemName, drop.QualityLevel)
+		var itemDisplayName string
+		if drop.ItemName == domain.ItemMoney {
+			itemDisplayName = ec.GetDisplayName(domain.ItemMoney, "")
+		} else {
+			itemDisplayName = ec.GetDisplayName(drop.ItemName, drop.QualityLevel)
+		}
 
 		if group, exists := displayGroups[itemDisplayName]; exists {
 			group.Quantity += drop.Quantity

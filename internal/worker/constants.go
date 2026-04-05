@@ -37,13 +37,14 @@ const (
 
 // Log messages for daily reset worker operations
 const (
-	LogMsgDailyResetStarting      = "Daily reset starting"
-	LogMsgDailyResetCompleted     = "Daily reset completed"
-	LogMsgDailyResetFailed        = "Daily reset failed"
-	LogMsgDailyResetScheduled     = "Daily reset scheduled"
-	LogMsgDailyResetStandby       = "Daily reset entered standby (long-range wait)"
-	LogMsgDailyResetApproach      = "Daily reset scheduled (final approach)"
-	LogMsgDailyResetManualTrigger = "Daily reset manually triggered"
+	LogMsgDailyResetStarting       = "Daily reset starting"
+	LogMsgDailyResetCompleted      = "Daily reset completed"
+	LogMsgDailyResetFailed         = "Daily reset failed"
+	LogMsgDailyResetScheduled      = "Daily reset scheduled"
+	LogMsgDailyResetStandby        = "Daily reset entered standby (long-range wait)"
+	LogMsgDailyResetApproach       = "Daily reset scheduled (final approach)"
+	LogMsgDailyResetManualTrigger  = "Daily reset manually triggered"
+	LogMsgDailyResetMissedDetected = "Daily reset missed - triggering reset now"
 )
 
 // ============================================================================

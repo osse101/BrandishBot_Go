@@ -2,17 +2,29 @@ package stats
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 )
 
 // mockStatsRepository implements Repository interface for testing
 type mockStatsRepository struct {
-	events           []domain.StatsEvent
-	recordEventError error
+	getTotalEventCountError                error
+	getEventCountsError                    error
+	getTopUsersError                       error
+	getUserEventCountsError                error
+	getUserEventsByTypeError               error
+	getUserSlotsStatsError                 error
+	getSlotsLeaderboardByProfitError       error
+	getSlotsLeaderboardByWinRateError      error
+	getSlotsLeaderboardByMegaJackpotsError error
+	events                                 []domain.StatsEvent
+	recordEventError                       error
 }
 
 func (m *mockStatsRepository) RecordEvent(ctx context.Context, event *domain.StatsEvent) error {
@@ -45,6 +57,9 @@ func (m *mockStatsRepository) GetEventsByType(ctx context.Context, eventType dom
 }
 
 func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID string, eventType domain.EventType, limit int) ([]domain.StatsEvent, error) {
+	if m.getUserEventsByTypeError != nil {
+		return nil, m.getUserEventsByTypeError
+	}
 	var filtered []domain.StatsEvent
 	for _, event := range m.events {
 		if event.UserID == userID && event.EventType == eventType {
@@ -63,6 +78,9 @@ func (m *mockStatsRepository) GetUserEventsByType(ctx context.Context, userID st
 }
 
 func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.EventType, startTime, endTime time.Time, limit int) ([]domain.LeaderboardEntry, error) {
+	if m.getTopUsersError != nil {
+		return nil, m.getTopUsersError
+	}
 	counts := make(map[string]int)
 	for _, event := range m.events {
 		if event.EventType == eventType && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -83,6 +101,9 @@ func (m *mockStatsRepository) GetTopUsers(ctx context.Context, eventType domain.
 }
 
 func (m *mockStatsRepository) GetEventCounts(ctx context.Context, startTime, endTime time.Time) (map[domain.EventType]int, error) {
+	if m.getEventCountsError != nil {
+		return nil, m.getEventCountsError
+	}
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -93,6 +114,9 @@ func (m *mockStatsRepository) GetEventCounts(ctx context.Context, startTime, end
 }
 
 func (m *mockStatsRepository) GetUserEventCounts(ctx context.Context, userID string, startTime, endTime time.Time) (map[domain.EventType]int, error) {
+	if m.getUserEventCountsError != nil {
+		return nil, m.getUserEventCountsError
+	}
 	counts := make(map[domain.EventType]int)
 	for _, event := range m.events {
 		if event.UserID == userID && event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -103,6 +127,9 @@ func (m *mockStatsRepository) GetUserEventCounts(ctx context.Context, userID str
 }
 
 func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime, endTime time.Time) (int, error) {
+	if m.getTotalEventCountError != nil {
+		return 0, m.getTotalEventCountError
+	}
 	count := 0
 	for _, event := range m.events {
 		if event.CreatedAt.After(startTime) && event.CreatedAt.Before(endTime) {
@@ -113,19 +140,31 @@ func (m *mockStatsRepository) GetTotalEventCount(ctx context.Context, startTime,
 }
 
 func (m *mockStatsRepository) GetUserSlotsStats(ctx context.Context, userID string, startTime, endTime time.Time) (*domain.SlotsStats, error) {
-	return nil, nil
+	if m.getUserSlotsStatsError != nil {
+		return nil, m.getUserSlotsStatsError
+	}
+	return &domain.SlotsStats{}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByProfit(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
+	if m.getSlotsLeaderboardByProfitError != nil {
+		return nil, m.getSlotsLeaderboardByProfitError
+	}
+	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByWinRate(ctx context.Context, startTime, endTime time.Time, minSpins, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
+	if m.getSlotsLeaderboardByWinRateError != nil {
+		return nil, m.getSlotsLeaderboardByWinRateError
+	}
+	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
 func (m *mockStatsRepository) GetSlotsLeaderboardByMegaJackpots(ctx context.Context, startTime, endTime time.Time, limit int) ([]domain.SlotsStats, error) {
-	return nil, nil
+	if m.getSlotsLeaderboardByMegaJackpotsError != nil {
+		return nil, m.getSlotsLeaderboardByMegaJackpotsError
+	}
+	return []domain.SlotsStats{{UserID: "1"}}, nil
 }
 
 func TestRecordUserEvent(t *testing.T) {
@@ -361,4 +400,402 @@ func TestGetLeaderboard(t *testing.T) {
 	if userCounts["user-2"] != 1 {
 		t.Errorf("Expected user-2 to have 1 event, got %d", userCounts["user-2"])
 	}
+}
+
+func TestService_GetSystemStats_ErrorCounts(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getEventCountsError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSystemStats(ctx, "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetSystemStats_ErrorTotal(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getTotalEventCountError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSystemStats(ctx, "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetLeaderboard_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getTopUsersError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetLeaderboard(ctx, domain.StatsEventItemSold, "daily", 10)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetUserStats_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getUserEventCountsError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetUserStats(ctx, "user-1", "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetUserSlotsStats_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getUserSlotsStatsError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetUserSlotsStats(ctx, "user-1", "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetSlotsLeaderboardByProfit_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getSlotsLeaderboardByProfitError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByProfit(ctx, "daily", 10)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetSlotsLeaderboardByWinRate_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getSlotsLeaderboardByWinRateError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 10, 10)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetSlotsLeaderboardByMegaJackpots_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getSlotsLeaderboardByMegaJackpotsError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByMegaJackpots(ctx, "daily", 10)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_RecordUserEvent_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		recordEventError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	err := svc.RecordUserEvent(ctx, "user-1", "some_event", nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_RecordUserEvent_EmptyUser(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	err := svc.RecordUserEvent(ctx, "", "some_event", nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetUserStats_EmptyUser(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetUserStats(ctx, "", "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetUserSlotsStats_EmptyUser(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetUserSlotsStats(ctx, "", "daily")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_GetSlotsLeaderboardByProfit(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByProfit(ctx, "daily", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_GetSlotsLeaderboardByWinRate(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 10, 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_GetSlotsLeaderboardByMegaJackpots(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetSlotsLeaderboardByMegaJackpots(ctx, "daily", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_GetUserSlotsStats(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	stats, err := svc.GetUserSlotsStats(ctx, "user-1", "daily")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats == nil {
+		t.Fatal("expected stats, got nil")
+	}
+}
+
+func TestService_GetSystemStats(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	stats, err := svc.GetSystemStats(ctx, "daily")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats == nil {
+		t.Fatal("expected stats, got nil")
+	}
+}
+
+func TestService_GetLeaderboard(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	stats, err := svc.GetLeaderboard(ctx, domain.StatsEventItemSold, "daily", 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats == nil {
+		t.Fatal("expected stats, got nil")
+	}
+}
+
+func TestService_GetUserStats(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	stats, err := svc.GetUserStats(ctx, "user-1", "daily")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if stats == nil {
+		t.Fatal("expected stats, got nil")
+	}
+}
+
+func TestService_GetUserCurrentStreak(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		events: []domain.StatsEvent{
+			{
+				EventID:   1,
+				UserID:    "user-1",
+				EventType: domain.StatsEventDailyStreak,
+				EventData: map[string]interface{}{"streak": 5},
+				CreatedAt: time.Now(),
+			},
+		},
+	}
+	svc := NewService(mockRepo)
+
+	streak, err := svc.GetUserCurrentStreak(ctx, "user-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if streak != 5 {
+		t.Errorf("expected streak 5, got %d", streak)
+	}
+}
+
+func TestService_GetUserCurrentStreak_Yesterday(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		events: []domain.StatsEvent{
+			{
+				EventID:   1,
+				UserID:    "user-1",
+				EventType: domain.StatsEventDailyStreak,
+				EventData: map[string]interface{}{"streak": 5},
+				CreatedAt: time.Now().AddDate(0, 0, -1),
+			},
+		},
+	}
+	svc := NewService(mockRepo)
+
+	streak, err := svc.GetUserCurrentStreak(ctx, "user-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if streak != 5 {
+		t.Errorf("expected streak 5, got %d", streak)
+	}
+}
+
+func TestService_GetUserCurrentStreak_Older(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		events: []domain.StatsEvent{
+			{
+				EventID:   1,
+				UserID:    "user-1",
+				EventType: domain.StatsEventDailyStreak,
+				EventData: map[string]interface{}{"streak": 5},
+				CreatedAt: time.Now().AddDate(0, 0, -2),
+			},
+		},
+	}
+	svc := NewService(mockRepo)
+
+	streak, err := svc.GetUserCurrentStreak(ctx, "user-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if streak != 0 {
+		t.Errorf("expected streak 0, got %d", streak)
+	}
+}
+
+func TestService_GetUserCurrentStreak_NoEvents(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	streak, err := svc.GetUserCurrentStreak(ctx, "user-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if streak != 0 {
+		t.Errorf("expected streak 0, got %d", streak)
+	}
+}
+
+func TestService_GetUserCurrentStreak_Error(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getUserEventsByTypeError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+
+	_, err := svc.GetUserCurrentStreak(ctx, "user-1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestService_getPeriodRange(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	stats, _ := svc.GetUserStats(ctx, "user-1", "hourly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "weekly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "monthly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "yearly")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "all")
+	require.NotNil(t, stats)
+	stats, _ = svc.GetUserStats(ctx, "user-1", "unknown")
+	require.NotNil(t, stats)
+}
+
+func TestService_GetSlotsLeaderboardByWinRate_LimitZero(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 0, 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
+}
+
+func TestService_getSlotsLeaderboard_LimitZero(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	// Calls getSlotsLeaderboard internally with limit 0
+	lb, err := svc.GetSlotsLeaderboardByProfit(ctx, "daily", 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
+}
+
+func TestService_GetSlotsLeaderboardByWinRate_LimitZero2(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{}
+	svc := NewService(mockRepo)
+
+	// ensure limit logic works
+	lb, err := svc.GetSlotsLeaderboardByWinRate(ctx, "daily", 1, 0)
+	require.NoError(t, err)
+	require.NotNil(t, lb)
+}
+
+func TestService_GetLeaderboard_Error2(t *testing.T) {
+	ctx := context.Background()
+	mockRepo := &mockStatsRepository{
+		getTopUsersError: errors.New("db error"),
+	}
+	svc := NewService(mockRepo)
+	svc.GetLeaderboard(ctx, domain.StatsEventItemSold, "daily", 10)
 }

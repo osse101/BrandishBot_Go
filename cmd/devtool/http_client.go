@@ -12,6 +12,8 @@ import (
 
 const defaultAPIURL = "http://localhost:8080"
 
+var devtoolHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
 func getAPIURL() string {
 	url := os.Getenv("API_URL")
 	if url == "" {
@@ -47,8 +49,24 @@ func makeHTTPRequest(method, url string, payload interface{}, apiKey string) (*h
 		req.Header.Set("X-API-Key", apiKey)
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	return client.Do(req)
+	return devtoolHTTPClient.Do(req)
+}
+
+func handleJSONResponse(resp *http.Response, target interface{}) error {
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	if target != nil {
+		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+			return fmt.Errorf("failed to decode response: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func getJSON(url string, apiKey string, target interface{}) error {
@@ -56,20 +74,7 @@ func getJSON(url string, apiKey string, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	if target != nil {
-		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-			return fmt.Errorf("failed to decode response: %w", err)
-		}
-	}
-
-	return nil
+	return handleJSONResponse(resp, target)
 }
 
 func postJSON(url string, payload interface{}, apiKey string, target interface{}) error {
@@ -77,20 +82,7 @@ func postJSON(url string, payload interface{}, apiKey string, target interface{}
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	if target != nil {
-		if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-			return fmt.Errorf("failed to decode response: %w", err)
-		}
-	}
-
-	return nil
+	return handleJSONResponse(resp, target)
 }
 
 func postJSONStr(url string, payload interface{}, apiKey string) (string, error) {
@@ -100,14 +92,13 @@ func postJSONStr(url string, payload interface{}, apiKey string) (string, error)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return string(bodyBytes), nil

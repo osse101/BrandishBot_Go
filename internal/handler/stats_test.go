@@ -86,6 +86,7 @@ func TestHandleGetUserStats(t *testing.T) {
 		name           string
 		platform       string
 		platformID     string
+		username       string
 		period         string
 		setupMock      func(*mocks.MockStatsService, *mocks.MockRepositoryUser)
 		expectedStatus int
@@ -104,6 +105,40 @@ func TestHandleGetUserStats(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `"total_events":10`,
+		},
+		{
+			name:     "Success with username",
+			platform: domain.PlatformTwitch,
+			username: "someuser",
+			period:   domain.PeriodDaily,
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				user := &domain.User{ID: "user123"}
+				repo.On("GetUserByPlatformUsername", mock.Anything, domain.PlatformTwitch, "someuser").Return(user, nil)
+				summary := &domain.StatsSummary{TotalEvents: 20}
+				svc.On("GetUserStats", mock.Anything, "user123", domain.PeriodDaily).Return(summary, nil)
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"total_events":20`,
+		},
+		{
+			name:     "Target-mode User Not Found",
+			platform: domain.PlatformTwitch,
+			username: "someuser",
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				repo.On("GetUserByPlatformUsername", mock.Anything, domain.PlatformTwitch, "someuser").Return(nil, errors.New("not found"))
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "User not found",
+		},
+		{
+			name:       "Self-mode User Not Found",
+			platform:   domain.PlatformTwitch,
+			platformID: "test123",
+			setupMock: func(svc *mocks.MockStatsService, repo *mocks.MockRepositoryUser) {
+				repo.On("GetUserByPlatformID", mock.Anything, domain.PlatformTwitch, "test123").Return(nil, errors.New("not found"))
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   "User not found",
 		},
 		{
 			name:           "Missing platform",
@@ -150,6 +185,9 @@ func TestHandleGetUserStats(t *testing.T) {
 			}
 			if tt.platformID != "" {
 				url += "&platform_id=" + tt.platformID
+			}
+			if tt.username != "" {
+				url += "&username=" + tt.username
 			}
 			if tt.period != "" {
 				url += "&period=" + tt.period

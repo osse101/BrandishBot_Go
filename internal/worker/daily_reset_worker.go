@@ -32,7 +32,34 @@ func NewDailyResetWorker(jobService job.Service, publisher *event.ResilientPubli
 
 // Start initializes the worker and schedules the first reset
 func (w *DailyResetWorker) Start() {
+	// Check if we missed the reset for today (e.g. server was down)
+	w.checkMissedReset(context.Background())
 	w.scheduleNext()
+}
+
+// checkMissedReset checks if a daily reset was missed (e.g. during downtime) and triggers it if so
+func (w *DailyResetWorker) checkMissedReset(ctx context.Context) {
+	log := logger.FromContext(ctx)
+
+	status, err := w.jobService.GetDailyResetStatus(ctx)
+	if err != nil {
+		log.Error("Failed to check daily reset status on startup", "error", err)
+		return
+	}
+
+	// Calculate target reset time for "today" (most recent 00:00 UTC+7)
+	location := time.FixedZone("UTC+7", 7*60*60)
+	now := time.Now().In(location)
+	targetReset := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+
+	// If LastResetTime is before the start of today 00:00 UTC+7, it means it hasn't happened yet
+	if status.LastResetTime.Before(targetReset) {
+		log.Info(LogMsgDailyResetMissedDetected,
+			"detected_last_reset", status.LastResetTime.UTC().Format(time.RFC3339),
+			"target_reset", targetReset.UTC().Format(time.RFC3339),
+			"records_affected", status.RecordsAffected)
+		w.executeReset()
+	}
 }
 
 // scheduleNext calculates the time until next reset (00:00 UTC+7) and schedules the reset

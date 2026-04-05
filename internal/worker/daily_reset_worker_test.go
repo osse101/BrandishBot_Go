@@ -78,6 +78,11 @@ func TestDailyResetWorkerStart(t *testing.T) {
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
 
+	// Expect GetDailyResetStatus to be called during Start
+	jobSvc.On("GetDailyResetStatus", mock.Anything).Return(&domain.DailyResetStatus{
+		LastResetTime: time.Now().UTC(),
+	}, nil)
+
 	// Start should not panic
 	worker.Start()
 
@@ -101,6 +106,12 @@ func TestDailyResetWorkerShutdown(t *testing.T) {
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
+
+	// Expect GetDailyResetStatus to be called during Start
+	jobSvc.On("GetDailyResetStatus", mock.Anything).Return(&domain.DailyResetStatus{
+		LastResetTime: time.Now().UTC(),
+	}, nil)
+
 	worker.Start()
 
 	// Allow time for any scheduled timers
@@ -126,6 +137,12 @@ func TestDailyResetWorkerShutdownTimeout(t *testing.T) {
 	defer publisher.Shutdown(context.Background())
 
 	worker := NewDailyResetWorker(jobSvc, publisher)
+
+	// Expect GetDailyResetStatus to be called during Start
+	jobSvc.On("GetDailyResetStatus", mock.Anything).Return(&domain.DailyResetStatus{
+		LastResetTime: time.Now().UTC(),
+	}, nil)
+
 	worker.Start()
 
 	// Shutdown with very short timeout should timeout
@@ -176,4 +193,65 @@ func TestDailyResetWorker_ExecuteReset(t *testing.T) {
 	// Assert expectations
 	jobSvc.AssertExpectations(t)
 	mockBus.AssertExpectations(t)
+}
+
+func TestDailyResetWorker_CheckMissedReset(t *testing.T) {
+	t.Parallel()
+
+	jobSvc := mocks.NewMockJobService(t)
+	mockBus := mocks.NewMockEventBus(t)
+
+	deadFile := filepath.Join(t.TempDir(), "test_dead.jsonl")
+	publisher, err := event.NewResilientPublisher(mockBus, 1, 10*time.Millisecond, deadFile)
+	assert.NoError(t, err)
+	defer publisher.Shutdown(context.Background())
+
+	worker := NewDailyResetWorker(jobSvc, publisher)
+
+	// Mocking a missed reset (LastResetTime was 2 days ago)
+	location := time.FixedZone("UTC+7", 7*60*60)
+	lastReset := time.Now().In(location).AddDate(0, 0, -2)
+
+	jobSvc.On("GetDailyResetStatus", mock.Anything).Return(&domain.DailyResetStatus{
+		LastResetTime:   lastReset,
+		RecordsAffected: 10,
+	}, nil)
+
+	// Expect executeReset to be triggered
+	jobSvc.On("ResetDailyJobXP", mock.Anything).Return(int64(42), nil)
+	mockBus.On("Publish", mock.Anything, mock.MatchedBy(func(evt event.Event) bool {
+		return evt.Type == event.Type(domain.EventTypeDailyResetComplete)
+	})).Return(nil)
+
+	// Execute
+	worker.checkMissedReset(context.Background())
+
+	// Wait for the waitgroup to ensure the goroutine completes
+	worker.wg.Wait()
+
+	// Assert expectations
+	jobSvc.AssertExpectations(t)
+}
+
+func TestDailyResetWorker_CheckMissedReset_NoMiss(t *testing.T) {
+	t.Parallel()
+
+	jobSvc := mocks.NewMockJobService(t)
+	worker := NewDailyResetWorker(jobSvc, nil)
+
+	// Mocking a recent reset (LastResetTime was just now)
+	lastReset := time.Now().UTC()
+
+	jobSvc.On("GetDailyResetStatus", mock.Anything).Return(&domain.DailyResetStatus{
+		LastResetTime:   lastReset,
+		RecordsAffected: 42,
+	}, nil)
+
+	// ResetDailyJobXP should NOT be called
+
+	// Execute
+	worker.checkMissedReset(context.Background())
+
+	// Assert expectations
+	jobSvc.AssertExpectations(t)
 }
