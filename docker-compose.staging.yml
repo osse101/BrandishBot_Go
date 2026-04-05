@@ -55,6 +55,10 @@ services:
     volumes:
       - ./configs:/app/configs:ro
       - ./logs/discord:/app/logs
+      # Mount MapRando presets
+      - ${MAPRANDO_PRESETS_DIR}:/app/maprando_presets:ro
+      # Mount media assets
+      - ./media:/app/media:ro
     depends_on:
       - app
     restart: unless-stopped
