@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -246,13 +245,6 @@ func MapRandoUnlockCommand(randoClient *MapRandoClient) (*discordgo.ApplicationC
 		}
 
 		seedName := strings.TrimSpace(options[0].StringValue())
-
-		// Input validation: ensure the seed name is strictly alphanumeric/dashes
-		var validSeedRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
-		if !validSeedRegex.MatchString(seedName) {
-			respondError(s, i, "Invalid seed name. Only alphanumeric characters, dashes, and underscores are allowed.")
-			return
-		}
 
 		err := randoClient.Unlock(seedName, "")
 		if err != nil {

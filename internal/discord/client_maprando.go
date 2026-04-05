@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -368,6 +369,12 @@ func (c *MapRandoClient) Unlock(seedName string, presetName string) error {
 }
 
 func (c *MapRandoClient) unlockAt(baseURL string, seedName string) error {
+	// Security: strictly validate the seedName to prevent path traversal
+	var validSeedRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+	if !validSeedRegex.MatchString(seedName) {
+		return fmt.Errorf("invalid seed name format: strictly alphanumeric and dashes allowed")
+	}
+
 	data := url.Values{}
 	data.Set("spoiler_token", c.spoilerToken)
 
