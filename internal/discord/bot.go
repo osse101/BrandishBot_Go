@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -165,12 +166,17 @@ func (b *Bot) ready(s *discordgo.Session, r *discordgo.Ready) {
 }
 
 func (b *Bot) interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	// Only handle regular slash commands here. Autocomplete is handled by a separate handler.
-	if i.Type != discordgo.InteractionApplicationCommand {
-		return
-	}
-	if b.Registry != nil {
-		b.Registry.Handle(s, i, b.Client)
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		if b.Registry != nil {
+			b.Registry.Handle(s, i, b.Client)
+		}
+	case discordgo.InteractionMessageComponent:
+		data := i.MessageComponentData()
+		if strings.HasPrefix(data.CustomID, "maprando_unlock_") {
+			seedName := strings.TrimPrefix(data.CustomID, "maprando_unlock_")
+			HandleButtonUnlock(s, i, b.MapRandoClient, seedName)
+		}
 	}
 }
 

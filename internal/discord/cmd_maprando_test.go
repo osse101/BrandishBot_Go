@@ -44,7 +44,7 @@ func TestMapRandoClient(t *testing.T) {
 	client.presets["test-preset"] = `{"skills": true}`
 
 	// Test Randomize
-	seedURL, err := client.Randomize("test-preset")
+	seedURL, err := client.Randomize("test-preset", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, server.URL+"/seed/my-test-seed", seedURL)
 
@@ -60,7 +60,7 @@ func TestMapRandoClient(t *testing.T) {
 	assert.Equal(t, "https://maprando.com/seed/my-seed", client.SeedURL("my-seed", "test-preset"))
 
 	// Test unknown preset
-	_, err = client.Randomize("unknown")
+	_, err = client.Randomize("unknown", nil)
 	assert.Error(t, err)
 }
 

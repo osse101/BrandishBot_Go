@@ -3,7 +3,9 @@ package discord
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -31,6 +33,12 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 			return
 		}
 
+		user := getInteractionUser(i)
+		if remaining, onCooldown := randoClient.CheckCooldown(user.ID); onCooldown {
+			respondError(s, i, fmt.Sprintf("Please wait %d seconds before generating another seed.", int(math.Ceil(remaining.Seconds()))))
+			return
+		}
+
 		// Get params
 		options := getOptions(i)
 		if len(options) < 1 {
@@ -43,8 +51,19 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 			presetFormalName = presetName
 		}
 
+		// Give feedback immediately
+		initialMsg := "Generating seed..."
+		_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &initialMsg,
+		})
+
 		// Call client
-		seedURL, err := randoClient.Randomize(presetName)
+		seedURL, err := randoClient.Randomize(presetName, func(pos int) {
+			waitingMsg := fmt.Sprintf("Server is busy. Your seed is in the queue (Position %d). Please wait...", pos)
+			_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &waitingMsg,
+			})
+		})
 		if err != nil {
 			slog.Error("Failed to randomize seed", "error", err, "preset", presetName)
 			respondError(s, i, fmt.Sprintf("Failed to generate seed: %v", err))
@@ -53,7 +72,6 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 
 		seedName := ""
 		// Parse out seed name from end of URL. URL looks like http://domain.com/seed/{seedname}
-		// Just slice after "/seed/"
 		const prefix = "/seed/"
 		idx := strings.LastIndex(seedURL, prefix)
 		if idx != -1 {
@@ -62,7 +80,7 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "Map Rando Seed Generated!",
-			Description: fmt.Sprintf("**Preset:** %s\n\n%s\n\n*Use `/maprandounlock %s` to unlock the spoiler log.*", presetFormalName, seedURL, seedName),
+			Description: fmt.Sprintf("**Preset:** %s\n\n%s", presetFormalName, seedURL),
 			Color:       0x00FF00,
 		}
 
@@ -70,7 +88,8 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 		var files []*discordgo.File
 		const thumbPath = "media/images/MapRando/map_station_transparent.png"
 		if file, err := os.Open(thumbPath); err == nil {
-			defer file.Close()
+			// We cannot defer file.Close() if we are handing it to InteractionResponseEdit,
+			// the Discord client closes it internally after reading.
 			files = []*discordgo.File{
 				{
 					Name:   "thumb.png",
@@ -84,16 +103,59 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 			slog.Warn("Failed to load maprando thumbnail", "path", thumbPath, "error", err)
 		}
 
-		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-			Embeds: []*discordgo.MessageEmbed{embed},
-			Files:  files,
+		emptyStr := ""
+		_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+			Content: &emptyStr,
+			Embeds:  &[]*discordgo.MessageEmbed{embed},
+			Files:   files, // DiscordGo closes files internally
+			Components: &[]discordgo.MessageComponent{
+				discordgo.ActionsRow{
+					Components: []discordgo.MessageComponent{
+						discordgo.Button{
+							Label:    "Unlock Spoiler Log",
+							Style:    discordgo.SuccessButton,
+							CustomID: "maprando_unlock_" + seedName,
+							Emoji: &discordgo.ComponentEmoji{
+								Name: "🔓",
+							},
+						},
+					},
+				},
+			},
 		})
 		if err != nil {
-			slog.Error("Failed to send maprando embed", "error", err)
+			slog.Error("Failed to send maprando embed with components", "error", err)
 		}
 	}
 
 	return cmd, handler
+}
+
+// HandleButtonUnlock handles the "Unlock Spoiler Log" button click
+func HandleButtonUnlock(s *discordgo.Session, i *discordgo.InteractionCreate, randoClient *MapRandoClient, seedName string) {
+	if !deferResponse(s, i) {
+		return
+	}
+
+	err := randoClient.Unlock(seedName, "")
+	if err != nil {
+		slog.Error("Failed to unlock seed via button", "error", err, "seed", seedName)
+		respondError(s, i, fmt.Sprintf("Failed to unlock seed: %v", err))
+		return
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:       "Seed Unlocked!",
+		Description: fmt.Sprintf("Spoiler log for seed `%s` has been unlocked.\n\n[View Seed](%s)", seedName, randoClient.SeedURL(seedName, "")),
+		Color:       0x00FF00,
+	}
+
+	_, err = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Embeds: &[]*discordgo.MessageEmbed{embed},
+	})
+	if err != nil {
+		slog.Error("Failed to send maprandounlock button embed", "error", err)
+	}
 }
 
 // MapRandoUnlockCommand returns the /maprandounlock command definition and handler
@@ -121,7 +183,15 @@ func MapRandoUnlockCommand(randoClient *MapRandoClient) (*discordgo.ApplicationC
 			respondError(s, i, "Missing required seed name")
 			return
 		}
-		seedName := options[0].StringValue()
+
+		seedName := strings.TrimSpace(options[0].StringValue())
+
+		// Input validation: ensure the seed name is strictly alphanumeric/dashes
+		var validSeedRegex = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+		if !validSeedRegex.MatchString(seedName) {
+			respondError(s, i, "Invalid seed name. Only alphanumeric characters, dashes, and underscores are allowed.")
+			return
+		}
 
 		err := randoClient.Unlock(seedName, "")
 		if err != nil {

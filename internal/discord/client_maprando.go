@@ -12,6 +12,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,6 +41,10 @@ type MapRandoClient struct {
 	descriptions map[string]string // map of presetName -> description
 	devOnly      map[string]bool   // map of presetName -> is dev only
 	presetNames  []string
+
+	sem         chan struct{} // limits concurrent randomize requests
+	queueCount  atomic.Int32  // tracks active/queued processes for feedback
+	lastRequest sync.Map      // tracks user rate limits (userID -> time.Time)
 }
 
 // NewMapRandoClient creates a new MapRandomizer integration client
@@ -56,6 +63,7 @@ func NewMapRandoClient(baseURL, spoilerToken string) *MapRandoClient {
 		descriptions: make(map[string]string),
 		devOnly:      make(map[string]bool),
 		presetNames:  make([]string, 0),
+		sem:          make(chan struct{}, 2), // allow 2 concurrent MapRando generations
 	}
 }
 
@@ -101,6 +109,24 @@ func (c *MapRandoClient) PresetNames() []string {
 	return c.presetNames
 }
 
+// CheckCooldown checks if a user is within the 30-second rate limit.
+// Returns the remaining duration and true if they are on cooldown.
+// Otherwise, records the current time and returns 0, false.
+func (c *MapRandoClient) CheckCooldown(userID string) (time.Duration, bool) {
+	now := time.Now()
+	const cooldown = 30 * time.Second
+
+	if val, ok := c.lastRequest.Load(userID); ok {
+		lastTime := val.(time.Time)
+		if elapsed := now.Sub(lastTime); elapsed < cooldown {
+			return cooldown - elapsed, true
+		}
+	}
+
+	c.lastRequest.Store(userID, now)
+	return 0, false
+}
+
 func (c *MapRandoClient) PresetDescription(name string) string {
 	return c.descriptions[name]
 }
@@ -120,11 +146,32 @@ func (c *MapRandoClient) SeedURL(seedName string, presetName string) string {
 }
 
 // Randomize requests a new seed using the provided preset name. Returns the full seed URL.
-func (c *MapRandoClient) Randomize(presetName string) (string, error) {
+// It uses a semaphore to limit concurrent backend requests.
+func (c *MapRandoClient) Randomize(presetName string, onQueued func(position int)) (string, error) {
 	settingsJSON, ok := c.presets[presetName]
 	if !ok {
 		return "", fmt.Errorf("unknown preset: %s", presetName)
 	}
+
+	qSize := c.queueCount.Add(1)
+	defer c.queueCount.Add(-1)
+
+	// Try to acquire semaphore without blocking first
+	select {
+	case c.sem <- struct{}{}:
+		// acquired immediately
+	default:
+		// Queue is full, we are waiting
+		if onQueued != nil {
+			pos := int(qSize) - cap(c.sem)
+			if pos < 1 {
+				pos = 1
+			}
+			onQueued(pos)
+		}
+		c.sem <- struct{}{} // wait for real
+	}
+	defer func() { <-c.sem }()
 
 	baseURL := c.getBaseURL(presetName)
 
