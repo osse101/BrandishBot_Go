@@ -71,7 +71,7 @@ func TestMapRandoCommandFactories(t *testing.T) {
 	cmd, handler := MapRandoCommand(client)
 	assert.NotNil(t, handler)
 	assert.Equal(t, "maprando", cmd.Name)
-	assert.Equal(t, 1, len(cmd.Options))
+	assert.Equal(t, 10, len(cmd.Options))
 	assert.True(t, cmd.Options[0].Autocomplete)
 
 	cmdUnlock, handlerUnlock := MapRandoUnlockCommand(client)

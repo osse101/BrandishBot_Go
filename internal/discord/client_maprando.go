@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -127,6 +128,11 @@ func (c *MapRandoClient) CheckCooldown(userID string) (time.Duration, bool) {
 	return 0, false
 }
 
+// ClearCooldown removes a user's cooldown. Useful if their request failed and they should be allowed to retry immediately.
+func (c *MapRandoClient) ClearCooldown(userID string) {
+	c.lastRequest.Delete(userID)
+}
+
 func (c *MapRandoClient) PresetDescription(name string) string {
 	return c.descriptions[name]
 }
@@ -152,7 +158,119 @@ func (c *MapRandoClient) Randomize(presetName string, onQueued func(position int
 	if !ok {
 		return "", fmt.Errorf("unknown preset: %s", presetName)
 	}
+	baseURL := c.getBaseURL(presetName)
+	return c.RandomizeCustom(settingsJSON, baseURL, onQueued)
+}
 
+// RandomizeWithOverrides merges a base preset or JSON file with dynamic overrides, then randomizes.
+func (c *MapRandoClient) RandomizeWithOverrides(presetName string, presetFileURL string, overrides map[string]string, onQueued func(position int)) (string, error) {
+	var settingsJSON string
+
+	// Base URL logic - default to main server if no predefined preset is selected
+	baseURL := c.baseURL
+	if presetName != "" {
+		settingsJSON = c.presets[presetName]
+		if settingsJSON == "" {
+			return "", fmt.Errorf("unknown preset: %s", presetName)
+		}
+		baseURL = c.getBaseURL(presetName)
+	}
+
+	// If file is provided, download it and strictly use it as the base
+	if presetFileURL != "" {
+		resp, err := c.httpClient.Get(presetFileURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to download preset_file: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("failed to download preset_file: status %d", resp.StatusCode)
+		}
+
+		// Read file up to 512KB (MapRando presets can be over 140KB)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+		if err != nil {
+			return "", fmt.Errorf("failed to read preset_file body: %w", err)
+		}
+		settingsJSON = string(body)
+	}
+
+	// Apply overrides if any
+	if len(overrides) > 0 {
+		var data map[string]any
+		if err := json.Unmarshal([]byte(settingsJSON), &data); err != nil {
+			return "", fmt.Errorf("failed to parse base preset JSON: %w", err)
+		}
+
+		// We must overwrite preset name with "Custom" to preserve our overrides.
+		data["name"] = "Custom"
+
+		for key, valStr := range overrides {
+			if err := c.applyDotNotationOverride(data, key, valStr); err != nil {
+				return "", fmt.Errorf("failed to apply override '%s': %w", key, err)
+			}
+		}
+
+		modifiedJSON, err := json.Marshal(data)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode modified JSON: %w", err)
+		}
+		settingsJSON = string(modifiedJSON)
+	}
+
+	return c.RandomizeCustom(settingsJSON, baseURL, onQueued)
+}
+
+func (c *MapRandoClient) applyDotNotationOverride(data map[string]any, dotKey string, valStr string) error {
+	keys := strings.Split(dotKey, ".")
+	var current any = data
+
+	// Parse value cleanly
+	var parsedVal any = valStr
+	if valStr == "null" {
+		parsedVal = nil
+	} else if b, err := strconv.ParseBool(valStr); err == nil {
+		parsedVal = b
+	} else if i, err := strconv.ParseInt(valStr, 10, 64); err == nil {
+		parsedVal = i
+	} else if f, err := strconv.ParseFloat(valStr, 64); err == nil {
+		parsedVal = f
+	}
+
+	for i, part := range keys {
+		isLeaf := (i == len(keys)-1)
+
+		if m, ok := current.(map[string]any); ok {
+			if isLeaf {
+				m[part] = parsedVal
+				return nil
+			}
+			next, exists := m[part]
+			if !exists {
+				m[part] = make(map[string]any)
+				next = m[part]
+			}
+			current = next
+		} else if a, ok := current.([]any); ok {
+			idx, err := strconv.Atoi(part)
+			if err != nil || idx < 0 || idx >= len(a) {
+				return fmt.Errorf("invalid array index '%s' at '%s'", part, strings.Join(keys[:i], "."))
+			}
+			if isLeaf {
+				a[idx] = parsedVal
+				return nil
+			}
+			current = a[idx]
+		} else {
+			return fmt.Errorf("cannot traverse key '%s' on non-object at '%s'", part, strings.Join(keys[:i], "."))
+		}
+	}
+	return nil
+}
+
+// RandomizeCustom requests a new seed using a custom JSON payload and a specific baseURL.
+func (c *MapRandoClient) RandomizeCustom(settingsJSON string, baseURL string, onQueued func(position int)) (string, error) {
 	qSize := c.queueCount.Add(1)
 	defer c.queueCount.Add(-1)
 
@@ -172,8 +290,6 @@ func (c *MapRandoClient) Randomize(presetName string, onQueued func(position int
 		c.sem <- struct{}{} // wait for real
 	}
 	defer func() { <-c.sem }()
-
-	baseURL := c.getBaseURL(presetName)
 
 	// Prepare multipart form
 	var b bytes.Buffer
@@ -215,7 +331,8 @@ func (c *MapRandoClient) Randomize(presetName string, onQueued func(position int
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("randomize failed with status: %s", resp.Status)
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("randomize failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	// Read {"seed_url": "/seed/{seed_name}"}
@@ -240,7 +357,20 @@ func (c *MapRandoClient) Unlock(seedName string, presetName string) error {
 	data := url.Values{}
 	data.Set("spoiler_token", c.spoilerToken)
 
-	baseURL := c.getBaseURL(presetName)
+	var baseURL string
+	if presetName != "" {
+		baseURL = c.getBaseURL(presetName)
+	} else {
+		baseURL = c.baseURL
+	}
+
+	return c.unlockAt(baseURL, seedName)
+}
+
+func (c *MapRandoClient) unlockAt(baseURL string, seedName string) error {
+	data := url.Values{}
+	data.Set("spoiler_token", c.spoilerToken)
+
 	reqURL := fmt.Sprintf("%s/seed/%s/unlock", baseURL, seedName)
 	req, err := http.NewRequest("POST", reqURL, strings.NewReader(data.Encode()))
 	if err != nil {

@@ -19,11 +19,25 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 		Options: []*discordgo.ApplicationCommandOption{
 			{
 				Name:         "preset",
-				Description:  "The preset to use (e.g., S4)",
+				Description:  "The preset to use (e.g., S4). Optional if uploading a file.",
 				Type:         discordgo.ApplicationCommandOptionString,
-				Required:     true,
+				Required:     false,
 				Autocomplete: true,
 			},
+			{
+				Name:        "preset_file",
+				Description: "Upload a custom JSON preset file (overrides base preset)",
+				Type:        discordgo.ApplicationCommandOptionAttachment,
+				Required:    false,
+			},
+			{Name: "override1_key", Description: "Key (e.g. game_options.race_mode)", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override1_val", Description: "Value (e.g. true)", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override2_key", Description: "Key", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override2_val", Description: "Value", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override3_key", Description: "Key", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override3_val", Description: "Value", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override4_key", Description: "Key", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "override4_val", Description: "Value", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	}
 
@@ -39,16 +53,22 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 			return
 		}
 
-		// Get params
-		options := getOptions(i)
-		if len(options) < 1 {
-			respondError(s, i, "Missing required preset name")
+		// Parse options using helper to reduce complexity
+		presetName, presetFileURL, overrides := parseMapRandoOptions(i)
+
+		if presetName == "" && presetFileURL == "" {
+			respondError(s, i, "You must provide either a base `preset` or upload a `preset_file`.")
 			return
 		}
-		presetName := options[0].StringValue()
-		presetFormalName := randoClient.PresetDescription(presetName)
-		if presetFormalName == "" {
-			presetFormalName = presetName
+
+		presetFormalName := presetName
+		if presetName != "" {
+			desc := randoClient.PresetDescription(presetName)
+			if desc != "" {
+				presetFormalName = desc
+			}
+		} else {
+			presetFormalName = "Custom Upload"
 		}
 
 		// Give feedback immediately
@@ -58,13 +78,14 @@ func MapRandoCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand
 		})
 
 		// Call client
-		seedURL, err := randoClient.Randomize(presetName, func(pos int) {
+		seedURL, err := randoClient.RandomizeWithOverrides(presetName, presetFileURL, overrides, func(pos int) {
 			waitingMsg := fmt.Sprintf("Server is busy. Your seed is in the queue (Position %d). Please wait...", pos)
 			_, _ = s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
 				Content: &waitingMsg,
 			})
 		})
 		if err != nil {
+			randoClient.ClearCooldown(user.ID)
 			slog.Error("Failed to randomize seed", "error", err, "preset", presetName)
 			respondError(s, i, fmt.Sprintf("Failed to generate seed: %v", err))
 			return
@@ -158,7 +179,47 @@ func HandleButtonUnlock(s *discordgo.Session, i *discordgo.InteractionCreate, ra
 	}
 }
 
-// MapRandoUnlockCommand returns the /maprandounlock command definition and handler
+// parseMapRandoOptions extracts the preset and dynamic overrides from the interaction payload
+func parseMapRandoOptions(i *discordgo.InteractionCreate) (presetName string, presetFileURL string, overrides map[string]string) {
+	options := getOptions(i)
+	overrides = make(map[string]string)
+
+	overrideKeys := make(map[string]string)
+	overrideVals := make(map[string]string)
+
+	for _, opt := range options {
+		switch opt.Name {
+		case "preset":
+			presetName = opt.StringValue()
+		case "preset_file":
+			attachmentID, ok := opt.Value.(string)
+			if ok && i.ApplicationCommandData().Resolved != nil {
+				if att, ok := i.ApplicationCommandData().Resolved.Attachments[attachmentID]; ok {
+					presetFileURL = att.URL
+				}
+			}
+		}
+
+		if strings.HasPrefix(opt.Name, "override") {
+			parts := strings.Split(opt.Name, "_")
+			if len(parts) == 2 {
+				if parts[1] == "key" {
+					overrideKeys[parts[0]] = opt.StringValue()
+				} else if parts[1] == "val" {
+					overrideVals[parts[0]] = opt.StringValue()
+				}
+			}
+		}
+	}
+
+	for prefix, key := range overrideKeys {
+		if val, ok := overrideVals[prefix]; ok {
+			overrides[key] = val
+		}
+	}
+
+	return presetName, presetFileURL, overrides
+}
 func MapRandoUnlockCommand(randoClient *MapRandoClient) (*discordgo.ApplicationCommand, CommandHandler) {
 	cmd := &discordgo.ApplicationCommand{
 		Name:        "maprandounlock",
