@@ -1,3 +1,13 @@
+# Patch Notes (Week of April 3, 2026)
+
+## System Updates & Bug Fixes
+
+- **Daily Resets**: Added a startup check to automatically trigger any daily resets that might have been missed while the bot was offline.
+- **Cooldowns**: Fixed a bug where user-specific progression bonuses were not properly reducing cooldowns (like the search cooldown reduction) because the user ID wasn't being passed correctly.
+- **Lootboxes**: Fixed an issue where money drops from junkboxes had messy formatting. Money drops are now grouped under a single generic name before being displayed.
+- **Items**: Updated the description message when deploying a Bomb.
+- **Behind the Scenes**: Replaced the global `http.Client` with a shared singleton in devtools, and added explicit timeouts to the Discord health checks to prevent silent hanging.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
