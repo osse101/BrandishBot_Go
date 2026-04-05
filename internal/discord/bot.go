@@ -26,6 +26,7 @@ type Bot struct {
 	NotificationChannelID string
 	GithubToken           string
 	GithubOwnerRepo       string
+	MapRandoClient        *MapRandoClient
 	sseClient             *SSEClient
 	sseNotifier           *SSENotifier
 	ctx                   context.Context
@@ -44,6 +45,8 @@ type Config struct {
 	NotificationChannelID string
 	GithubToken           string
 	GithubOwnerRepo       string
+	MapRandoURL           string
+	MapRandoSpoilerToken  string
 }
 
 // New creates a new Discord bot
@@ -91,7 +94,7 @@ func (b *Bot) Start() error {
 	// Add autocomplete handler
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
-			HandleAutocomplete(s, i, b.Client)
+			HandleAutocomplete(s, i, b.Client, b.MapRandoClient)
 		}
 	})
 
@@ -162,6 +165,10 @@ func (b *Bot) ready(s *discordgo.Session, r *discordgo.Ready) {
 }
 
 func (b *Bot) interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// Only handle regular slash commands here. Autocomplete is handled by a separate handler.
+	if i.Type != discordgo.InteractionApplicationCommand {
+		return
+	}
 	if b.Registry != nil {
 		b.Registry.Handle(s, i, b.Client)
 	}

@@ -45,6 +45,10 @@ services:
     volumes:
       # Mount configs so /info command can read documentation
       - ./configs:/app/configs:ro
+      # Mount MapRando presets
+      - ${MAPRANDO_PRESETS_DIR}:/app/maprando_presets:ro
+      # Mount media assets
+      - ./media:/app/media:ro
       # Optional: Mount logs for persistence
       # - ./logs/discord:/app/logs
     healthcheck:
@@ -63,6 +67,8 @@ services:
           cpus: '0.25'
     networks:
       - backend
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     logging:
       driver: 'json-file'
       options:

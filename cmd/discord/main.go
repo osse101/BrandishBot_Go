@@ -43,6 +43,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize MapRandoClient
+	bot.MapRandoClient = discord.NewMapRandoClient(cfg.MapRandoURL, cfg.MapRandoSpoilerToken)
+	slog.Info("Loading MapRando configuration", "path", "configs/maprando/presets.yaml")
+	if err := bot.MapRandoClient.LoadConfig("configs/maprando/presets.yaml"); err != nil {
+		slog.Error("Failed to load maprando preset config", "error", err)
+		// We don't exit, we just log the warning and maprando commands won't work well
+	}
+
 	// Initialize info loader
 	infoLoader := info.NewLoader("configs/info")
 
@@ -115,6 +123,8 @@ func loadConfig() (discord.Config, error) {
 	notificationChannelID := os.Getenv("DISCORD_NOTIFICATION_CHANNEL_ID")
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	githubRepo := os.Getenv("GITHUB_OWNER_REPO")
+	mapRandoURL := os.Getenv("MAPRANDO_URL")
+	mapRandoToken := os.Getenv("MAPRANDO_SPOILER_TOKEN")
 
 	if notificationChannelID != "" {
 		slog.Info("SSE notifications enabled", "channel_id", notificationChannelID)
@@ -130,6 +140,8 @@ func loadConfig() (discord.Config, error) {
 		NotificationChannelID: notificationChannelID,
 		GithubToken:           githubToken,
 		GithubOwnerRepo:       githubRepo,
+		MapRandoURL:           mapRandoURL,
+		MapRandoSpoilerToken:  mapRandoToken,
 	}, nil
 }
 
@@ -233,6 +245,14 @@ func getCommandFactories(bot *discord.Bot, infoLoader *info.Loader) []CommandFac
 		// Utility commands
 		func() (*discordgo.ApplicationCommand, discord.CommandHandler) {
 			return discord.ReloadCommand(bot)
+		},
+
+		// MapRando commands
+		func() (*discordgo.ApplicationCommand, discord.CommandHandler) {
+			return discord.MapRandoCommand(bot.MapRandoClient)
+		},
+		func() (*discordgo.ApplicationCommand, discord.CommandHandler) {
+			return discord.MapRandoUnlockCommand(bot.MapRandoClient)
 		},
 	}
 }
