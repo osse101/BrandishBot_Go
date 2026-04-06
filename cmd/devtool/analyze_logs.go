@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -68,6 +69,13 @@ func (c *AnalyzeLogsCommand) Run(args []string) error {
 	return nil
 }
 
+type logEntry struct {
+	Msg      string `json:"msg"`
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Job      string `json:"job"`
+}
+
 func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map[string]int, userNames map[string]string, err error) {
 	// userJobs[uid][job] -> count
 	userJobs = make(map[string]map[string]int)
@@ -79,11 +87,24 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	scanner.Buffer(buf, 10*1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
-		uid := c.extractValue(line, "user_id")
-		uname := c.extractValue(line, "username")
-		job := c.extractValue(line, "job")
-		msg := c.extractValue(line, "msg")
+		var msg, uid, uname, job string
+
+		if strings.HasPrefix(line, "{") {
+			var entry logEntry
+			if err := json.Unmarshal([]byte(line), &entry); err == nil {
+				msg, uid, uname, job = entry.Msg, entry.UserID, entry.Username, entry.Job
+			}
+		} else {
+			msg = c.extractLogfmtValue(line, "msg")
+			uid = c.extractLogfmtValue(line, "user_id")
+			uname = c.extractLogfmtValue(line, "username")
+			job = c.extractLogfmtValue(line, "job")
+		}
 
 		if uid != "" && uname != "" {
 			userNames[uid] = uname
@@ -104,44 +125,31 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	return userJobs, userNames, nil
 }
 
-func (c *AnalyzeLogsCommand) extractValue(line, key string) string {
-	// Try text format key=value or key="value"
+func (c *AnalyzeLogsCommand) extractLogfmtValue(line, key string) string {
 	prefix := key + "="
 	idx := strings.Index(line, prefix)
-	if idx != -1 {
-		start := idx + len(prefix)
-		if start >= len(line) {
-			return ""
-		}
-
-		if line[start] == '"' {
-			// Quoted string
-			end := strings.Index(line[start+1:], `"`)
-			if end == -1 {
-				return line[start+1:]
-			}
-			return line[start+1 : start+1+end]
-		}
-
-		// Unquoted string
-		end := strings.IndexByte(line[start:], ' ')
-		if end == -1 {
-			return line[start:]
-		}
-		return line[start : start+end]
+	if idx == -1 {
+		return ""
 	}
 
-	// Try json format "key":"value"
-	prefix = `"` + key + `":"`
-	idx = strings.Index(line, prefix)
-	if idx != -1 {
-		start := idx + len(prefix)
-		end := strings.Index(line[start:], `"`)
-		if end == -1 {
-			return line[start:]
-		}
-		return line[start : start+end]
+	start := idx + len(prefix)
+	if start >= len(line) {
+		return ""
 	}
 
-	return ""
+	if line[start] == '"' {
+		// Quoted string
+		end := strings.Index(line[start+1:], `"`)
+		if end == -1 {
+			return line[start+1:]
+		}
+		return line[start+1 : start+1+end]
+	}
+
+	// Unquoted string
+	end := strings.IndexByte(line[start:], ' ')
+	if end == -1 {
+		return line[start:]
+	}
+	return line[start : start+end]
 }
