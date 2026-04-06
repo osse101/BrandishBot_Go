@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -68,6 +69,13 @@ func (c *AnalyzeLogsCommand) Run(args []string) error {
 	return nil
 }
 
+type logEntry struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	Job      string `json:"job"`
+	Msg      string `json:"msg"`
+}
+
 func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map[string]int, userNames map[string]string, err error) {
 	// userJobs[uid][job] -> count
 	userJobs = make(map[string]map[string]int)
@@ -80,10 +88,22 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		uid := c.extractValue(line, "user_id")
-		uname := c.extractValue(line, "username")
-		job := c.extractValue(line, "job")
-		msg := c.extractValue(line, "msg")
+		var uid, uname, job, msg string
+
+		if strings.HasPrefix(line, "{") {
+			var entry logEntry
+			if err := json.Unmarshal([]byte(line), &entry); err == nil {
+				uid = entry.UserID
+				uname = entry.Username
+				job = entry.Job
+				msg = entry.Msg
+			}
+		} else {
+			uid = c.extractValue(line, "user_id")
+			uname = c.extractValue(line, "username")
+			job = c.extractValue(line, "job")
+			msg = c.extractValue(line, "msg")
+		}
 
 		if uid != "" && uname != "" {
 			userNames[uid] = uname
@@ -125,18 +145,6 @@ func (c *AnalyzeLogsCommand) extractValue(line, key string) string {
 
 		// Unquoted string
 		end := strings.IndexByte(line[start:], ' ')
-		if end == -1 {
-			return line[start:]
-		}
-		return line[start : start+end]
-	}
-
-	// Try json format "key":"value"
-	prefix = `"` + key + `":"`
-	idx = strings.Index(line, prefix)
-	if idx != -1 {
-		start := idx + len(prefix)
-		end := strings.Index(line[start:], `"`)
 		if end == -1 {
 			return line[start:]
 		}
