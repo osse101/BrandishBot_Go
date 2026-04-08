@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -17,13 +16,13 @@ import (
 
 // postgresBackend implements Service using PostgreSQL
 type postgresBackend struct {
-	db             *pgxpool.Pool
+	db             DB
 	config         Config
 	progressionSvc ProgressionService
 }
 
 // NewPostgresService creates a new cooldown service with Postgres backend
-func NewPostgresService(db *pgxpool.Pool, config Config, progressionSvc ProgressionService) Service {
+func NewPostgresService(db DB, config Config, progressionSvc ProgressionService) Service {
 	return &postgresBackend{
 		db:             db,
 		config:         config,
