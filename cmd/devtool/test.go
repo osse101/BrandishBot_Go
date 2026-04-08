@@ -33,7 +33,6 @@ type testEvent struct {
 	Output  string  `json:"Output"`
 }
 
-//nolint:gocyclo // Test runner logic handles parsing JSON stream of go test, inherently complex switch
 func (c *TestCommand) Run(args []string) error {
 	PrintHeader("Running Tests...")
 
@@ -78,7 +77,6 @@ func (c *TestCommand) Run(args []string) error {
 
 	// Track test output lines. map[Package]map[Test][]string
 	testOutputs := make(map[string]map[string][]string)
-
 	failedPackages := make(map[string]bool)
 
 	for scanner.Scan() {
@@ -91,99 +89,8 @@ func (c *TestCommand) Run(args []string) error {
 			continue
 		}
 
-		if event.Test != "" {
-			if testOutputs[event.Package] == nil {
-				testOutputs[event.Package] = make(map[string][]string)
-			}
-			if event.Action == "output" {
-				if strings.Contains(event.Output, "--- SKIP:") || strings.Contains(event.Output, "=== SKIP:") {
-					continue // Filter out skipped subtests output
-				}
-				testOutputs[event.Package][event.Test] = append(testOutputs[event.Package][event.Test], event.Output)
-			}
-		} else if event.Action == "output" {
-			// Package level output
-			if strings.Contains(event.Output, "[no test files]") {
-				continue // Ignore packages with no tests
-			}
-			if strings.Contains(event.Output, "(cached)") && strings.HasPrefix(event.Output, "ok") {
-				continue // Ignore cached passing packages
-			}
-			if strings.Contains(event.Output, "[no tests to run]") {
-				continue // Ignore packages with no tests entirely
-			}
-			if event.Output == "PASS\n" || strings.HasPrefix(event.Output, "ok  \t") || strings.HasPrefix(event.Output, "?   \t") {
-				continue // Filter out standard pass outputs so completely quiet packages don't trigger the success print
-			}
-			if testOutputs[event.Package] == nil {
-				testOutputs[event.Package] = make(map[string][]string)
-			}
-			testOutputs[event.Package][""] = append(testOutputs[event.Package][""], event.Output)
-		}
-
-		switch event.Action {
-		case "build-fail":
-			PrintError("Build failed for %s", event.Package)
-			if failLogFile == nil {
-				failLogFile, err = os.OpenFile(failLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-				if err != nil {
-					PrintError("Failed to open fail log: %v", err)
-				} else {
-					fmt.Fprintf(failLogFile, "=== TEST FAILURES ===\n\n")
-				}
-			}
-			if failLogFile != nil {
-				fmt.Fprintf(failLogFile, "--- BUILD FAIL: %s ---\n", event.Package)
-			}
-			failedPackages[event.Package] = true
-		case "pass":
-			// Package passed - intentionally silence any output for passing packages
-		case "fail":
-			if event.Test == "" && event.Package != "" {
-				// Package failed
-				failedPackages[event.Package] = true
-				PrintError("FAIL\t%s", event.Package)
-
-				//nolint:all // Only log package-level failures if no specific subtests failed,
-				// or just log the package output if there's no test info.
-				// Often, `go test` output will already have the `FAIL: <test>` block logged in the `else` branch.
-				// We only print the package fail header here, no duplicate dumping.
-				if failLogFile == nil {
-					failLogFile, err = os.OpenFile(failLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-					if err != nil {
-						PrintError("Failed to open fail log: %v", err)
-					} else {
-						fmt.Fprintf(failLogFile, "=== TEST FAILURES ===\n\n")
-					}
-				}
-
-				if failLogFile != nil {
-					fmt.Fprintf(failLogFile, "--- FAIL: Package %s ---\n", event.Package)
-					// Write package-level output
-					for _, l := range testOutputs[event.Package][""] {
-						fmt.Fprint(failLogFile, l)
-					}
-					fmt.Fprintf(failLogFile, "\n")
-				}
-			} else {
-				// Test failed
-				if failLogFile == nil {
-					failLogFile, err = os.OpenFile(failLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-					if err != nil {
-						PrintError("Failed to open fail log: %v", err)
-					} else {
-						fmt.Fprintf(failLogFile, "=== TEST FAILURES ===\n\n")
-					}
-				}
-				if failLogFile != nil {
-					fmt.Fprintf(failLogFile, "--- FAIL: %s/%s ---\n", event.Package, event.Test)
-					for _, l := range testOutputs[event.Package][event.Test] {
-						fmt.Fprint(failLogFile, l)
-					}
-					fmt.Fprintf(failLogFile, "\n")
-				}
-			}
-		}
+		c.handleTestOutput(&event, testOutputs)
+		failLogFile = c.handleTestAction(&event, failLogPath, failLogFile, testOutputs, failedPackages)
 	}
 
 	if failLogFile != nil {
@@ -205,4 +112,89 @@ func (c *TestCommand) Run(args []string) error {
 
 	PrintSuccess("All tests passed!")
 	return nil
+}
+
+func (c *TestCommand) handleTestOutput(event *testEvent, testOutputs map[string]map[string][]string) {
+	if event.Test != "" {
+		if testOutputs[event.Package] == nil {
+			testOutputs[event.Package] = make(map[string][]string)
+		}
+		if event.Action == "output" {
+			if strings.Contains(event.Output, "--- SKIP:") || strings.Contains(event.Output, "=== SKIP:") {
+				return // Filter out skipped subtests output
+			}
+			testOutputs[event.Package][event.Test] = append(testOutputs[event.Package][event.Test], event.Output)
+		}
+	} else if event.Action == "output" {
+		// Package level output
+		if strings.Contains(event.Output, "[no test files]") {
+			return // Ignore packages with no tests
+		}
+		if strings.Contains(event.Output, "(cached)") && strings.HasPrefix(event.Output, "ok") {
+			return // Ignore cached passing packages
+		}
+		if strings.Contains(event.Output, "[no tests to run]") {
+			return // Ignore packages with no tests entirely
+		}
+		if event.Output == "PASS\n" || strings.HasPrefix(event.Output, "ok  \t") || strings.HasPrefix(event.Output, "?   \t") {
+			return // Filter out standard pass outputs so completely quiet packages don't trigger the success print
+		}
+		if testOutputs[event.Package] == nil {
+			testOutputs[event.Package] = make(map[string][]string)
+		}
+		testOutputs[event.Package][""] = append(testOutputs[event.Package][""], event.Output)
+	}
+}
+
+func (c *TestCommand) getFailLogFile(failLogPath string, currentFile *os.File) *os.File {
+	if currentFile != nil {
+		return currentFile
+	}
+	f, err := os.OpenFile(failLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		PrintError("Failed to open fail log: %v", err)
+		return nil
+	}
+	fmt.Fprintf(f, "=== TEST FAILURES ===\n\n")
+	return f
+}
+
+func (c *TestCommand) handleTestAction(event *testEvent, failLogPath string, failLogFile *os.File, testOutputs map[string]map[string][]string, failedPackages map[string]bool) *os.File {
+	switch event.Action {
+	case "build-fail":
+		PrintError("Build failed for %s", event.Package)
+		failLogFile = c.getFailLogFile(failLogPath, failLogFile)
+		if failLogFile != nil {
+			fmt.Fprintf(failLogFile, "--- BUILD FAIL: %s ---\n", event.Package)
+		}
+		failedPackages[event.Package] = true
+
+	case "fail":
+		if event.Test == "" && event.Package != "" {
+			// Package failed
+			failedPackages[event.Package] = true
+			PrintError("FAIL\t%s", event.Package)
+
+			failLogFile = c.getFailLogFile(failLogPath, failLogFile)
+			if failLogFile != nil {
+				fmt.Fprintf(failLogFile, "--- FAIL: Package %s ---\n", event.Package)
+				// Write package-level output
+				for _, l := range testOutputs[event.Package][""] {
+					fmt.Fprint(failLogFile, l)
+				}
+				fmt.Fprintf(failLogFile, "\n")
+			}
+		} else {
+			// Test failed
+			failLogFile = c.getFailLogFile(failLogPath, failLogFile)
+			if failLogFile != nil {
+				fmt.Fprintf(failLogFile, "--- FAIL: %s/%s ---\n", event.Package, event.Test)
+				for _, l := range testOutputs[event.Package][event.Test] {
+					fmt.Fprint(failLogFile, l)
+				}
+				fmt.Fprintf(failLogFile, "\n")
+			}
+		}
+	}
+	return failLogFile
 }
