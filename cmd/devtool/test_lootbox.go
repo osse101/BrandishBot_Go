@@ -17,9 +17,6 @@ func (c *TestLootboxCommand) Description() string {
 func (c *TestLootboxCommand) Run(args []string) error {
 	PrintHeader("Testing Lootbox1 Repro")
 
-	baseURL := getAPIURL()
-	apiKey := getAPIKey()
-
 	username := "debug_user"
 	platform := "twitch"
 	platformID := "debug_123"
@@ -31,7 +28,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"platform":    platform,
 		"platform_id": platformID,
 	}
-	if err := postJSON(baseURL+"/message/handle", msgPayload, apiKey, nil); err != nil {
+	if err := postAPIJSON("/message/handle", msgPayload, nil); err != nil {
 		return fmt.Errorf("failed to register user: %w", err)
 	}
 
@@ -43,7 +40,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"itemName": "lootbox1",
 		"quantity": 1,
 	}
-	if err := postJSON(baseURL+"/user/item/add", addPayload, apiKey, nil); err != nil {
+	if err := postAPIJSON("/user/item/add", addPayload, nil); err != nil {
 		return fmt.Errorf("failed to give lootbox1: %w", err)
 	}
 
@@ -55,7 +52,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 		"itemName": "lootbox1",
 		"quantity": 1,
 	}
-	respStr, err := postJSONStr(baseURL+"/user/item/use", usePayload, apiKey)
+	respStr, err := postAPIJSONStr("/user/item/use", usePayload)
 	if err != nil {
 		PrintError("Error using item: %v", err)
 		return fmt.Errorf("failed to use lootbox1: %w", err)
@@ -65,7 +62,7 @@ func (c *TestLootboxCommand) Run(args []string) error {
 	// 4. Check Inventory
 	PrintInfo("Checking inventory...")
 	var inv interface{}
-	err = getJSON(fmt.Sprintf("%s/user/inventory?username=%s", baseURL, username), apiKey, &inv)
+	err = getAPIJSON(fmt.Sprintf("/user/inventory?username=%s", username), &inv)
 	if err != nil {
 		return fmt.Errorf("failed to check inventory: %w", err)
 	}
