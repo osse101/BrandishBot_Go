@@ -42,11 +42,8 @@ func (c *ScenarioCommand) Run(args []string) error {
 func (c *ScenarioCommand) runList() error {
 	PrintHeader("Available Scenarios")
 
-	apiURL := getAPIURL()
-	apiKey := getAPIKey()
-
 	var data handler.ScenariosResponse
-	if err := getJSON(fmt.Sprintf("%s/api/v1/admin/simulate/scenarios", apiURL), apiKey, &data); err != nil {
+	if err := getAPIJSON("/api/v1/admin/simulate/scenarios", &data); err != nil {
 		return fmt.Errorf("failed to fetch scenarios: %w", err)
 	}
 
@@ -65,9 +62,6 @@ func (c *ScenarioCommand) runList() error {
 func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 	PrintHeader(fmt.Sprintf("Running Scenario: %s", scenarioID))
 
-	apiURL := getAPIURL()
-	apiKey := getAPIKey()
-
 	params := c.parseParams(extraArgs)
 
 	reqBody := handler.RunScenarioRequest{
@@ -76,7 +70,7 @@ func (c *ScenarioCommand) runRun(scenarioID string, extraArgs []string) error {
 	}
 
 	var result scenario.ExecutionResult
-	if err := postJSON(fmt.Sprintf("%s/api/v1/admin/simulate/run", apiURL), reqBody, apiKey, &result); err != nil {
+	if err := postAPIJSON("/api/v1/admin/simulate/run", reqBody, &result); err != nil {
 		return fmt.Errorf("failed to execute scenario: %w", err)
 	}
 

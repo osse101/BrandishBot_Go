@@ -18,9 +18,6 @@ func (c *TestSSECommand) Description() string {
 func (c *TestSSECommand) Run(args []string) error {
 	PrintHeader("Testing SSE Events...")
 
-	apiURL := getAPIURL()
-	apiKey := getAPIKey()
-
 	eventType := "job.level_up"
 	if len(args) > 0 {
 		eventType = args[0]
@@ -66,8 +63,8 @@ func (c *TestSSECommand) Run(args []string) error {
 		"payload": payload,
 	}
 
-	url := fmt.Sprintf("%s/api/v1/admin/sse/broadcast", apiURL)
-	resp, err := makeHTTPRequest("POST", url, body, apiKey)
+	path := "/api/v1/admin/sse/broadcast"
+	resp, err := makeAPIRequest("POST", path, body)
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
