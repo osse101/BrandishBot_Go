@@ -103,3 +103,19 @@ func postJSONStr(url string, payload interface{}, apiKey string) (string, error)
 
 	return string(bodyBytes), nil
 }
+
+func makeAPIRequest(method, path string, payload interface{}) (*http.Response, error) {
+	return makeHTTPRequest(method, getAPIURL()+path, payload, getAPIKey())
+}
+
+func getAPIJSON(path string, target interface{}) error {
+	return getJSON(getAPIURL()+path, getAPIKey(), target)
+}
+
+func postAPIJSON(path string, payload interface{}, target interface{}) error {
+	return postJSON(getAPIURL()+path, payload, getAPIKey(), target)
+}
+
+func postAPIJSONStr(path string, payload interface{}) (string, error) {
+	return postJSONStr(getAPIURL()+path, payload, getAPIKey())
+}

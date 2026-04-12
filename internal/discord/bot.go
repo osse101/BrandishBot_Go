@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -26,6 +27,7 @@ type Bot struct {
 	NotificationChannelID string
 	GithubToken           string
 	GithubOwnerRepo       string
+	MapRandoClient        *MapRandoClient
 	sseClient             *SSEClient
 	sseNotifier           *SSENotifier
 	ctx                   context.Context
@@ -44,6 +46,8 @@ type Config struct {
 	NotificationChannelID string
 	GithubToken           string
 	GithubOwnerRepo       string
+	MapRandoURL           string
+	MapRandoSpoilerToken  string
 }
 
 // New creates a new Discord bot
@@ -91,7 +95,7 @@ func (b *Bot) Start() error {
 	// Add autocomplete handler
 	b.Session.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommandAutocomplete {
-			HandleAutocomplete(s, i, b.Client)
+			HandleAutocomplete(s, i, b.Client, b.MapRandoClient)
 		}
 	})
 
@@ -162,8 +166,17 @@ func (b *Bot) ready(s *discordgo.Session, r *discordgo.Ready) {
 }
 
 func (b *Bot) interactionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if b.Registry != nil {
-		b.Registry.Handle(s, i, b.Client)
+	switch i.Type {
+	case discordgo.InteractionApplicationCommand:
+		if b.Registry != nil {
+			b.Registry.Handle(s, i, b.Client)
+		}
+	case discordgo.InteractionMessageComponent:
+		data := i.MessageComponentData()
+		if strings.HasPrefix(data.CustomID, "maprando_unlock_") {
+			seedName := strings.TrimPrefix(data.CustomID, "maprando_unlock_")
+			HandleButtonUnlock(s, i, b.MapRandoClient, seedName)
+		}
 	}
 }
 

@@ -1,0 +1,13 @@
+presets_dir: '/app/maprando_presets'
+
+presets:
+  S4:
+    file: 'Community Race Season 4.json'
+    description: 'Community Race Season 4'
+  default:
+    file: 'Default.json'
+    description: 'Default settings'
+  mentor:
+    file: 'Mentor Tournament.json'
+    description: 'Mentor Tournament'
+    devonly: true

@@ -12,7 +12,7 @@ import (
 )
 
 // HandleAutocomplete routes autocomplete interactions to the appropriate handler
-func HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient) {
+func HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, client *APIClient, randoClient *MapRandoClient) {
 	data := i.ApplicationCommandData()
 
 	switch data.Name {
@@ -30,9 +30,43 @@ func HandleAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, cl
 		handleItemAutocomplete(s, i, client, true, nil)
 	case "gamble-start", "gamble-join":
 		handleGambleItemAutocomplete(s, i, client)
+	case "maprando":
+		handleMapRandoAutocomplete(s, i, randoClient)
 	default:
 		slog.Warn("Unhandled autocomplete command", "command", data.Name)
 	}
+}
+
+func handleMapRandoAutocomplete(s *discordgo.Session, i *discordgo.InteractionCreate, randoClient *MapRandoClient) {
+	focusedValue := getFocusedOptionValue(i.ApplicationCommandData().Options)
+	slog.Info("MapRando autocomplete triggered", "focused", focusedValue)
+
+	var choices []*discordgo.ApplicationCommandOptionChoice
+	if randoClient != nil {
+		for _, name := range randoClient.PresetNames() {
+			label := randoClient.PresetDescription(name)
+			if label == "" {
+				label = name
+			}
+			if focusedValue == "" || strings.Contains(strings.ToLower(label), focusedValue) || strings.Contains(strings.ToLower(name), focusedValue) {
+				choices = append(choices, &discordgo.ApplicationCommandOptionChoice{
+					Name:  label,
+					Value: name,
+				})
+			}
+			if len(choices) >= 25 {
+				break
+			}
+		}
+	}
+
+	if len(choices) == 0 {
+		choices = []*discordgo.ApplicationCommandOptionChoice{
+			{Name: "No matching presets", Value: "none"},
+		}
+	}
+
+	respondAutocomplete(s, i, choices)
 }
 
 // handleRecipeAutocomplete provides autocomplete for crafting recipes
