@@ -179,13 +179,6 @@ type ContributionLeaderboardEntry struct {
 	Rank         int    `json:"rank"`
 }
 
-// Velocity Trend Types
-const (
-	TrendIncreasing = "increasing"
-	TrendStable     = "stable"
-	TrendDecreasing = "decreasing"
-)
-
 // VelocityMetrics holds engagement velocity data
 type VelocityMetrics struct {
 	PointsPerDay float64 `json:"points_per_day"`
@@ -194,13 +187,6 @@ type VelocityMetrics struct {
 	SampleSize   int     `json:"sample_size"`
 	TotalPoints  int     `json:"total_points"`
 }
-
-// Estimate Confidence Levels
-const (
-	ConfidenceHigh   = "high"
-	ConfidenceMedium = "medium"
-	ConfidenceLow    = "low"
-)
 
 // UnlockEstimate holds prediction data for node unlock
 type UnlockEstimate struct {
