@@ -92,19 +92,7 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 			continue
 		}
 
-		var msg, uid, uname, job string
-
-		if strings.HasPrefix(line, "{") {
-			var entry logEntry
-			if err := json.Unmarshal([]byte(line), &entry); err == nil {
-				msg, uid, uname, job = entry.Msg, entry.UserID, entry.Username, entry.Job
-			}
-		} else {
-			msg = c.extractLogfmtValue(line, "msg")
-			uid = c.extractLogfmtValue(line, "user_id")
-			uname = c.extractLogfmtValue(line, "username")
-			job = c.extractLogfmtValue(line, "job")
-		}
+		msg, uid, uname, job := c.parseLogLine(line)
 
 		if uid != "" && uname != "" {
 			userNames[uid] = uname
@@ -123,6 +111,21 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	}
 
 	return userJobs, userNames, nil
+}
+
+func (c *AnalyzeLogsCommand) parseLogLine(line string) (msg, uid, uname, job string) {
+	if strings.HasPrefix(line, "{") {
+		var entry logEntry
+		if err := json.Unmarshal([]byte(line), &entry); err == nil {
+			return entry.Msg, entry.UserID, entry.Username, entry.Job
+		}
+	} else {
+		msg = c.extractLogfmtValue(line, "msg")
+		uid = c.extractLogfmtValue(line, "user_id")
+		uname = c.extractLogfmtValue(line, "username")
+		job = c.extractLogfmtValue(line, "job")
+	}
+	return msg, uid, uname, job
 }
 
 func (c *AnalyzeLogsCommand) extractLogfmtValue(line, key string) string {

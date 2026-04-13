@@ -44,24 +44,7 @@ func (c *TestCommand) Run(args []string) error {
 	// Clean up previous failure log
 	_ = os.Remove(failLogPath)
 
-	testArgs := []string{"test", "-json"}
-	if len(args) > 0 {
-		testArgs = append(testArgs, args...)
-	} else {
-		testArgs = append(testArgs, "./...")
-	}
-
-	// Always append race if not present
-	hasRace := false
-	for _, arg := range args {
-		if arg == "-race" {
-			hasRace = true
-			break
-		}
-	}
-	if !hasRace {
-		testArgs = append(testArgs, "-race")
-	}
+	testArgs := c.buildTestArgs(args)
 
 	stdoutPipe, cmd, err := runCommandWithStdoutPipe("go", testArgs...)
 	if err != nil {
@@ -114,36 +97,66 @@ func (c *TestCommand) Run(args []string) error {
 	return nil
 }
 
+func (c *TestCommand) buildTestArgs(args []string) []string {
+	testArgs := []string{"test", "-json"}
+	if len(args) > 0 {
+		testArgs = append(testArgs, args...)
+	} else {
+		testArgs = append(testArgs, "./...")
+	}
+
+	// Always append race if not present
+	hasRace := false
+	for _, arg := range args {
+		if arg == "-race" {
+			hasRace = true
+			break
+		}
+	}
+	if !hasRace {
+		testArgs = append(testArgs, "-race")
+	}
+	return testArgs
+}
+
 func (c *TestCommand) handleTestOutput(event *testEvent, testOutputs map[string]map[string][]string) {
 	if event.Test != "" {
-		if testOutputs[event.Package] == nil {
-			testOutputs[event.Package] = make(map[string][]string)
-		}
-		if event.Action == "output" {
-			if strings.Contains(event.Output, "--- SKIP:") || strings.Contains(event.Output, "=== SKIP:") {
-				return // Filter out skipped subtests output
-			}
-			testOutputs[event.Package][event.Test] = append(testOutputs[event.Package][event.Test], event.Output)
-		}
+		c.handleTestLevelOutput(event, testOutputs)
 	} else if event.Action == "output" {
-		// Package level output
-		if strings.Contains(event.Output, "[no test files]") {
-			return // Ignore packages with no tests
-		}
-		if strings.Contains(event.Output, "(cached)") && strings.HasPrefix(event.Output, "ok") {
-			return // Ignore cached passing packages
-		}
-		if strings.Contains(event.Output, "[no tests to run]") {
-			return // Ignore packages with no tests entirely
-		}
-		if event.Output == "PASS\n" || strings.HasPrefix(event.Output, "ok  \t") || strings.HasPrefix(event.Output, "?   \t") {
-			return // Filter out standard pass outputs so completely quiet packages don't trigger the success print
-		}
-		if testOutputs[event.Package] == nil {
-			testOutputs[event.Package] = make(map[string][]string)
-		}
-		testOutputs[event.Package][""] = append(testOutputs[event.Package][""], event.Output)
+		c.handlePackageLevelOutput(event, testOutputs)
 	}
+}
+
+func (c *TestCommand) handleTestLevelOutput(event *testEvent, testOutputs map[string]map[string][]string) {
+	if testOutputs[event.Package] == nil {
+		testOutputs[event.Package] = make(map[string][]string)
+	}
+	if event.Action == "output" {
+		if strings.Contains(event.Output, "--- SKIP:") || strings.Contains(event.Output, "=== SKIP:") {
+			return // Filter out skipped subtests output
+		}
+		testOutputs[event.Package][event.Test] = append(testOutputs[event.Package][event.Test], event.Output)
+	}
+}
+
+func (c *TestCommand) handlePackageLevelOutput(event *testEvent, testOutputs map[string]map[string][]string) {
+	// Package level output
+	if strings.Contains(event.Output, "[no test files]") {
+		return // Ignore packages with no tests
+	}
+	if strings.Contains(event.Output, "(cached)") && strings.HasPrefix(event.Output, "ok") {
+		return // Ignore cached passing packages
+	}
+	if strings.Contains(event.Output, "[no tests to run]") {
+		return // Ignore packages with no tests entirely
+	}
+	if event.Output == "PASS\n" || strings.HasPrefix(event.Output, "ok  \t") || strings.HasPrefix(event.Output, "?   \t") {
+		return // Filter out standard pass outputs so completely quiet packages don't trigger the success print
+	}
+	if testOutputs[event.Package] == nil {
+		testOutputs[event.Package] = make(map[string][]string)
+	}
+	testOutputs[event.Package][""] = append(testOutputs[event.Package][""], event.Output)
 }
 
 func (c *TestCommand) getFailLogFile(failLogPath string, currentFile *os.File) *os.File {
