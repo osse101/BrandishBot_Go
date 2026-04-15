@@ -1,3 +1,17 @@
+# Patch Notes (Week of April 10, 2026)
+
+## Developer Experience
+- **Devtool Upgrade**: Refactored `cmd/devtool` complex functions for cleaner structure, and simplified the HTTP client, log parsing, and test output handling to resolve cyclomatic complexity. Added timeouts to the devtool HTTP client. Improved buffer sizing and organized `runCommand` usage for better performance.
+- **Code Organization**: Split `handlers.go` into domain specific files (`internal/itemhandler`). Moved the bomb handler to a dedicated file and renamed the lootbox drop function for clarity. Consolidated domain constants across the codebase into `internal/domain/constants.go`.
+
+## Testing Improvements
+- **Coverage Expansion**: Increased test coverage significantly across multiple domains including `cooldown`, `stats`, `worker`, `prediction`, and `streamerbot` packages.
+- **Test Quality**: Refactored numerous tests to adhere to the 5-Case model (e.g., `daily_reset`, `job_test`, `timeout_test`, `user_methods`). Added parallelization to `inventory` tests. Refactored schema validator tests to use testify and t.Parallel. Added structural validation and boundary checks to `buy_test.go`.
+
+## System Updates & Bug Fixes
+- **General Fixes**: Fixed missing timeout in Discord health check. Improved how missing Daily Resets are detected and triggered on startup. Fixed how `userID` is passed to the progression service for proper cooldown and job bonus calculations. Fixed Lootbox grouping logic for money items.
+- **Feature Updates**: MapRando custom settings and Discord seed rolling capabilities have been enhanced with devonly fields and security passes.
+- **Documentation**: Updated patchnotes, and tracked resolved issues such as the Duel System and audit findings.
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
