@@ -171,8 +171,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "legendary_sword", domain.QualityLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox")
 
 		// Expect stats service to be called with EventLootboxJackpot
 		mockStats.On("RecordUserEvent",
@@ -215,8 +214,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "epic_shield", domain.QualityEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox")
 
 		// Expect stats service to be called with EventLootboxBigWin
 		mockStats.On("RecordUserEvent",
@@ -259,8 +257,7 @@ func TestProcessLootboxDrops_JackpotEvents(t *testing.T) {
 		}
 
 		// Expectations
-		mockNaming.On("GetDisplayName", "common_rock", domain.QualityCommon).Return("Rock")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox")
 
 		// Execute
 		msg, err := itemhandler.HandleLootboxDrops(ctx, svc, user, inventory, lootboxItem, 1, drops)
@@ -373,8 +370,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "legendary_sword", domain.QualityLegendary).Return("Legendary Sword")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("lootbox")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxJackpot, mock.Anything).Return(nil)
 
 		msg, err := itemhandler.HandleLootboxDrops(ctx, svc, user, inventory, lootboxItem, 10, legendaryDrops)
@@ -402,8 +398,7 @@ func TestProcessLootboxDrops_BulkFeedbackThreshold(t *testing.T) {
 			},
 		}
 
-		mockNaming.On("GetDisplayName", "epic_shield", domain.QualityEpic).Return("Epic Shield")
-		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("Lootbox Tier 1")
+		mockNaming.On("GetDisplayName", "lootbox_tier1", domain.QualityLevel("")).Return("lootbox")
 		mockStats.On("RecordUserEvent", mock.Anything, user.ID, domain.EventTypeLootboxBigWin, mock.Anything).Return(nil)
 
 		msg, err := itemhandler.HandleLootboxDrops(ctx, svc, user, inventory, lootboxItem, 10, epicDrops)

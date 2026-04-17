@@ -3,7 +3,6 @@ package itemhandler
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
@@ -19,28 +18,21 @@ type dropStats struct {
 }
 
 func HandleLootbox(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int) (string, error) {
-	log := logger.FromContext(ctx)
-
-	// 1. Validate and consume lootboxes
-	totalAvailable := utils.GetTotalQuantity(inventory, lootboxItem.ID)
-	if totalAvailable == 0 {
-		return "", domain.ErrNotInInventory
-	}
-	if totalAvailable < quantity {
+	// 1. Consume lootboxes
+	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, ec.RandomFloat)
+	if err != nil {
+		if total := utils.GetTotalQuantity(inventory, lootboxItem.ID); total == 0 {
+			return "", domain.ErrNotInInventory
+		}
 		return "", domain.ErrInsufficientQuantity
 	}
 
-	consumedSlots, err := utils.ConsumeItemsWithTracking(inventory, lootboxItem.ID, quantity, ec.RandomFloat)
-	if err != nil {
-		return "", err
-	}
-
-	// 2. Use lootbox service to open lootboxes
-	var allDrops []lootbox.DroppedItem
+	// 2. Open lootboxes
+	allDrops := make([]lootbox.DroppedItem, 0, quantity)
 	for _, slot := range consumedSlots {
 		drops, err := ec.OpenLootbox(ctx, lootboxItem.InternalName, slot.Quantity, slot.QualityLevel)
 		if err != nil {
-			log.Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
+			logger.FromContext(ctx).Error("Failed to open lootbox", "error", err, "lootbox", lootboxItem.InternalName)
 			return "", fmt.Errorf("failed to open lootbox: %w", err)
 		}
 		allDrops = append(allDrops, drops...)
@@ -50,69 +42,16 @@ func HandleLootbox(ctx context.Context, ec EffectContext, user *domain.User, inv
 		return MsgLootboxEmpty, nil
 	}
 
-	// 3. Process drops and generate feedback
 	return HandleLootboxDrops(ctx, ec, user, inventory, lootboxItem, quantity, allDrops)
 }
 
 func HandleLootboxDrops(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, lootboxItem *domain.Item, quantity int, drops []lootbox.DroppedItem) (string, error) {
-	var msgBuilder strings.Builder
-	// Use alias for the lootbox when opening
-	displayName := ec.GetDisplayName(lootboxItem.InternalName, "")
-
-	msgBuilder.WriteString(MsgLootboxOpened)
-	msgBuilder.WriteString(" ")
-	if quantity > 1 {
-		msgBuilder.WriteString(strconv.Itoa(quantity))
-		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(ec.Pluralize(displayName, quantity))
-	} else {
-		msgBuilder.WriteString(getIndefiniteArticle(displayName))
-		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(displayName)
-	}
-	msgBuilder.WriteString(MsgLootboxReceived)
-
-	stats := aggregateDropsAndUpdateInventory(ec, inventory, drops, &msgBuilder)
-
-	if stats.hasLegendary {
-		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, &domain.LootboxEventData{
-			Item:   lootboxItem.InternalName,
-			Drops:  drops,
-			Value:  stats.totalValue,
-			Source: "lootbox",
-		})
-		msgBuilder.WriteString(MsgLootboxJackpot)
-	} else if stats.hasEpic {
-		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, &domain.LootboxEventData{
-			Item:   lootboxItem.InternalName,
-			Drops:  drops,
-			Value:  stats.totalValue,
-			Source: "lootbox",
-		})
-		msgBuilder.WriteString(MsgLootboxBigWin)
-	} else if stats.totalValue > 0 && quantity >= domain.BulkFeedbackThreshold {
-		msgBuilder.WriteString(MsgLootboxNiceHaul)
-	}
-
-	return msgBuilder.String(), nil
-}
-
-func aggregateDropsAndUpdateInventory(ec EffectContext, inventory *domain.Inventory, drops []lootbox.DroppedItem, msgBuilder *strings.Builder) dropStats {
 	var stats dropStats
-
-	// Convert drops to inventory slots for batch adding
 	itemsToAdd := make([]domain.InventorySlot, 0, len(drops))
-
-	// Group items by their resolved display name (which includes quality where applicable)
-	type dropGroup struct {
-		Quantity int
-		Name     string
-	}
-	displayGroups := make(map[string]*dropGroup)
-	var displayOrder []string
+	displayGroups := make(map[string]int)
+	displayOrder := make([]string, 0)
 
 	for _, drop := range drops {
-		// Track stats for feedback
 		stats.totalValue += drop.Value
 		if drop.QualityLevel == domain.QualityLegendary {
 			stats.hasLegendary = true
@@ -120,53 +59,45 @@ func aggregateDropsAndUpdateInventory(ec EffectContext, inventory *domain.Invent
 			stats.hasEpic = true
 		}
 
-		// Prepare item for batch add - preserve quality level from loot table
 		itemsToAdd = append(itemsToAdd, domain.InventorySlot{
-			ItemID:       drop.ItemID,
-			Quantity:     drop.Quantity,
-			QualityLevel: drop.QualityLevel,
+			ItemID: drop.ItemID, Quantity: drop.Quantity, QualityLevel: drop.QualityLevel,
 		})
 
-		// Get display name
-		var itemDisplayName string
-		if drop.ItemName == domain.ItemMoney {
-			itemDisplayName = ec.GetDisplayName(domain.ItemMoney, "")
-		} else {
-			itemDisplayName = ec.GetDisplayName(drop.ItemName, drop.QualityLevel)
+		if count := displayGroups[drop.ItemName]; count == 0 {
+			displayOrder = append(displayOrder, drop.ItemName)
 		}
-
-		if group, exists := displayGroups[itemDisplayName]; exists {
-			group.Quantity += drop.Quantity
-		} else {
-			displayOrder = append(displayOrder, itemDisplayName)
-			displayGroups[itemDisplayName] = &dropGroup{
-				Quantity: drop.Quantity,
-				Name:     itemDisplayName,
-			}
-		}
+		displayGroups[drop.ItemName] += drop.Quantity
 	}
 
-	// Format output with grouped items
-	first := true
-	for _, displayName := range displayOrder {
-		group := displayGroups[displayName]
-
-		if !first {
-			msgBuilder.WriteString(LootboxDropSeparator)
-		}
-
-		// Simplify output: "Quantity Name"
-		msgBuilder.WriteString(strconv.Itoa(group.Quantity))
-		msgBuilder.WriteString(" ")
-		msgBuilder.WriteString(ec.Pluralize(group.Name, group.Quantity))
-
-		first = false
-	}
-
-	// Add all items to inventory using optimized helper
 	utils.AddItemsToInventory(inventory, itemsToAdd, nil)
 
-	return stats
+	// Build message
+	displayName := ec.GetDisplayName(lootboxItem.InternalName, "")
+	boxPart := fmt.Sprintf("%d %s", quantity, ec.Pluralize(displayName, quantity))
+	if quantity == 1 {
+		boxPart = fmt.Sprintf("%s %s", getIndefiniteArticle(displayName), displayName)
+	}
+
+	dropStrings := make([]string, 0, len(displayOrder))
+	for _, name := range displayOrder {
+		dropStrings = append(dropStrings, fmt.Sprintf("%d %s", displayGroups[name], ec.Pluralize(name, displayGroups[name])))
+	}
+
+	msg := fmt.Sprintf("%s %s%s %s", MsgLootboxOpened, boxPart, MsgLootboxReceived, strings.Join(dropStrings, LootboxDropSeparator))
+
+	// Handle events and special messages
+	eventData := &domain.LootboxEventData{Item: lootboxItem.InternalName, Drops: drops, Value: stats.totalValue, Source: "lootbox"}
+	if stats.hasLegendary {
+		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxJackpot, eventData)
+		msg += MsgLootboxJackpot
+	} else if stats.hasEpic {
+		_ = ec.RecordUserEvent(ctx, user.ID, domain.EventTypeLootboxBigWin, eventData)
+		msg += MsgLootboxBigWin
+	} else if stats.totalValue > 0 && quantity >= domain.BulkFeedbackThreshold {
+		msg += MsgLootboxNiceHaul
+	}
+
+	return msg, nil
 }
 
 // LootboxHandler handles all lootbox tiers.

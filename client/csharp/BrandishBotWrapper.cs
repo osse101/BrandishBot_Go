@@ -33,6 +33,7 @@ public class CPHInline
             {
                 string baseUrl = CPH.GetGlobalVar<string>("ServerBaseURL", persisted:true);
                 string apiKey = CPH.GetGlobalVar<string>("ServerApiKey", persisted:true);
+                
                 if (string.IsNullOrEmpty(baseUrl)) baseUrl = "http://127.0.0.1:8080";
                 
                 if (string.IsNullOrEmpty(apiKey))
@@ -1187,6 +1188,8 @@ public class CPHInline
     {
         EnsureInitialized();
         string error = null;
+        CPH.TryGetArg("input.count", out int inputCount);
+        if(inputCount <=1) return false; 
         
         if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
         {

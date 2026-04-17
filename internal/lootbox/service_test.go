@@ -90,12 +90,12 @@ func createTempConfigV2(t *testing.T, pools map[string]PoolDef, lootboxes map[st
 
 // moneyItem returns a basic money item for use in tests.
 func moneyItem() *domain.Item {
-	return &domain.Item{ID: 1, InternalName: domain.ItemMoney, BaseValue: 1, Types: []string{"currency"}}
+	return &domain.Item{ID: 1, InternalName: domain.ItemMoney, PublicName: domain.ItemMoney, BaseValue: 1, Types: []string{"currency"}}
 }
 
 // swordItem returns a basic sword item for use in tests.
 func swordItem(id int, name string, value int) *domain.Item {
-	return &domain.Item{ID: id, InternalName: name, BaseValue: value}
+	return &domain.Item{ID: id, InternalName: name, PublicName: name, BaseValue: value}
 }
 
 // buildSimpleService creates a service with one lootbox and one pool.

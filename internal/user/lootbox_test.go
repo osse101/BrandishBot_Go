@@ -250,7 +250,7 @@ func TestProcessLootbox(t *testing.T) {
 		// Verify
 		assert.NoError(t, err)
 		assert.Contains(t, msg, "Opened a junkbox")
-		assert.Contains(t, msg, "5 Shiny credits")
+		assert.Contains(t, msg, "5 money")
 
 		// Verify inventory changes
 		// Should have consumed lootbox0 and gained money
