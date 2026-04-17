@@ -1,14 +1,8 @@
 package gamble
 
-import "time"
-
 // ============================================================================
 // Gamble Execution Thresholds
 // ============================================================================
-
-// ExecutionGracePeriod defines how early before the join deadline a gamble
-// can be executed. This grace period helps handle clock skew and network delays.
-const ExecutionGracePeriod = 5 * time.Second
 
 // NearMissThreshold defines the percentage of the winner's score required to
 // trigger a "Near Miss" event. A participant who scores >= 95% of the winner's
@@ -119,7 +113,6 @@ const (
 
 // Validation and state error messages
 const (
-	ErrMsgCannotExecuteBeforeDeadline        = "cannot execute gamble before join deadline"
 	ErrMsgGambleAlreadyExecuted              = "gamble is already being executed or has been executed"
 	ErrMsgItemNotFoundAsPublicOrInternalName = "not found as public or internal name"
 )

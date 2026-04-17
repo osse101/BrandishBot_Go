@@ -69,7 +69,7 @@ func handleWeapon(ctx context.Context, ec EffectContext, _ *domain.User, invento
 	}
 
 	log.Info(LogMsgWeaponUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
-	return fmt.Sprintf("%s hits %s!", displayName, targetUsername), nil
+	return fmt.Sprintf("A %s hits %s!", displayName, targetUsername), nil
 }
 
 func handleTNT(ctx context.Context, ec EffectContext, username, platform string, timeout time.Duration, displayName string) (string, error) {
@@ -97,11 +97,11 @@ func handleTNT(ctx context.Context, ec EffectContext, username, platform string,
 		hitUsernames = append(hitUsernames, target.Username)
 	}
 
-	log.Info("TNT hit multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
+	log.Info("TNT hits multiple targets", "count", len(hitUsernames), "targets", hitUsernames)
 
 	// Format message with all hit users
 	targetsStr := FormatTargetList(hitUsernames)
-	return fmt.Sprintf("%s used %s! Hit %d targets: %s!",
+	return fmt.Sprintf("%s used a %s! Hit %d targets: %s!",
 		username, displayName, len(hitUsernames), targetsStr), nil
 }
 
@@ -125,7 +125,7 @@ func handleGrenade(ctx context.Context, ec EffectContext, username, platform str
 	ec.RemoveActiveChatter(platform, randomUserID)
 	log.Info("Grenade hit target", "target", randomUsername)
 
-	return fmt.Sprintf("%s hits %s!", username, randomUsername), nil
+	return fmt.Sprintf("%s is blown up!", randomUsername), nil
 }
 
 func handleThis(ctx context.Context, ec EffectContext, username string, timeout time.Duration, displayName string) (string, error) {
@@ -137,7 +137,7 @@ func handleThis(ctx context.Context, ec EffectContext, username string, timeout 
 		log.Error(LogWarnFailedToTimeoutUser, "error", err, "target", username)
 	}
 
-	return fmt.Sprintf("%s used %s... Congratulations, you you learned what This does.", username, displayName), nil
+	return fmt.Sprintf("%s used %s... congratulations, you you learned what This does.", username, displayName), nil
 }
 
 func FormatTargetList(usernames []string) string {

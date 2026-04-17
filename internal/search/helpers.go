@@ -92,7 +92,7 @@ func (s *service) formatSearchSuccessMessage(ctx context.Context, user *domain.U
 		resultMessage = fmt.Sprintf("%s You found %dx%s", domain.MsgSearchCriticalSuccess, quantity, displayName)
 		log.Info("Search CRITICAL success", "item", item.InternalName, "quantity", quantity, "quality", actualQuality)
 	} else {
-		resultMessage = fmt.Sprintf("You have found %dx%s", quantity, displayName)
+		resultMessage = fmt.Sprintf("You found %dx%s", quantity, displayName)
 		log.Info("Search successful - lootbox found", "item", item.InternalName, "quality", actualQuality)
 	}
 

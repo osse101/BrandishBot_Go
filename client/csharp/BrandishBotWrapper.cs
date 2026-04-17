@@ -918,7 +918,7 @@ public class CPHInline
 
     /// <summary>
     /// Join an existing gamble session
-    /// Command: !joinGamble <gamble_id>
+    /// Command: !joinGamble
     /// </summary>
     public bool JoinGamble()
     {
@@ -931,12 +931,10 @@ public class CPHInline
              CPH.LogWarn($"JoinGamble Failed: {error}");
              return false;
         }
-
-        string gambleId = CPH.GetGlobalVar<string>("gambleId", persisted:false);
         
         try
         {
-            var result = client.JoinGamble(gambleId, platform, platformId, username).Result;
+            var result = client.JoinGamble(platform, platformId, username).Result;
             var formatted = ResponseFormatter.FormatMessage(result);
             CPH.SetArgument("response", formatted);
             return true;

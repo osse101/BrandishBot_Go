@@ -262,16 +262,14 @@ func (c *APIClient) StartGamble(platform, platformID, username, itemName string,
 }
 
 // JoinGamble joins an active gamble
-func (c *APIClient) JoinGamble(platform, platformID, username, gambleID string) (string, error) {
+func (c *APIClient) JoinGamble(platform, platformID, username string) (string, error) {
 	req := map[string]interface{}{
 		"platform":    platform,
 		"platform_id": platformID,
 		"username":    username,
 	}
 
-	// Note: gambleID goes in the URL query parameter
-	path := fmt.Sprintf("/api/v1/gamble/join?id=%s", gambleID)
-	return c.doAction(http.MethodPost, path, req)
+	return c.doAction(http.MethodPost, "/api/v1/gamble/join", req)
 }
 
 // VoteForNode votes for a progression node unlock using an option index

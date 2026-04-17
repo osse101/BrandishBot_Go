@@ -117,42 +117,22 @@ func TestHandleStartGamble(t *testing.T) {
 }
 
 func TestHandleJoinGamble(t *testing.T) {
-	validUUID := uuid.New()
 	tests := []struct {
 		name           string
-		queryID        string
 		reqBody        interface{}
 		setupMocks     func(*mocks.MockGambleService, *mocks.MockUserService)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name:           "Missing ID",
-			queryID:        "",
-			reqBody:        JoinGambleRequest{},
-			setupMocks:     nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Missing id query parameter",
-		},
-		{
-			name:           "Invalid ID",
-			queryID:        "invalid-uuid",
-			reqBody:        JoinGambleRequest{},
-			setupMocks:     nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "Invalid gamble ID",
-		},
-		{
 			name:           "Invalid JSON",
-			queryID:        validUUID.String(),
 			reqBody:        "invalid json",
 			setupMocks:     nil,
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
 		},
 		{
-			name:    "Service Error",
-			queryID: validUUID.String(),
+			name: "Service Error",
 			reqBody: JoinGambleRequest{
 				Platform:   "discord",
 				PlatformID: "123",
@@ -160,14 +140,13 @@ func TestHandleJoinGamble(t *testing.T) {
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
 				mu.On("GetUserIDByPlatformID", mock.Anything, "discord", "123").Return("", nil).Maybe()
-				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(errors.New(ErrMsgGenericServerError))
+				mg.On("JoinActiveGamble", mock.Anything, domain.PlatformDiscord, "123", "testuser").Return(errors.New(ErrMsgGenericServerError))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   ErrMsgGenericServerError,
 		},
 		{
-			name:    "Success",
-			queryID: validUUID.String(),
+			name: "Success",
 			reqBody: JoinGambleRequest{
 				Platform:   "discord",
 				PlatformID: "123",
@@ -175,7 +154,7 @@ func TestHandleJoinGamble(t *testing.T) {
 			},
 			setupMocks: func(mg *mocks.MockGambleService, mu *mocks.MockUserService) {
 				mu.On("GetUserIDByPlatformID", mock.Anything, "discord", "123").Return("", nil).Maybe()
-				mg.On("JoinGamble", mock.Anything, validUUID, domain.PlatformDiscord, "123", "testuser").Return(nil)
+				mg.On("JoinActiveGamble", mock.Anything, domain.PlatformDiscord, "123", "testuser").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "Successfully joined gamble",
@@ -205,7 +184,7 @@ func TestHandleJoinGamble(t *testing.T) {
 				body, _ = json.Marshal(tt.reqBody)
 			}
 
-			req := httptest.NewRequest("POST", "/gamble/join?id="+tt.queryID, bytes.NewBuffer(body))
+			req := httptest.NewRequest("POST", "/gamble/join", bytes.NewBuffer(body))
 			rec := httptest.NewRecorder()
 
 			handler.HandleJoinGamble(rec, req)

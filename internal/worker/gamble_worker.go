@@ -57,9 +57,9 @@ func (w *GambleWorker) handleGambleStarted(ctx context.Context, e event.Event) e
 	return nil
 }
 
-//nolint:dupl
 func (w *GambleWorker) scheduleExecution(g *domain.Gamble) {
-	duration := time.Until(g.JoinDeadline)
+	// Add 1 second buffer to ensure we are past the deadline
+	duration := time.Until(g.JoinDeadline) + time.Second
 
 	log := logger.FromContext(context.Background())
 	log.Info(LogMsgSchedulingGambleExecution, "gambleID", g.ID, "duration", duration)

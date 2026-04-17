@@ -72,7 +72,7 @@ func (h *GambleHandler) HandleStartGamble(w http.ResponseWriter, r *http.Request
 	}
 
 	response := StartGambleResponse{
-		Message:  "Gamble started! Others can join using the gamble ID.",
+		Message:  "Gamble started!",
 		GambleID: gamble.ID.String(),
 	}
 	RespondJSON(w, http.StatusCreated, response)
@@ -85,23 +85,13 @@ type JoinGambleRequest struct {
 }
 
 func (h *GambleHandler) HandleJoinGamble(w http.ResponseWriter, r *http.Request) {
-	gambleIDStr, ok := GetQueryParam(r, w, "id")
-	if !ok {
-		return
-	}
-	gambleID, err := uuid.Parse(gambleIDStr)
-	if err != nil {
-		RespondError(w, http.StatusBadRequest, ErrMsgInvalidGambleID)
-		return
-	}
-
 	var req JoinGambleRequest
 	if err := DecodeAndValidateRequest(r, w, &req, "Join gamble"); err != nil {
 		return
 	}
 
-	if err := h.service.JoinGamble(r.Context(), gambleID, req.Platform, req.PlatformID, req.Username); err != nil {
-		logger.FromContext(r.Context()).Error("Failed to join gamble", "error", err)
+	if err := h.service.JoinActiveGamble(r.Context(), req.Platform, req.PlatformID, req.Username); err != nil {
+		logger.FromContext(r.Context()).Debug("Failed to join gamble", "error", err)
 		statusCode, userMsg := MapServiceErrorToUserMessage(err)
 		RespondError(w, statusCode, userMsg)
 		return

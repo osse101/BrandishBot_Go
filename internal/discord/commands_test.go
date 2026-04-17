@@ -29,7 +29,7 @@ type MockAPIClient struct {
 	AddItemFunc         func(string, string, string, int) (string, error)
 	RemoveItemFunc      func(string, string, string, int) (string, error)
 	StartGambleFunc     func(string, string, string, string, int) (string, error)
-	JoinGambleFunc      func(string, string, string, string, string, int) (string, error)
+	JoinGambleFunc      func(string, string, string) (string, error)
 	VoteForNodeFunc     func(string, string, string, int) (string, error)
 }
 
@@ -152,9 +152,9 @@ func (m *MockAPIClient) StartGamble(platform, platformID, username, itemName str
 	return "Gamble started!", nil
 }
 
-func (m *MockAPIClient) JoinGamble(platform, platformID, username, gambleID, itemName string, quantity int) (string, error) {
+func (m *MockAPIClient) JoinGamble(platform, platformID, username string) (string, error) {
 	if m.JoinGambleFunc != nil {
-		return m.JoinGambleFunc(platform, platformID, username, gambleID, itemName, quantity)
+		return m.JoinGambleFunc(platform, platformID, username)
 	}
 	return "Joined gamble!", nil
 }
