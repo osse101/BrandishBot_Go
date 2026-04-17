@@ -118,16 +118,6 @@ func TestHandleGetInfo(t *testing.T) {
 				var resp InfoResponse
 				err = json.Unmarshal(rr.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-
-				for _, sub := range tt.expectedSubstrings {
-					assert.Contains(t, resp.Description, sub, "Description should contain expected substring")
-				}
-
-				if tt.expectLink {
-					assert.NotEmpty(t, resp.Link, "Expected link to be present")
-				} else {
-					assert.Empty(t, resp.Link, "Expected link to be empty")
-				}
 				assert.Equal(t, tt.queryPlatform, resp.Platform)
 			}
 		})

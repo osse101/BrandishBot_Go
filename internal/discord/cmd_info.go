@@ -43,7 +43,7 @@ func InfoCommand(loader *info.Loader) (*discordgo.ApplicationCommand, CommandHan
 			choices := make([]*discordgo.ApplicationCommandOptionChoice, 0)
 
 			// Get all features available
-			features := loader.GetAllFeatures()
+			features := loader.GetFeatures()
 
 			// Filter features matching query
 			for name := range features {
@@ -84,10 +84,19 @@ func InfoCommand(loader *info.Loader) (*discordgo.ApplicationCommand, CommandHan
 
 		// Case 1: Overview (no argument)
 		if targetName == "" || targetName == "overview" {
-			features := loader.GetAllFeatures()
-			content := formatter.FormatFeatureList(features, domain.PlatformDiscord, "https://github.com/osse101/BrandishBot_Go") // Use repo link for now
+			overview, ok := loader.GetOverview()
+			if !ok {
+				respondFriendlyError(s, i, "Overview not found")
+				return
+			}
+			content := formatter.FormatFeature(overview, domain.PlatformDiscord)
 
-			embed := createInfoEmbed("overview", "BrandishBot Overview", content, 0x9B59B6, "ℹ️")
+			title := overview.Title
+			if title == "" {
+				title = "BrandishBot Overview"
+			}
+
+			embed := createInfoEmbed("overview", title, content, 0x9B59B6, "ℹ️")
 			sendEmbed(s, i, embed)
 			return
 		}

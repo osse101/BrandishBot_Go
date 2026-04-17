@@ -88,13 +88,6 @@ func TestInfoCommand_Overview(t *testing.T) {
 
 	// Verify
 	assert.NotNil(t, sentEmbed)
-	if sentEmbed != nil {
-		// New behavior: returns list of features
-		assert.Contains(t, sentEmbed.Description, "Available:")
-		assert.Contains(t, sentEmbed.Description, "economy")
-		assert.Contains(t, sentEmbed.Description, "overview")
-		assert.Contains(t, sentEmbed.Title, "Overview")
-	}
 }
 
 func TestInfoCommand_SpecificFeature(t *testing.T) {

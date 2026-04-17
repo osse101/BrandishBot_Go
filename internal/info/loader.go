@@ -5,28 +5,25 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Loader struct {
-	dir     string
-	cache   map[string]*Feature
-	cacheMu sync.RWMutex
-	loaded  bool
+	dir   string
+	cache map[string]*Feature
 }
 
 func NewLoader(dir string) *Loader {
-	return &Loader{
+	l := &Loader{
 		dir:   dir,
 		cache: make(map[string]*Feature),
 	}
+	_ = l.Load() // Load eagerly, ignore error for now as per previous pattern
+	return l
 }
 
 func (l *Loader) Load() error {
-	l.cacheMu.Lock()
-	defer l.cacheMu.Unlock()
 
 	entries, err := os.ReadDir(l.dir)
 	if err != nil {
@@ -49,7 +46,6 @@ func (l *Loader) Load() error {
 		l.cache[name] = feature
 	}
 
-	l.loaded = true
 	return nil
 }
 
@@ -67,26 +63,7 @@ func (l *Loader) loadFeatureFile(path string) (*Feature, error) {
 	return &feature, nil
 }
 
-func (l *Loader) ensureLoaded() bool {
-	if l.loaded {
-		return true
-	}
-
-	// Upgrade to write lock to load
-	l.cacheMu.RUnlock()
-	err := l.Load()
-	l.cacheMu.RLock()
-
-	return err == nil
-}
-
 func (l *Loader) GetFeature(name string) (*Feature, bool) {
-	l.cacheMu.RLock()
-	defer l.cacheMu.RUnlock()
-
-	if !l.ensureLoaded() {
-		return nil, false
-	}
 
 	feature, ok := l.cache[name]
 	return feature, ok
@@ -107,12 +84,6 @@ func (l *Loader) GetTopic(featureName, topicName string) (*Topic, bool) {
 }
 
 func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
-	l.cacheMu.RLock()
-	defer l.cacheMu.RUnlock()
-
-	if !l.ensureLoaded() {
-		return nil, "", false
-	}
 
 	for featureName, feature := range l.cache {
 		if topic, ok := feature.Topics[topicName]; ok {
@@ -123,18 +94,10 @@ func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
 	return nil, "", false
 }
 
-func (l *Loader) GetAllFeatures() map[string]*Feature {
-	l.cacheMu.RLock()
-	defer l.cacheMu.RUnlock()
+func (l *Loader) GetOverview() (*Feature, bool) {
+	return l.GetFeature("overview")
+}
 
-	if !l.ensureLoaded() {
-		return make(map[string]*Feature)
-	}
-
-	// Return a copy to prevent modification
-	result := make(map[string]*Feature, len(l.cache))
-	for k, v := range l.cache {
-		result[k] = v
-	}
-	return result
+func (l *Loader) GetFeatures() map[string]*Feature {
+	return l.cache
 }

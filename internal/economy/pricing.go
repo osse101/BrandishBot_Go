@@ -46,7 +46,7 @@ func (s *service) filterUnlockedItems(ctx context.Context, items []domain.Item, 
 	if s.progressionService == nil {
 		if calculateSellPrice {
 			for i := range items {
-				sellPrice := s.calculateSellPriceWithModifier(ctx, items[i].BaseValue)
+				sellPrice := s.calculateSellPriceWithModifier(ctx, "", items[i].BaseValue)
 				items[i].SellPrice = &sellPrice
 			}
 		}
@@ -67,7 +67,7 @@ func (s *service) filterUnlockedItems(ctx context.Context, items []domain.Item, 
 	for _, item := range items {
 		if unlockStatus[item.InternalName] {
 			if calculateSellPrice {
-				sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
+				sellPrice := s.calculateSellPriceWithModifier(ctx, "", item.BaseValue)
 				item.SellPrice = &sellPrice
 			}
 			unlockedItems = append(unlockedItems, item)
@@ -81,14 +81,14 @@ func calculateSellPrice(baseValue int) int {
 	return int(float64(baseValue) * SellPriceRatio)
 }
 
-func (s *service) calculateSellPriceWithModifier(ctx context.Context, baseValue int) int {
+func (s *service) calculateSellPriceWithModifier(ctx context.Context, userID string, baseValue int) int {
 	basePrice := calculateSellPrice(baseValue)
 
 	if s.progressionService == nil {
 		return basePrice
 	}
 
-	modifiedPrice, err := s.progressionService.GetModifiedValue(ctx, "", "economy_bonus", float64(basePrice))
+	modifiedPrice, err := s.progressionService.GetModifiedValue(ctx, userID, "economy_bonus", float64(basePrice))
 	if err != nil {
 		logger.FromContext(ctx).Warn("Failed to apply economy_bonus modifier, using base price", "error", err)
 		return basePrice
