@@ -165,21 +165,23 @@ When a duel starts, each duelist puts in 100 shards and their Stick. The winner 
 
 **Use an item from your inventory. Multiple may be used at one time.**
 
-| Item                         | Description                                                      |
-| ---------------------------- | ---------------------------------------------------------------- |
-| `missile <target>`           | Timeout the target for 60s                                       |
-| `hugemissile <target>`       | Timeout the target for 600s                                      |
-| `ReviveS <target>`           | Reduce timeout the target for 60s                                |
-| `Shovel`                     | Destroy the Shovel to gain a Stick                               |
-| `Stick`                      | Destroy the Stick                                                |
-| `Shield`                     | Prevents the next timeout                                        |
-| `MirrorShield`               | Prevents the next timeout and reflects it to another random user |
-| `Mine`                       | Place a Mine                                                     |
-| `Trap <target>`              | Place a Trap on target user.                                     |
-| `Tnt`                        | Time out a random number of users in chat.                       |
-| `Lootbox[x]`                 | Get a chance at recieving another item.                          |
-| `fx <effectName>`            | Enable a webcam effect for 60 seconds.                           |
-| `rarecandy <class> [amount]` | Gain 1 Level in Class.                                           |
+| Item                       | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| `missile <target>`         | Timeout target for 60s.                               |
+| `hugemissile <target>`     | Timeout target for 100 minutes.                       |
+| `grenade`                  | Randomly timeout a user for 60s.                      |
+| `tnt`                      | Randomly timeout a group.                             |
+| `mine`                     | Delayed timeout on a random chatter.                  |
+| `trap <target>`            | Delayed timeout on a targetted chatter.               |
+| `bomb`                     | Delayed timeout on a group.                           |
+| `revives <target>`         | Reduce timeout by 60s.                                |
+| `stick`                    | A simple wooden stick.                                |
+| `shovel`                   | Destroy the Shovel. (Commonly used for digging)       |
+| `shield`                   | Prevents the next weapon attack.                      |
+| `mirrorshield`             | Prevents the next weapon attack and reflects it back. |
+| `lootbox[0-3]`             | Open for random items and currency.                   |
+| `rarecandy <job> [amount]` | Instantly grants 500 XP to the selected Job.          |
+| `filter <effect>`          | Apply a webcam filter for 60 seconds.                 |
 
 ---
 
@@ -194,21 +196,21 @@ Shards are the currency used in the store. They are commonly acquired through lo
 
 | Item       | Value |
 | ---------- | ----- |
-| Blaster    | 1000  |
-| BigBlaster | 5000  |
-| Mine       | 75    |
-| Trap       | 750   |
-| Input      | 10    |
-| Swap       | 100   |
-| Poll       | 200   |
-| Fx         | 300   |
+| Shovel     | 100   |
 | Stick      | 100   |
-| Shield     | 100   |
-| Shovel     | 200   |
-| Lootbox0   | 100   |
-| Lootbox1   | 500   |
-| Lootbox2   | 1000  |
+| Shield     | 1000  |
+| Missile    | 1000  |
 | This       | 101   |
+| Deez       | 1001  |
+| Revives    | 1000  |
+| Mine       | 250   |
+| Grenade    | 500   |
+| Junkbox    | 100   |
+| Lootbox    | 500   |
+| Goldbox    | 2500  |
+| Diamondbox | 10000 |
+| Scrap      | 10    |
+| Filter     | 200   |
 
 ---
 
@@ -216,26 +218,35 @@ Shards are the currency used in the store. They are commonly acquired through lo
 
 **Upgrade items from your inventory**
 
-| Item         | Quantity | New Item      |
-| ------------ | -------- | ------------- |
-| `Blaster`    | 10       | `BigBlaster`  |
-| `BigBlaster` | 10       | `HugeBlaster` |
-| `Mine`       | 10       | `Trap`        |
-| `Trap`       | 10       | `Tnt`         |
-| `Stick`      | 10       | `Shield`      |
-| `Input`      | 10       | `Swap`        |
-| `LootBox1`   | 10       | `LootBox2`    |
+`!upgrade <item> [amount]`
+
+| Item      | Quantity | New Item     | Job Level |
+| --------- | -------- | ------------ | --------- |
+| `Junkbox` | 5        | `Lootbox`    | 1         |
+| `Lootbox` | 3        | `Goldbox`    | 5         |
+| `Goldbox` | 3        | `Diamondbox` | 10        |
+| `This`    | 10       | `Deez`       | 10        |
+| `Mine`    | 10       | `Trap`       | 5         |
+| `Trap`    | 1        | `TNT`        | 15        |
+| `Stick`   | 10       | `Shield`     | 10        |
 
 ---
 
 ## Disassemble Item
 
-**Downgrade items from your inventory**
+**Downgrade items to salvage materials**
 
-- `!disassemble <item> [amount]` — Disassemble items in bulk. Add an amount if you only want to convert part of your stack.
+`!disassemble <item> [amount]`
 
-| Item | Quantity | New Item |
-| ---- | -------- | -------- |
+| Item         | Yield                 |
+| ------------ | --------------------- |
+| `Lootbox`    | 1 Junkbox + 25 Money  |
+| `Goldbox`    | 1 Lootbox + 125 Money |
+| `Diamondbox` | 1 Goldbox + 625 Money |
+| `Deez`       | 2 This + 125 Money    |
+| `Trap`       | 2 Mine + 62 Money     |
+| `TNT`        | 1 Trap + 625 Money    |
+| `Shield`     | 2 Stick + 125 Money   |
 
 ---
 
@@ -243,17 +254,14 @@ Shards are the currency used in the store. They are commonly acquired through lo
 
 Gain experience by performing common actions. Experience becomes levels and levels provide passive bonuses when performing those actions in the future.
 
-| Job        | Description                          | Bonus                                      | Special Bonus                    |
-| ---------- | ------------------------------------ | ------------------------------------------ | -------------------------------- |
-| Denizen    | Here for the minefield               | Enables interactions with the digging game | None                             |
-| Medic      | Specializes in healing others        | Stronger revives                           | Chance of free revive            |
-| Looter     | Specializes in Digging               | Reduced chance of hitting a mine           | Increased lootbox chance         |
-| Criminal   | Specializes in random chaos          | Increased timeout of mines                 | Larger TNTs                      |
-| Lawman     | Specializes in blasting others       | Increased blaster timeout                  | Chance of free blaster           |
-| Blacksmith | Specializes in Crafting and Upgrades | Chance of a bonus upgrade                  | Reduced base cost                |
-| Broker     | Specializes in trading               | Improved shop prices                       | ??                               |
-| Farmer     | Specializes in farming               | ??                                         | ??                               |
-| Antagonist | Specializes in getting timed out     | Reduced timeout time                       | Gain shards from being timed out |
+| Job        | Description                        | Bonus                                      | Special Bonus                     |
+| ---------- | ---------------------------------- | ------------------------------------------ | --------------------------------- |
+| Blacksmith | Masters of crafting and upgrades   | Increased crafting success rate (+10%/lvl) | Chance of a bonus upgrade         |
+| Explorer   | Scouts who find extra rewards      | Increased search quality (+10%/lvl)        | Increased search yield (+10%/lvl) |
+| Merchant   | Traders who get better deals       | Improved shop prices (+5%/lvl)             | Better sell values (+5%/lvl)      |
+| Gambler    | High rollers who win bigger prizes | Increased gamble winnings (+5%/lvl)        | Higher win chance                 |
+| Farmer     | Patient cultivators of crops       | Increased farming yield (+10%/lvl)         | Improved harvest tier (+0.2/lvl)  |
+| Scholar    | Contributors to community progress | Increased contribution power (+10%/lvl)    | Job XP multiplier (+10%/lvl)      |
 
 | Command             | Description                               |
 | ------------------- | ----------------------------------------- |
