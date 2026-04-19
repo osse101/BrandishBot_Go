@@ -17,11 +17,6 @@ type InfoResponse struct {
 	Link        string `json:"link"`
 }
 
-const (
-	// Placeholder for the Gist link
-	gistLink = "https://gist.github.com/placeholder-gist-id"
-)
-
 // HandleGetInfo handles the /info endpoint
 func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 	formatter := info.NewFormatter()
@@ -40,7 +35,6 @@ func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 
 		var response InfoResponse
 		response.Platform = platform
-		response.Link = gistLink
 
 		// Handle topic request
 		if feature != "" && topic != "" {
@@ -82,9 +76,13 @@ func HandleGetInfo(loader *info.Loader) http.HandlerFunc {
 			return
 		}
 
-		// Handle general info list
-		allFeatures := loader.GetAllFeatures()
-		response.Description = formatter.FormatFeatureList(allFeatures, platform, gistLink)
+		// Handle general info list (overview)
+		overview, ok := loader.GetOverview()
+		if !ok {
+			RespondError(w, http.StatusNotFound, "Overview not found")
+			return
+		}
+		response.Description = formatter.FormatFeature(overview, platform)
 		RespondJSON(w, http.StatusOK, response)
 	}
 }

@@ -45,7 +45,7 @@ func (s *service) SellItem(ctx context.Context, platform, platformID, username, 
 		actualQuantity = slotQuantity
 	}
 
-	sellPrice := s.calculateSellPriceWithModifier(ctx, item.BaseValue)
+	sellPrice := s.calculateSellPriceWithModifier(ctx, user.ID, item.BaseValue)
 	totalMoneyGained := actualQuantity * sellPrice
 
 	processSellTransaction(inventory, moneyItem.ID, itemSlotIndex, actualQuantity, totalMoneyGained)

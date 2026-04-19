@@ -52,5 +52,7 @@ discord:
 
     Start exploring with `/search` or check the `/leaderboard` to see top players!
 
+    Full documentation: https://gist.github.com/osse101/470535808f324a7e23f37ffde06b77c8
+
 streamerbot:
-  description: 'BrandishBot: Interactive gaming bot! !info <feature> for details. Economy, inventory, crafting, gambling, expeditions, quests, farming, progression.'
+  description: 'BrandishBot: Interactive gaming bot! !info <feature> for details. Economy, inventory, crafting, gambling, expeditions, quests, farming, progression. https://gist.github.com/osse101/470535808f324a7e23f37ffde06b77c8'

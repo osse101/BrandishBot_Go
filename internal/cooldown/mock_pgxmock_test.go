@@ -19,24 +19,24 @@ func TestPostgresBackend_CheckCooldown(t *testing.T) {
 
 	now := time.Now()
 
-	tests := []struct{
-		name string
-		devMode bool
-		mockSetup func()
+	tests := []struct {
+		name           string
+		devMode        bool
+		mockSetup      func()
 		wantOnCooldown bool
-		wantRemaining time.Duration
-		wantErr bool
+		wantRemaining  time.Duration
+		wantErr        bool
 	}{
 		{
-			name: "dev mode bypass",
-			devMode: true,
-			mockSetup: func() {},
+			name:           "dev mode bypass",
+			devMode:        true,
+			mockSetup:      func() {},
 			wantOnCooldown: false,
-			wantRemaining: 0,
-			wantErr: false,
+			wantRemaining:  0,
+			wantErr:        false,
 		},
 		{
-			name: "no previous cooldown",
+			name:    "no previous cooldown",
 			devMode: false,
 			mockSetup: func() {
 				mock.ExpectQuery("SELECT last_used_at FROM user_cooldowns WHERE user_id = \\$1 AND action_name = \\$2").
@@ -44,11 +44,11 @@ func TestPostgresBackend_CheckCooldown(t *testing.T) {
 					WillReturnError(pgx.ErrNoRows)
 			},
 			wantOnCooldown: false,
-			wantRemaining: 0,
-			wantErr: false,
+			wantRemaining:  0,
+			wantErr:        false,
 		},
 		{
-			name: "db error",
+			name:    "db error",
 			devMode: false,
 			mockSetup: func() {
 				mock.ExpectQuery("SELECT last_used_at FROM user_cooldowns WHERE user_id = \\$1 AND action_name = \\$2").
@@ -56,11 +56,11 @@ func TestPostgresBackend_CheckCooldown(t *testing.T) {
 					WillReturnError(errors.New("db error"))
 			},
 			wantOnCooldown: false,
-			wantRemaining: 0,
-			wantErr: true,
+			wantRemaining:  0,
+			wantErr:        true,
 		},
 		{
-			name: "active cooldown",
+			name:    "active cooldown",
 			devMode: false,
 			mockSetup: func() {
 				// Setting last used to 1 minute ago, default cooldown is 5 minutes
@@ -70,8 +70,8 @@ func TestPostgresBackend_CheckCooldown(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			wantOnCooldown: true,
-			wantRemaining: 4 * time.Minute, // Approximation since time.Now() varies
-			wantErr: false,
+			wantRemaining:  4 * time.Minute, // Approximation since time.Now() varies
+			wantErr:        false,
 		},
 	}
 

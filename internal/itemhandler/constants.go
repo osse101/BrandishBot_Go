@@ -59,6 +59,9 @@ const (
 	MsgLootboxNiceHaul = " Nice haul! 📦"
 
 	MsgBlasterReasonBy = "Blasted by "
+	MsgTNTReasonBy     = "Blown up by "
+	MsgGrenadeReasonBy = "Blown up by "
+	MsgThisReason      = "Played yourself"
 	MsgShovelUsed      = " used a shovel and found "
 	MsgStickUsed       = " planted a stick as a monument to their achievement!"
 

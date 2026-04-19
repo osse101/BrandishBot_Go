@@ -10,11 +10,6 @@ import (
 // ExpeditionType represents the type/difficulty of an expedition
 type ExpeditionType string
 
-const (
-	ExpeditionTypeStandard ExpeditionType = "standard"
-	ExpeditionTypeNormal   ExpeditionType = "normal" // Alias for standard/tests
-)
-
 // ValidExpeditionTypes is a list of all accepted expedition types
 var ValidExpeditionTypes = []ExpeditionType{
 	ExpeditionTypeStandard,

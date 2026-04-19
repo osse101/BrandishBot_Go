@@ -18,6 +18,7 @@ import (
 type Service interface {
 	StartGamble(ctx context.Context, platform, platformID, username string, bets []domain.LootboxBet) (*domain.Gamble, error)
 	JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error
+	JoinActiveGamble(ctx context.Context, platform, platformID, username string) error
 	GetGamble(ctx context.Context, id uuid.UUID) (*domain.Gamble, error)
 	ExecuteGamble(ctx context.Context, id uuid.UUID) (*domain.GambleResult, error)
 	GetActiveGamble(ctx context.Context) (*domain.Gamble, error)

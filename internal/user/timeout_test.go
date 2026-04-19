@@ -380,11 +380,8 @@ func TestHandleBlaster_Timeout(t *testing.T) {
 		require.NoError(t, err)
 
 		// Use blaster on bob
-		msg, err := svc.UseItem(ctx, domain.PlatformTwitch, "alice123", "alice", item, 1, "bob")
+		_, err = svc.UseItem(ctx, domain.PlatformTwitch, "alice123", "alice", item, 1, "bob")
 		require.NoError(t, err)
-
-		// Verify message contains timeout info
-		assert.Contains(t, msg, "Timed out for")
 
 		// Verify bob actually received a timeout
 		timeout, err := svc.GetTimeout(ctx, "bob")

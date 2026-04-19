@@ -201,6 +201,55 @@ func (_c *MockGambleService_GetGamble_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// JoinActiveGamble provides a mock function with given fields: ctx, platform, platformID, username
+func (_m *MockGambleService) JoinActiveGamble(ctx context.Context, platform string, platformID string, username string) error {
+	ret := _m.Called(ctx, platform, platformID, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for JoinActiveGamble")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = rf(ctx, platform, platformID, username)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockGambleService_JoinActiveGamble_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'JoinActiveGamble'
+type MockGambleService_JoinActiveGamble_Call struct {
+	*mock.Call
+}
+
+// JoinActiveGamble is a helper method to define mock.On call
+//   - ctx context.Context
+//   - platform string
+//   - platformID string
+//   - username string
+func (_e *MockGambleService_Expecter) JoinActiveGamble(ctx interface{}, platform interface{}, platformID interface{}, username interface{}) *MockGambleService_JoinActiveGamble_Call {
+	return &MockGambleService_JoinActiveGamble_Call{Call: _e.mock.On("JoinActiveGamble", ctx, platform, platformID, username)}
+}
+
+func (_c *MockGambleService_JoinActiveGamble_Call) Run(run func(ctx context.Context, platform string, platformID string, username string)) *MockGambleService_JoinActiveGamble_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+	})
+	return _c
+}
+
+func (_c *MockGambleService_JoinActiveGamble_Call) Return(_a0 error) *MockGambleService_JoinActiveGamble_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockGambleService_JoinActiveGamble_Call) RunAndReturn(run func(context.Context, string, string, string) error) *MockGambleService_JoinActiveGamble_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // JoinGamble provides a mock function with given fields: ctx, gambleID, platform, platformID, username
 func (_m *MockGambleService) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform string, platformID string, username string) error {
 	ret := _m.Called(ctx, gambleID, platform, platformID, username)

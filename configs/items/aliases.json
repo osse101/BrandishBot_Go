@@ -97,7 +97,7 @@
       }
     },
     "weapon_this": {
-      "default": ["this", "Exactly what you asked for", "The 'this' weapon", "literal 'this'"]
+      "default": ["this", "exactly what you asked for", "the 'this' weapon", "literal 'this'"]
     },
     "revive_small": {
       "default": [

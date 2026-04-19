@@ -25,9 +25,9 @@ namespace BrandishBot.Client
         /// <summary>
         /// Join an existing gamble session
         /// </summary>
-        public async Task<SuccessResponse> JoinGamble(string gambleId, string platform, string platformId, string username)
+        public async Task<SuccessResponse> JoinGamble(string platform, string platformId, string username)
         {
-            return await PostAsync<SuccessResponse>("/api/v1/gamble/join?id=" + gambleId, new
+            return await PostAsync<SuccessResponse>("/api/v1/gamble/join", new
             {
                 platform = platform,
                 platform_id = platformId,

@@ -57,7 +57,6 @@ func (w *ExpeditionWorker) handleExpeditionStarted(_ context.Context, e event.Ev
 	return nil
 }
 
-//nolint:dupl
 func (w *ExpeditionWorker) scheduleExecution(exp *domain.Expedition) {
 	duration := time.Until(exp.JoinDeadline)
 

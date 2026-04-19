@@ -178,11 +178,6 @@ func (s *service) validateGambleExecution(gamble *domain.Gamble) error {
 	if gamble.State != domain.GambleStateJoining {
 		return fmt.Errorf("%w (current: %s)", domain.ErrNotInJoiningState, gamble.State)
 	}
-	// Allow execution within grace period of deadline to handle clock skew/network delays
-	deadlineWithGrace := gamble.JoinDeadline.Add(-ExecutionGracePeriod)
-	if time.Now().Before(deadlineWithGrace) {
-		return fmt.Errorf("%s (deadline: %v, grace_period: %v)", ErrMsgCannotExecuteBeforeDeadline, gamble.JoinDeadline, ExecutionGracePeriod)
-	}
 	return nil
 }
 

@@ -37,7 +37,7 @@ func (s *service) convertToDroppedItems(ctx context.Context, dropCounts map[stri
 		if moneyItem != nil {
 			drops = append(drops, DroppedItem{
 				ItemID:       moneyItem.ID,
-				ItemName:     moneyItem.InternalName,
+				ItemName:     moneyItem.PublicName,
 				Quantity:     consolationMoney,
 				Value:        moneyItem.BaseValue,
 				QualityLevel: domain.QualityCommon,
@@ -71,7 +71,7 @@ func (s *service) constructDroppedItem(item *domain.Item, qty int, quality domai
 
 	return DroppedItem{
 		ItemID:       item.ID,
-		ItemName:     item.InternalName,
+		ItemName:     item.PublicName,
 		Quantity:     quantity,
 		Value:        boostedValue,
 		QualityLevel: quality,

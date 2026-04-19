@@ -12,6 +12,18 @@ import (
 	"github.com/osse101/BrandishBot_Go/internal/repository"
 )
 
+// JoinActiveGamble finds the active gamble and adds a user to it
+func (s *service) JoinActiveGamble(ctx context.Context, platform, platformID, username string) error {
+	active, err := s.GetActiveGamble(ctx)
+	if err != nil {
+		return err
+	}
+	if active == nil {
+		return domain.ErrGambleNotFound
+	}
+	return s.JoinGamble(ctx, active.ID, platform, platformID, username)
+}
+
 // JoinGamble adds a user to an existing gamble
 func (s *service) JoinGamble(ctx context.Context, gambleID uuid.UUID, platform, platformID, username string) error {
 	log := logger.FromContext(ctx)
