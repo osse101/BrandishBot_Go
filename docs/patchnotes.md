@@ -1,3 +1,9 @@
+# Patch Notes (Week of April 17, 2026)
+
+## System Updates
+
+- **Info Command**: Implemented smart single-argument info lookup. You can now use `!info harvest` instead of `!info farming harvest`.
+
 # Patch Notes (Week of March 20, 2026)
 
 ## New Features & Gameplay Updates
