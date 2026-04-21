@@ -1716,162 +1716,72 @@ public class CPHInline
     #region Account Linking
 
     /// <summary>
-    /// Initiate account linking process
-    /// Command: !linkAccount
+    /// Consolidates account linking operations under a single command (!link)
+    /// Command: !link [status|confirm|unlink|<code>]
     /// </summary>
-    public bool InitiateLinking()
+    public bool ManageLinking()
     {
         EnsureInitialized();
         string error = null;
 
         if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
         {
-            CPH.LogWarn($"InitiateLinking Failed: {error}");
+            CPH.LogWarn($"ManageLinking Failed: {error}");
             return false;
         }
 
+        GetInputString(0, "action", false, out string action, ref error);
+
         try
         {
-            var result = client.InitiateLinking(platform, platformId, username).Result;
-            var formatted = ResponseFormatter.FormatLinkInitiate(result);
-            CPH.SetArgument("response", formatted);
+            if (string.IsNullOrWhiteSpace(action) || action.ToLower() == "initiate" || action.ToLower() == "start")
+            {
+                var result = client.InitiateLinking(platform, platformId, username).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatLinkInitiate(result));
+            }
+            else if (action.ToLower() == "status")
+            {
+                var result = client.GetLinkingStatus(platform, platformId).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatLinkingStatus(result));
+            }
+            else if (action.ToLower() == "confirm")
+            {
+                var result = client.ConfirmLinking(platform, platformId).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatLinkConfirm(result));
+            }
+            else if (action.ToLower() == "unlink")
+            {
+                if (!GetInputString(1, "target_platform", true, out string targetPlatform, ref error))
+                {
+                    CPH.SetArgument("response", $"{error} Usage: !link unlink <target_platform>");
+                    return true;
+                }
+                var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatMessage(result));
+            }
+            else
+            {
+                string code = action;
+                if (action.ToLower() == "claim")
+                {
+                    if (!GetInputString(1, "code", true, out string claimCode, ref error))
+                    {
+                        CPH.SetArgument("response", $"{error} Usage: !link claim <code>");
+                        return true;
+                    }
+                    code = claimCode;
+                }
+
+                var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
+                CPH.SetArgument("response", ResponseFormatter.FormatLinkClaim(result));
+            }
+
             return true;
         }
         catch (Exception ex)
         {
-            LogWarning("InitiateLinking", ex);
+            LogWarning("ManageLinking", ex);
             CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Claim a linking code from another platform
-    /// Command: !claimCode <code>
-    /// </summary>
-    public bool ClaimLinkingCode()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
-        {
-            CPH.LogWarn($"ClaimLinkingCode Failed: {error}");
-            return false;
-        }
-
-        if (!GetInputString(0, "code", true, out string code, ref error))
-        {
-            CPH.SetArgument("response", $"{error} Usage: !claimCode <code>");
-            return true;
-        }
-
-        try
-        {
-            var result = client.ClaimLinkingCode(platform, platformId, username, code).Result;
-            var formatted = ResponseFormatter.FormatLinkClaim(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogWarning("ClaimLinkingCode", ex);
-            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Confirm account linking
-    /// Command: !confirmLink
-    /// </summary>
-    public bool ConfirmLinking()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
-        {
-            CPH.LogWarn($"ConfirmLinking Failed: {error}");
-            return false;
-        }
-
-        try
-        {
-            var result = client.ConfirmLinking(platform, platformId).Result;
-            var formatted = ResponseFormatter.FormatLinkConfirm(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogWarning("ConfirmLinking", ex);
-            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Unlink accounts
-    /// Command: !unlink <target_platform>
-    /// </summary>
-    public bool UnlinkAccounts()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
-        {
-            CPH.LogWarn($"UnlinkAccounts Failed: {error}");
-            return false;
-        }
-
-        if (!GetInputString(0, "target_platform", true, out string targetPlatform, ref error))
-        {
-            CPH.SetArgument("response", $"{error} Usage: !unlink <target_platform>");
-            return true;
-        }
-
-        try
-        {
-            var result = client.UnlinkAccounts(platform, platformId, targetPlatform).Result;
-            var formatted = ResponseFormatter.FormatMessage(result);
-            CPH.SetArgument("response", formatted);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogWarning("UnlinkAccounts", ex);
-            CPH.SetArgument("response", StripStatusCode(GetErrorMessage(ex)));
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Get linking status for a user
-    /// Command: !linkStatus
-    /// </summary>
-    public bool GetLinkingStatus()
-    {
-        EnsureInitialized();
-        string error = null;
-
-        if (!ValidateContext(out string platform, out string platformId, out string discardedUsername, ref error))
-        {
-            CPH.LogWarn($"GetLinkingStatus Failed: {error}");
-            return false;
-        }
-
-        try
-        {
-            var result = client.GetLinkingStatus(platform, platformId).Result;
-            CPH.SetArgument("response", ResponseFormatter.FormatLinkingStatus(result));
-            return true;
-        }
-        catch (Exception ex)
-        {
-            LogWarning("GetLinkingStatus", ex);
-            CPH.SetArgument("response", $"Error: {StripStatusCode(GetErrorMessage(ex))}");
             return true;
         }
     }

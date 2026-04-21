@@ -452,7 +452,7 @@ namespace BrandishBot.Client
                 return "Failed to initiate linking: No token received.";
 
             string expireMsg = response.ExpiresIn > 0 ? $" (Expires in {response.ExpiresIn / 60}m)" : "";
-            return $"Linking code: {response.Token}{expireMsg}. Run '!claimCode {response.Token}' on your other platform.";
+            return $"Linking code: {response.Token}{expireMsg}. Run '!link {response.Token}' on your other platform.";
         }
 
         /// <summary>
@@ -463,7 +463,7 @@ namespace BrandishBot.Client
             if (response == null) return "Claim request failed.";
             if (response.AwaitingConfirmation)
             {
-                return $"Code claimed! Please return to {response.SourcePlatform} and run '!confirmLink' to complete the process.";
+                return $"Code claimed! Please return to {response.SourcePlatform} and run '!link confirm' to complete the process.";
             }
             return "Code claimed successfully.";
         }

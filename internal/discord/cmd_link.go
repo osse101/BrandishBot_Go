@@ -84,7 +84,7 @@ func LinkCommand() (*discordgo.ApplicationCommand, CommandHandler) {
 			embed = createEmbed("🔗 Link Started", fmt.Sprintf("**Your link code:** `%s`\n\n"+
 				"**1. Copy Code:** `%s`\n"+
 				"**2. Go to External Chat:** Twitch or YouTube chat\n"+
-				"**3. Type Command:** `!link %s`\n"+
+				"**3. Type Command:** `!link claim %s`\n"+
 				"**4. Return Here:** Come back to this channel\n"+
 				"**5. Confirm:** Type `/link confirm:true`\n\n"+
 				"⏰ This code expires in **%d minutes**.",
