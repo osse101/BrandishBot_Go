@@ -1,3 +1,2 @@
 Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
-Bomb usage message is outdated.
