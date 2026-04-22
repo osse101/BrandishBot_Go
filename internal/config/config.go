@@ -59,6 +59,10 @@ type Config struct {
 	// Development Settings
 	DevMode bool // When true, bypasses cooldowns and enables test features
 
+	// Feature Flags
+	DisableProgressionGains bool // DISABLE_PROGRESSION_GAINS=true: skip contribution score calculation
+	DisableJobXPGains       bool // DISABLE_JOB_XP_GAINS=true: all AwardXP calls return 0 XP
+
 	// Event Publishing
 	EventMaxRetries     int           // Max retries for event publishing (default: 5)
 	EventRetryDelay     time.Duration // Base delay for exponential backoff (default: 2s)
@@ -138,6 +142,10 @@ func Load() (*Config, error) {
 	// Dev mode (bypasses cooldowns and enables test features)
 	devModeStr := getEnv("DEV_MODE", "false")
 	cfg.DevMode = devModeStr == "true" || devModeStr == "1"
+
+	// Feature flags
+	cfg.DisableProgressionGains = getEnv("DISABLE_PROGRESSION_GAINS", "false") == "true"
+	cfg.DisableJobXPGains = getEnv("DISABLE_JOB_XP_GAINS", "false") == "true"
 
 	// Streamer.bot WebSocket enabled
 	sbEnabledStr := getEnv("STREAMERBOT_ENABLED", "false")

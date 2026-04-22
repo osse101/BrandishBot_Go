@@ -47,7 +47,7 @@ func TestStartVotingSession_SingleOption_FixVerification(t *testing.T) {
 	repo.nodes[2] = child
 	repo.nodesByKey["single_option"] = child
 
-	service := NewService(repo, NewMockUser(), nil, nil, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil, false)
 
 	// Verify GetAvailableUnlocks returns exactly 1 node
 	available, err := service.GetAvailableUnlocks(ctx)
@@ -119,7 +119,7 @@ func TestStartVotingSession_ZeroOptions_AllUnlocked(t *testing.T) {
 	repo.nodesByKey["only_child"] = child
 	repo.UnlockNode(ctx, 2, 1, "system", 0) // Unlock at max level
 
-	service := NewService(repo, NewMockUser(), nil, nil, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil, false)
 
 	// Verify no available nodes
 	available, err := service.GetAvailableUnlocks(ctx)
@@ -165,7 +165,7 @@ func TestStartVotingSession_MultiLevelNode_AutoSelect(t *testing.T) {
 	repo.nodes[2] = multiLevel
 	repo.nodesByKey["upgrade_multi"] = multiLevel
 
-	service := NewService(repo, NewMockUser(), nil, nil, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil, false)
 
 	// Verify 1 available node
 	available, err := service.GetAvailableUnlocks(ctx)
@@ -245,7 +245,7 @@ func TestAutoSelect_ContributionTracking(t *testing.T) {
 	repo.nodes[2] = child
 	repo.nodesByKey["single_target"] = child
 
-	service := NewService(repo, NewMockUser(), nil, nil, nil)
+	service := NewService(repo, NewMockUser(), nil, nil, nil, false)
 
 	// Auto-select (single option)
 	err := service.StartVotingSession(ctx, nil)

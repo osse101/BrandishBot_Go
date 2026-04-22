@@ -178,7 +178,7 @@ func TestAwardXP_PublishesEventOnLevelUp(t *testing.T) {
 	}
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub, false)
 	// Force deterministic RNG (No Crit)
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 1.0 }
@@ -242,7 +242,7 @@ func TestAwardXP_GuaranteedCriticalSuccess(t *testing.T) {
 	resilientPub, _ := event.NewResilientPublisher(mockBus, pubMaxRetries, pubTimeout, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub, false)
 	// Force Critical Success
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 0.0 }
@@ -300,7 +300,7 @@ func TestAwardXP_GuaranteedNoCriticalSuccess(t *testing.T) {
 	resilientPub, _ := event.NewResilientPublisher(mockBus, 3, 100*time.Millisecond, tmpFile)
 	defer resilientPub.Shutdown(context.Background())
 
-	svc := NewService(mockRepo, mockProg, mockBus, resilientPub)
+	svc := NewService(mockRepo, mockProg, mockBus, resilientPub, false)
 	// Force No Critical Success
 	if s, ok := svc.(*service); ok {
 		s.rnd = func() float64 { return 1.0 }

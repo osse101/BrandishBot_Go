@@ -52,6 +52,7 @@ type service struct {
 	eventBus       event.Bus
 	publisher      *event.ResilientPublisher
 	rnd            func() float64 // For RNG
+	disableXPGains bool           // When true, AwardXP is a no-op returning 0 XP
 
 	// Cache for daily reset status
 	resetCache   *domain.DailyResetStatus
@@ -59,13 +60,14 @@ type service struct {
 }
 
 // NewService creates a new job service
-func NewService(repo repository.Job, progressionSvc ProgressionService, eventBus event.Bus, publisher *event.ResilientPublisher) Service {
+func NewService(repo repository.Job, progressionSvc ProgressionService, eventBus event.Bus, publisher *event.ResilientPublisher, disableXPGains bool) Service {
 	return &service{
 		repo:           repo,
 		progressionSvc: progressionSvc,
 		eventBus:       eventBus,
 		publisher:      publisher,
 		rnd:            utils.RandomFloat,
+		disableXPGains: disableXPGains,
 	}
 }
 

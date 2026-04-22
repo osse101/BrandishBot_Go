@@ -102,7 +102,7 @@ func main() {
 
 	// Initialize core services
 	statsService := stats.NewService(repos.Stats)
-	progressionService := progression.NewService(repos.Progression, repos.User, eventBus, resilientPublisher, nil)
+	progressionService := progression.NewService(repos.Progression, repos.User, eventBus, resilientPublisher, nil, cfg.DisableProgressionGains)
 
 	// Sync configuration files to database
 	if err := bootstrap.SyncProgressionTree(context.Background(), repos.Progression); err != nil {
@@ -122,7 +122,7 @@ func main() {
 	}
 
 	// Initialize Job service (needed by user, economy, crafting, gamble)
-	jobService := job.NewService(repos.Job, progressionService, eventBus, resilientPublisher)
+	jobService := job.NewService(repos.Job, progressionService, eventBus, resilientPublisher, cfg.DisableJobXPGains)
 
 	// Initialize Worker Pool
 	// Start with 5 workers as per plan
