@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -52,9 +51,7 @@ func (c *TestCommand) Run(args []string) error {
 	}
 	cmd.Stderr = os.Stderr
 
-	scanner := bufio.NewScanner(stdoutPipe)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 10*1024*1024) // 10MB maximum buffer to handle very large JSON payloads
+	scanner := newScanner(stdoutPipe)
 
 	var failLogFile *os.File
 

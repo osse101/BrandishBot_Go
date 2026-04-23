@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,9 +81,7 @@ func (c *AnalyzeLogsCommand) scanLogFile(file *os.File) (userJobs map[string]map
 	// userNames[uid] -> username
 	userNames = make(map[string]string)
 
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 10*1024*1024)
+	scanner := newScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -98,7 +97,7 @@ func (c *RollbackCommand) promptForVersion() (string, error) {
 
 	fmt.Println()
 	fmt.Print("Enter version to rollback to (or 'cancel' to abort): ")
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := newScanner(os.Stdin)
 	if scanner.Scan() {
 		version := strings.TrimSpace(scanner.Text())
 		if version == "" || version == "cancel" {
@@ -192,7 +191,7 @@ func (c *RollbackCommand) handleDatabaseRestore(env, composeFile string) error {
 
 	fmt.Println()
 	fmt.Print("Enter backup filename to restore (or press Enter to skip): ")
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := newScanner(os.Stdin)
 	backupFile := ""
 	if scanner.Scan() {
 		backupFile = strings.TrimSpace(scanner.Text())

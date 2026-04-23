@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"os"
@@ -102,9 +101,7 @@ func (c *CheckCommentsCommand) checkFile(path string, maxLen int) (int, error) {
 	defer file.Close()
 
 	var allLines []string
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 10*1024*1024)
+	scanner := newScanner(file)
 	for scanner.Scan() {
 		allLines = append(allLines, scanner.Text())
 	}
