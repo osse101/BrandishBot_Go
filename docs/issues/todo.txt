@@ -1,3 +1,6 @@
 Client: reduce number of !link commands and sort based on arguments
 Expedition journal too long for 1 discord post
 Bomb usage message is outdated.
+Gamble result shows ID instead of name
+Gamble result shows Gold value instead of item list(possibly only gave gold)
+Gamble sometimes says not enough items when joining.
