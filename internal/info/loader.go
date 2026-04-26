@@ -24,7 +24,6 @@ func NewLoader(dir string) *Loader {
 }
 
 func (l *Loader) Load() error {
-
 	entries, err := os.ReadDir(l.dir)
 	if err != nil {
 		return fmt.Errorf("failed to read info directory: %w", err)
@@ -64,7 +63,6 @@ func (l *Loader) loadFeatureFile(path string) (*Feature, error) {
 }
 
 func (l *Loader) GetFeature(name string) (*Feature, bool) {
-
 	feature, ok := l.cache[name]
 	return feature, ok
 }
@@ -84,7 +82,6 @@ func (l *Loader) GetTopic(featureName, topicName string) (*Topic, bool) {
 }
 
 func (l *Loader) SearchTopic(topicName string) (*Topic, string, bool) {
-
 	for featureName, feature := range l.cache {
 		if topic, ok := feature.Topics[topicName]; ok {
 			return &topic, featureName, true

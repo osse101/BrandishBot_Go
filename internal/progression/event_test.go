@@ -66,7 +66,7 @@ func TestStartVotingSession_AutoSelect_PublishesEvent(t *testing.T) {
 	mockRepo.nodesByKey["child_node"] = child
 
 	// Initialize service with mock bus
-	service := NewService(mockRepo, NewMockUser(), mockBus, nil, nil)
+	service := NewService(mockRepo, NewMockUser(), mockBus, nil, nil, false)
 
 	// Expect Publish to be called with ProgressionTargetSet event
 	mockBus.On("Publish", ctx, mock.MatchedBy(func(evt event.Event) bool {

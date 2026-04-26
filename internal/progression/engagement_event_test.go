@@ -15,7 +15,7 @@ func TestService_HandleEngagement(t *testing.T) {
 	repo := NewMockRepository()
 	bus := event.NewMemoryBus()
 	// No publisher needed for this test as we just want to verify recording
-	_ = NewService(repo, nil, bus, nil, nil)
+	_ = NewService(repo, nil, bus, nil, nil, false)
 
 	ctx := context.Background()
 	userID := "user-uuid"

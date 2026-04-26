@@ -17,6 +17,11 @@ func (s *service) AwardXP(ctx context.Context, userID string, jobKey string, bas
 		return nil, err
 	}
 
+	if s.disableXPGains {
+		logger.FromContext(ctx).Debug("Job XP gains disabled; skipping award", "user_id", userID, "job", jobKey, "source", source)
+		return &domain.XPAwardResult{JobKey: jobKey, XPGained: 0}, nil
+	}
+
 	job, err := s.repo.GetJobByKey(ctx, jobKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)

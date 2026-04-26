@@ -31,7 +31,7 @@ func TestRaceConditions(t *testing.T) {
 	bus := event.NewMemoryBus()
 	repo := dbpostgres.NewProgressionRepository(testPool, bus)
 	userRepo := dbpostgres.NewUserRepository(testPool)
-	svc := NewService(repo, userRepo, bus, nil, nil)
+	svc := NewService(repo, userRepo, bus, nil, nil, false)
 
 	time.Sleep(100 * time.Millisecond)
 

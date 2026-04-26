@@ -40,7 +40,7 @@ func TestSSEEventConsistency_Integration(t *testing.T) {
 	userRepo := dbpostgres.NewUserRepository(testPool)
 
 	// Create service
-	svc := NewService(repo, userRepo, bus, nil, nil)
+	svc := NewService(repo, userRepo, bus, nil, nil, false)
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()

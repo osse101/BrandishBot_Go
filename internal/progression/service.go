@@ -80,11 +80,12 @@ type Service interface {
 }
 
 type service struct {
-	repo       repository.Progression
-	user       repository.User
-	bus        event.Bus
-	jobService JobService
-	publisher  *event.ResilientPublisher
+	repo         repository.Progression
+	user         repository.User
+	bus          event.Bus
+	jobService   JobService
+	publisher    *event.ResilientPublisher
+	disableGains bool // When true, skip contribution score calculation
 
 	// In-memory cache for unlock threshold checking
 	mu               sync.RWMutex
@@ -112,7 +113,7 @@ type service struct {
 }
 
 // NewService creates a new progression service
-func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus, publisher *event.ResilientPublisher, jobService JobService) Service {
+func NewService(repo repository.Progression, userRepo repository.User, bus event.Bus, publisher *event.ResilientPublisher, jobService JobService, disableGains bool) Service {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	svc := &service{
 		repo:           repo,
@@ -120,6 +121,7 @@ func NewService(repo repository.Progression, userRepo repository.User, bus event
 		bus:            bus,
 		jobService:     jobService,
 		publisher:      publisher,
+		disableGains:   disableGains,
 		modifierCache:  NewModifierCache(30 * time.Minute), // 30-min TTL
 		unlockCache:    NewUnlockCache(),                   // No TTL - invalidate on unlock/relock
 		unlockSem:      make(chan struct{}, 1),             // Buffer of 1 = only one unlock check at a time

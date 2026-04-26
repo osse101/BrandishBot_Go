@@ -23,6 +23,12 @@ func (s *service) RecordEngagement(ctx context.Context, userID string, metricTyp
 		return err
 	}
 
+	// If progression gains are globally disabled, still record the metric but skip score/publish
+	if s.disableGains {
+		logger.FromContext(ctx).Debug("Progression gains disabled; skipping contribution score", "user_id", userID, "metric_type", metricType)
+		return nil
+	}
+
 	// Try to get weights from cache first
 	weight := s.getCachedWeight(metricType)
 
