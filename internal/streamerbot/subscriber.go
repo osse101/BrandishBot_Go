@@ -197,33 +197,26 @@ func (s *Subscriber) handleAllUnlocked(_ context.Context, evt event.Event) error
 
 // handleGambleCompleted sends a DoAction when a gamble completes
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	var gambleID, winnerID string
 	var totalValue int64
 	var participantCount int
+	var winnerUsername string
+	groupedItems := []string{}
 
-	switch p := evt.Payload.(type) {
-	case domain.GambleCompletedPayloadV2:
-		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
-	case event.GambleCompletedPayloadV1:
-		gambleID, winnerID, totalValue, participantCount = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount
-	default:
-		payloadMap, ok := evt.Payload.(map[string]interface{})
-		if !ok {
-			slog.Warn("Invalid gamble completed event payload type")
-			return nil
-		}
-		gambleID = getStringFromMap(payloadMap, "gamble_id")
-		winnerID = getStringFromMap(payloadMap, "winner_id")
-		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
-		participantCount = getIntFromMap(payloadMap, "participant_count")
+	payloadMap, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid gamble completed event payload type")
+		return nil
 	}
+	winnerUsername = getStringFromMap(payloadMap, "winner_username")
+	totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+	participantCount = getIntFromMap(payloadMap, "participant_count")
 
 	args := map[string]string{
-		"gamble_id":         gambleID,
-		"winner_id":         winnerID,
+		"winner_username":   winnerUsername,
 		"total_value":       fmt.Sprintf("%d", totalValue),
 		"participant_count": fmt.Sprintf("%d", participantCount),
-		"has_winner":        fmt.Sprintf("%t", winnerID != ""),
+		"items":             fmt.Sprintf("%v", groupedItems),
+		"has_winner":        fmt.Sprintf("%t", winnerUsername != ""),
 	}
 
 	slog.Debug(LogMsgEventReceived, "event_type", domain.EventGambleCompleted, "args", args)

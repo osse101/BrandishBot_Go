@@ -47,11 +47,11 @@ type AllUnlockedPayload struct {
 
 // GambleCompletedPayload represents the SSE payload for gamble completion events
 type GambleCompletedPayload struct {
-	GambleID         string `json:"gamble_id"`
-	WinnerID         string `json:"winner_id"`
-	TotalValue       int64  `json:"total_value"`
-	ParticipantCount int    `json:"participant_count"`
-	Timestamp        int64  `json:"timestamp"`
+	WinnerUsername   string   `json:"winner_username,omitempty"`
+	TotalValue       int64    `json:"total_value"`
+	PrizePool        []string `json:"prize_pool"`
+	ParticipantCount int      `json:"participant_count"`
+	Timestamp        int64    `json:"timestamp"`
 }
 
 // ExpeditionStartedPayload represents the SSE payload for expedition start events
