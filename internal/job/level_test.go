@@ -1,19 +1,19 @@
 package job
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"math"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/osse101/BrandishBot_Go/internal/domain"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetXPProgress(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
+	svc := NewService(repo, prog, nil, nil, false)
 
 	// Helper to calculate XP for a specific level to ensure we test accurate boundaries
 	xpForLevel := func(lvl int) int64 {
@@ -25,12 +25,12 @@ func TestGetXPProgress(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                 string
-		currentXP            int64
-		expectedLevel        int
-		expectedLevelXP      int64
-		expectedLevelReq     int64
-		expectedXPToNext     int64
+		name             string
+		currentXP        int64
+		expectedLevel    int
+		expectedLevelXP  int64
+		expectedLevelReq int64
+		expectedXPToNext int64
 	}{
 		{
 			name:             "Zero XP",
@@ -58,7 +58,7 @@ func TestGetXPProgress(t *testing.T) {
 		},
 		{
 			name:             "Level 2 halfway",
-			currentXP:        xpForLevel(2) + (xpForLevel(3) - xpForLevel(2)) / 2,
+			currentXP:        xpForLevel(2) + (xpForLevel(3)-xpForLevel(2))/2,
 			expectedLevel:    2,
 			expectedLevelXP:  (xpForLevel(3) - xpForLevel(2)) / 2,
 			expectedLevelReq: xpForLevel(3) - xpForLevel(2),
@@ -80,7 +80,7 @@ func TestGetXPProgress(t *testing.T) {
 func TestGetXPProgress_NegativeXP(t *testing.T) {
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
+	svc := NewService(repo, prog, nil, nil, false)
 
 	currentLevel, levelXP, levelRequirement, xpToNext := svc.GetXPProgress(-100)
 	assert.Equal(t, 0, currentLevel)
@@ -93,7 +93,7 @@ func TestIsJobFeatureUnlocked(t *testing.T) {
 	ctx := context.Background()
 	repo := new(MockRepository)
 	prog := new(MockProgressionService)
-	svc := NewService(repo, prog, nil, nil)
+	svc := NewService(repo, prog, nil, nil, false)
 	userID := "test-user"
 	featureKey := "test-feature"
 
@@ -119,12 +119,12 @@ func TestIsJobFeatureUnlocked(t *testing.T) {
 
 	t.Run("Level sufficient returns true", func(t *testing.T) {
 		config := &domain.JobUnlockConfig{
-			JobKey: "warrior",
+			JobKey:        "warrior",
 			RequiredLevel: 10,
 		}
 		userJob := &domain.UserJob{
-			CurrentXP: 100000, // Enough for level 10
-			CurrentLevel: 10, // Explicitly mock level 10 for get job level
+			CurrentXP:    100000, // Enough for level 10
+			CurrentLevel: 10,     // Explicitly mock level 10 for get job level
 		}
 		job := &domain.Job{ID: 1, JobKey: "warrior"}
 
@@ -142,11 +142,11 @@ func TestIsJobFeatureUnlocked(t *testing.T) {
 
 	t.Run("Level insufficient returns false", func(t *testing.T) {
 		config := &domain.JobUnlockConfig{
-			JobKey: "warrior",
+			JobKey:        "warrior",
 			RequiredLevel: 10,
 		}
 		userJob := &domain.UserJob{
-			CurrentXP: 0, // Level 0
+			CurrentXP:    0, // Level 0
 			CurrentLevel: 0,
 		}
 		job := &domain.Job{ID: 1, JobKey: "warrior"}
@@ -165,7 +165,7 @@ func TestIsJobFeatureUnlocked(t *testing.T) {
 
 	t.Run("GetJobLevel error returns false and error", func(t *testing.T) {
 		config := &domain.JobUnlockConfig{
-			JobKey: "warrior",
+			JobKey:        "warrior",
 			RequiredLevel: 10,
 		}
 
