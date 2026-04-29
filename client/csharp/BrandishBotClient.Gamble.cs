@@ -52,5 +52,22 @@ namespace BrandishBot.Client
         }
 
         #endregion
+    
+        #region Slots System
+
+            /// <summary>
+            /// Execute slots spin
+            /// </summary>
+            public async Task<SlotsResult> ExecuteSlots(string platform, string platformId, string username, int betAmount)
+            {
+                return await PostAsync<SlotsResult>("/api/v1/slots/spin", new
+                {
+                    platform = platform,
+                    platform_id = platformId,
+                    username = username,
+                    bet_amount = betAmount
+                });
+            }
+        #endregion
     }
 }

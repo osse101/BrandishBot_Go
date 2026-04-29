@@ -67,7 +67,6 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		event.ProgressionCycleCompleted,
 		event.ProgressionAllUnlocked,
 		event.Type(domain.EventGambleCompleted),
-		event.Type(domain.EventSlotsCompleted),
 		event.TimeoutApplied,
 		event.TimeoutCleared,
 		event.SubscriptionActivated,
@@ -105,7 +104,6 @@ func TestSubscriber_Handlers_InvalidPayloads(t *testing.T) {
 		{"handleCycleCompleted", sub.handleCycleCompleted},
 		{"handleAllUnlocked", sub.handleAllUnlocked},
 		{"handleGambleCompleted", sub.handleGambleCompleted},
-		{"handleSlotsCompleted", sub.handleSlotsCompleted},
 		{"handleTimeoutUpdate", sub.handleTimeoutUpdate},
 		{"handleSubscriptionUpdate", sub.handleSubscriptionUpdate},
 		{"handleItemUsed", sub.handleItemUsed},
@@ -255,44 +253,5 @@ func TestSubscriber_handleGambleCompleted_Valid(t *testing.T) {
 		},
 	}
 	err2 := sub.handleGambleCompleted(ctx, evt2)
-	assert.NoError(t, err2)
-}
-
-func TestSubscriber_handleSlotsCompleted_Valid(t *testing.T) {
-	client := NewClient("", "")
-	bus := newMockEventBus()
-	sub := NewSubscriber(client, bus)
-	ctx := context.Background()
-
-	// Type 1: Typed Payload
-	evt1 := event.Event{
-		Payload: domain.SlotsCompletedPayload{
-			UserID:           "u1",
-			Username:         "tester",
-			BetAmount:        100,
-			PayoutAmount:     200,
-			PayoutMultiplier: 2.0,
-			Reel1:            "CHERRY",
-			Reel2:            "CHERRY",
-			Reel3:            "CHERRY",
-		},
-	}
-	err1 := sub.handleSlotsCompleted(ctx, evt1)
-	assert.NoError(t, err1)
-
-	// Type 2: Map Payload
-	evt2 := event.Event{
-		Payload: map[string]interface{}{
-			"user_id":           "u1",
-			"username":          "tester",
-			"bet_amount":        float64(100),
-			"payout_amount":     float64(200),
-			"payout_multiplier": 2.0,
-			"reel1":             "CHERRY",
-			"reel2":             "CHERRY",
-			"reel3":             "CHERRY",
-		},
-	}
-	err2 := sub.handleSlotsCompleted(ctx, evt2)
 	assert.NoError(t, err2)
 }

@@ -978,6 +978,55 @@ public class CPHInline
 
     #endregion
 
+    #region Slots System
+
+    /// <summary>
+    /// Execute slots spin
+    /// Command: !slots <bet_amount>
+    /// </summary>
+    public bool ExecuteSlots()
+    {
+        EnsureInitialized();
+        string error = null;
+        
+        // Use ValidateContext for platform details
+        if (!ValidateContext(out string platform, out string platformId, out string username, ref error))
+        {
+             CPH.LogWarn($"ExecuteSlots Failed: {error}");
+             return false;
+        }
+        
+        if (!GetInputInt(0, "bet_amount", 1, out int betAmount, ref error))
+        {
+             CPH.SetArgument("response", $"{error} Usage: !slots <bet_amount>");
+             return true;
+        }
+
+        try
+        {
+            var result = client.ExecuteSlots(platform, platformId, username, betAmount).Result;
+            var formatted = ResponseFormatter.FormatSlotsResult(result);
+            CPH.SetArgument("response", formatted);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            string errorMsg = StripStatusCode(GetErrorMessage(ex));
+            if (IsForbiddenError(ex) || IsTooManyRequestsError(ex))
+            {
+                CPH.SetArgument("response", errorMsg);
+            }
+            else
+            {
+                LogWarning("ExecuteSlots", ex);
+                CPH.SetArgument("response", errorMsg);
+            }
+            return true;
+        }
+    }
+
+    #endregion
+
     #region Stats & Leaderboards
 
     /// <summary>

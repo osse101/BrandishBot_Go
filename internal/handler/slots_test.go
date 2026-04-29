@@ -32,7 +32,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 		reqBody        interface{}
 		setupMocks     func(*mocks.MockProgressionService, *mocks.MockSlotsService)
 		expectedStatus int
-		expectedError  string
+		expectedError  error
 		expectedBody   func(t *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
@@ -94,7 +94,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("GetRequiredNodes", mock.Anything, progression.FeatureSlots).Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedError:  "Feature locked",
+			expectedError:  domain.ErrFeatureLocked,
 		},
 		{
 			name: "Error Case - Progression check failed",
@@ -108,7 +108,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(false, errors.New("db error"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedError:  "db error",
+			expectedError:  domain.ErrDatabaseError,
 		},
 		{
 			name:    "Error Case - Invalid Request Body",
@@ -117,7 +117,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid request body",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Validation Error (Missing Platform)",
@@ -131,7 +131,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid request",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Validation Error (Bet Amount Too Low)",
@@ -145,7 +145,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid request",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Validation Error (Bet Amount Too High)",
@@ -159,7 +159,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 				progMock.On("IsFeatureUnlocked", mock.Anything, progression.FeatureSlots).Return(true, nil)
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "Invalid request",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Insufficient Funds",
@@ -175,7 +175,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 					Return(nil, errors.New("insufficient funds. You have 50 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "insufficient funds. You have 50 money",
+			expectedError:  domain.ErrInsufficientFunds,
 		},
 		{
 			name: "Error Case - Slots feature not yet unlocked from service layer",
@@ -191,7 +191,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 					Return(nil, errors.New("slots feature is not yet unlocked"))
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedError:  "slots feature is not yet unlocked",
+			expectedError:  domain.ErrFeatureLocked,
 		},
 		{
 			name: "Error Case - Minimum bet error from service layer",
@@ -207,7 +207,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 					Return(nil, errors.New("minimum bet is 20 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "minimum bet is 20 money",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Maximum bet error from service layer",
@@ -223,7 +223,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 					Return(nil, errors.New("maximum bet is 5000 money"))
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "maximum bet is 5000 money",
+			expectedError:  domain.ErrInvalidInput,
 		},
 		{
 			name: "Error Case - Generic Internal Error",
@@ -239,7 +239,7 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 					Return(nil, errors.New("database connection failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedError:  "Failed to process slots spin",
+			expectedError:  domain.ErrInternalError,
 		},
 	}
 
@@ -279,8 +279,8 @@ func TestSlotsHandler_HandleSpinSlots(t *testing.T) {
 			// Assertions
 			assert.Equal(t, tt.expectedStatus, w.Code)
 
-			if tt.expectedError != "" {
-				assert.Contains(t, w.Body.String(), tt.expectedError)
+			if tt.expectedError != nil {
+				assert.Contains(t, w.Body.String(), tt.expectedError.Error())
 			} else if tt.expectedBody != nil {
 				tt.expectedBody(t, w)
 			}

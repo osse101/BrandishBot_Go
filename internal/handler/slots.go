@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
@@ -54,16 +54,18 @@ func (h *SlotsHandler) HandleSpinSlots(w http.ResponseWriter, r *http.Request) {
 		log.Error("Failed to spin slots", "error", err, "username", req.Username)
 
 		// Map errors to user-friendly messages
-		errMsg := err.Error()
 		switch {
-		case strings.Contains(errMsg, "insufficient funds"):
-			RespondError(w, http.StatusBadRequest, errMsg)
-		case strings.Contains(errMsg, "slots feature is not yet unlocked"):
-			RespondError(w, http.StatusForbidden, errMsg)
-		case strings.Contains(errMsg, "minimum bet") || strings.Contains(errMsg, "maximum bet"):
-			RespondError(w, http.StatusBadRequest, errMsg)
+		case errors.Is(err, domain.ErrInsufficientFunds):
+			RespondError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, domain.ErrFeatureLocked):
+			RespondError(w, http.StatusForbidden, err.Error())
+		case errors.Is(err, domain.ErrInvalidQuantity):
+			RespondError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, domain.ErrOnCooldown):
+			RespondError(w, http.StatusBadRequest, err.Error())
 		default:
-			RespondError(w, http.StatusInternalServerError, "Failed to process slots spin")
+			//RespondError(w, http.StatusInternalServerError, "Failed to process slots spin")
+			RespondError(w, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
