@@ -437,6 +437,46 @@ namespace BrandishBot.Client
         public long Timestamp { get; set; }
     }
 
+    public class SlotsResult
+    {
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
+
+        [JsonProperty("username")]
+        public string Username { get; set; }
+
+        [JsonProperty("reel1")]
+        public string Reel1 { get; set; }
+
+        [JsonProperty("reel2")]
+        public string Reel2 { get; set; }
+
+        [JsonProperty("reel3")]
+        public string Reel3 { get; set; }
+
+        [JsonProperty("bet_amount")]
+        public int BetAmount { get; set; }
+
+        [JsonProperty("payout_amount")]
+        public int PayoutAmount { get; set; }
+
+        [JsonProperty("payout_multiplier")]
+        public float PayoutMultiplier { get; set; }
+
+        [JsonProperty("message")]
+        public string Message { get; set; }
+
+        [JsonProperty("is_win")]
+        public bool IsWin { get; set; }
+
+        [JsonProperty("is_near_miss")]
+        public bool IsNearMiss { get; set; }
+
+        [JsonProperty("trigger_type")]
+        public string TriggerType { get; set; }
+    }
+
+
     public class Recipe
     {
         [JsonProperty("recipe_id")]

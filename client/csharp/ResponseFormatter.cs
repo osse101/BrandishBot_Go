@@ -595,5 +595,89 @@ namespace BrandishBot.Client
             string winner = !string.IsNullOrEmpty(payload.WinnerUsername) ? payload.WinnerUsername : payload.WinnerId;
             return $"🏆 {winner} won the gamble! Total value: {payload.TotalValue}. Participants: {payload.ParticipantCount}";
         }
+
+        /// <summary>
+        /// Format slots result
+        /// </summary>
+        public static string FormatSlotsResult(SlotsResult result)
+        {
+            if (result == null) return "Slots result unavailable.";            
+            // Extract arguments sent from the Go service
+            string reel1 = result.Reel1;
+            string reel2 = result.Reel2;
+            string reel3 = result.Reel3;
+            long betAmount = result.BetAmount;
+            long payoutAmount = result.PayoutAmount;
+            string triggerType = result.TriggerType;
+            // Map internal symbol names to emojis for display
+            var symbols = new System.Collections.Generic.Dictionary<string, string>
+            {
+                {
+                    "LEMON",
+                    "🍋"
+                },
+                {
+                    "CHERRY",
+                    "🍒"
+                },
+                {
+                    "BELL",
+                    "🔔"
+                },
+                {
+                    "BAR",
+                    "💰"
+                },
+                {
+                    "SEVEN",
+                    "7️⃣"
+                },
+                {
+                    "DIAMOND",
+                    "💎"
+                },
+                {
+                    "STAR",
+                    "⭐"
+                }
+            };
+            string r1 = symbols.ContainsKey(reel1) ? symbols[reel1] : reel1;
+            string r2 = symbols.ContainsKey(reel2) ? symbols[reel2] : reel2;
+            string r3 = symbols.ContainsKey(reel3) ? symbols[reel3] : reel3;
+            // Format the result message
+            string message = "";
+            long netChange = payoutAmount - betAmount;
+            string reelsDisplay = $"{r1} | {r2} | {r3}";
+            if (triggerType == "mega_jackpot")
+            {
+                message = $"🌟 MEGA JACKPOT! 🌟 {reelsDisplay} won {payoutAmount:N0} money! (net +{netChange:N0})";
+            }
+            else if (triggerType == "jackpot")
+            {
+                message = $"💎 JACKPOT! 💎 {reelsDisplay} won {payoutAmount:N0} money! (net +{netChange:N0})";
+            }
+            else if (triggerType == "big_win")
+            {
+                message = $"🎉 BIG WIN! 🎉 {reelsDisplay} won {payoutAmount:N0} money! (net +{netChange:N0})";
+            }
+            else if (payoutAmount > betAmount)
+            {
+                message = $"{reelsDisplay} won {payoutAmount:N0} money! (net +{netChange:N0})";
+            }
+            else if (payoutAmount == betAmount)
+            {
+                message = $"{reelsDisplay} broke even. {payoutAmount:N0} money returned.";
+            }
+            else if (payoutAmount > 0)
+            {
+                message = $"{reelsDisplay} got {payoutAmount:N0} back (2-match). (net {netChange:N0})";
+            }
+            else
+            {
+                message = $"{reelsDisplay}. Better luck next time! (-{betAmount:N0} money)";
+            }
+            
+            return message;
+        }
     }
 }

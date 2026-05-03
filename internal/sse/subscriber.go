@@ -414,34 +414,26 @@ func (s *Subscriber) handleExpeditionCompleted(_ context.Context, evt event.Even
 
 // handleGambleCompleted processes gamble completion events
 func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) error {
-	var gambleID, winnerID string
 	var totalValue int64
 	var participantCount int
 	var timestamp int64
-
-	switch p := evt.Payload.(type) {
-	case domain.GambleCompletedPayloadV2:
-		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
-	case event.GambleCompletedPayloadV1:
-		gambleID, winnerID, totalValue, participantCount, timestamp = p.GambleID, p.WinnerID, p.TotalValue, p.ParticipantCount, p.Timestamp
-	default:
-		payloadMap, ok := evt.Payload.(map[string]interface{})
-		if !ok {
-			slog.Warn("Invalid gamble completed event payload type")
-			return nil
-		}
-		gambleID = getStringFromMap(payloadMap, "gamble_id")
-		winnerID = getStringFromMap(payloadMap, "winner_id")
-		totalValue = int64(getIntFromMap(payloadMap, "total_value"))
-		participantCount = getIntFromMap(payloadMap, "participant_count")
-		timestamp = int64(getIntFromMap(payloadMap, "timestamp"))
+	var WinnerUsername string
+	var PrizePool []string
+	payloadMap, ok := evt.Payload.(map[string]interface{})
+	if !ok {
+		slog.Warn("Invalid gamble completed event payload type")
+		return nil
 	}
+	WinnerUsername = getStringFromMap(payloadMap, "winner_username")
+	totalValue = int64(getIntFromMap(payloadMap, "total_value"))
+	participantCount = getIntFromMap(payloadMap, "participant_count")
+	timestamp = int64(getIntFromMap(payloadMap, "timestamp"))
 
 	ssePayload := GambleCompletedPayload{
-		GambleID:         gambleID,
-		WinnerID:         winnerID,
+		WinnerUsername:   WinnerUsername,
 		TotalValue:       totalValue,
 		ParticipantCount: participantCount,
+		PrizePool:        PrizePool,
 		Timestamp:        timestamp,
 	}
 
@@ -449,8 +441,11 @@ func (s *Subscriber) handleGambleCompleted(_ context.Context, evt event.Event) e
 
 	slog.Debug(LogMsgEventBroadcast,
 		"event_type", EventTypeGambleCompleted,
-		"gamble_id", ssePayload.GambleID,
-		"winner_id", ssePayload.WinnerID)
+		"winner_username", ssePayload.WinnerUsername,
+		"total_value", ssePayload.TotalValue,
+		"participant_count", ssePayload.ParticipantCount,
+		"prize_pool", ssePayload.PrizePool,
+		"timestamp", ssePayload.Timestamp)
 
 	return nil
 }
