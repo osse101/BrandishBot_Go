@@ -72,7 +72,7 @@ const (
 const rarecandyXPAmount = 500
 
 // validVideoFiltersList is the comma-separated list of valid video filters.
-const validVideoFiltersList = "bloom, bw, frameskip, gameboy, glitch, matrix, outline, page, perspective, pixelate, polar, rainbow, sick, thermal, undertale, vhs, zoom"
+const validVideoFiltersList = "bloom, bw, frameskip, gameboy, glitch, matrix, outline, page, perspective, pixel, polar, rainbow, sick, thermal, undertale, vhs, zoom"
 
 // ============================================================================
 // Weapon / Revive Timeout Tables
