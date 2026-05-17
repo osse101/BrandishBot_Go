@@ -685,8 +685,7 @@ func TestUseItem_RareCandy(t *testing.T) {
 	message, err := svc.UseItem(ctx, domain.PlatformTwitch, alice.TwitchID, alice.Username, domain.ItemRareCandy, 1, job.JobKeyBlacksmith)
 	require.NoError(t, err, "UseItem failed")
 
-	expectedMsg := "Used 1 rare candy! Granted"
-	assert.Contains(t, message, expectedMsg)
+	assert.Empty(t, message, "Should return empty string for rare candy")
 
 	// Verify inventory
 	inv, err := repo.GetInventory(ctx, alice.ID)

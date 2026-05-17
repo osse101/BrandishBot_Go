@@ -472,7 +472,7 @@ func TestVideoFilterHandler(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.errorContains)
 			} else {
 				assert.NoError(t, err)
-				assert.Contains(t, result, "testuser applied the")
+				assert.Empty(t, result, "Should return empty string for video filter")
 
 				// Verify item was consumed
 				slot, _ := utils.FindSlot(inventory, filterItem.ID)

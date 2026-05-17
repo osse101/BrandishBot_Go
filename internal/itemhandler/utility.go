@@ -45,7 +45,7 @@ func handleRareCandy(ctx context.Context, ec EffectContext, user *domain.User, i
 	})
 
 	log.Info(LogMsgRareCandyUsed, "job", jobName, "xp", totalXP, "quantity", quantity)
-	return fmt.Sprintf("Used %d rare candy! Granted %d XP to %s.", quantity, totalXP, jobName), nil
+	return "", nil
 }
 
 func handleResourceGenerator(ctx context.Context, ec EffectContext, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
@@ -127,8 +127,7 @@ func handleVideoFilter(ctx context.Context, ec EffectContext, user *domain.User,
 		return "", err
 	}
 
-	displayName := ec.GetDisplayName(item.InternalName, "")
-	return fmt.Sprintf("%s applied the %s %s!", user.Username, filterKey, displayName), nil
+	return "", nil
 }
 
 // RareCandyHandler handles rare candy items.

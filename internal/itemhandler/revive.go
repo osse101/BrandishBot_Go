@@ -62,7 +62,7 @@ func handleRevive(ctx context.Context, ec EffectContext, inventory *domain.Inven
 	}
 
 	log.Info(LogMsgReviveUsed, "target", targetUsername, "item", item.InternalName, "quantity", quantity)
-	return fmt.Sprintf("%s used %d %s on %s! Reduced timeout by %v.", username, quantity, displayName, targetUsername, totalRecovery), nil
+	return fmt.Sprintf("%s used %d %s on %s!", username, quantity, displayName, targetUsername), nil
 }
 
 // ReviveHandler handles all revive items.
