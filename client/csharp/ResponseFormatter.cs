@@ -666,11 +666,17 @@ namespace BrandishBot.Client
             }
             else if (payoutAmount == betAmount)
             {
-                message = $"{reelsDisplay} broke even. {payoutAmount:N0} money returned.";
+                message = $"{reelsDisplay} broke even, money returned.";
             }
             else if (payoutAmount > 0)
             {
-                message = $"{reelsDisplay} got {payoutAmount:N0} back (2-match). (net {netChange:N0})";
+                if (r1==r2 && r2==r3)
+                {
+                    message = $"{reelsDisplay} Sour win. (net {netChange:N0})";
+                }else
+                {
+                    message = $"{reelsDisplay} pity win! (net {netChange:N0})";
+                }
             }
             else
             {

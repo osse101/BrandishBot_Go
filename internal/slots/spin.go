@@ -123,6 +123,18 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 		Message:          s.formatMessage(reel1, reel2, reel3, betAmount, amount, trigger),
 	}
 
+	logger.FromContext(ctx).Info("Slots spin completed",
+		"username", username,
+		"bet_amount", betAmount,
+		"payout_amount", amount,
+		"net_change", netChange,
+		"reel1", reel1,
+		"reel2", reel2,
+		"reel3", reel3,
+		"is_win", isWin,
+		"trigger", trigger,
+	)
+
 	s.wg.Add(1)
 	go s.recordAllEngagement(ctx, user.ID, result)
 
