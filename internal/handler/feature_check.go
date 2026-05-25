@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/logger"
 	"github.com/osse101/BrandishBot_Go/internal/middleware"
 	"github.com/osse101/BrandishBot_Go/internal/progression"
@@ -39,7 +40,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 		nodes, err := svc.GetRequiredNodes(r.Context(), key)
 		if err != nil {
 			log.Error("Failed to get required nodes", "error", err, "feature", key)
-			RespondError(w, http.StatusForbidden, ErrMsgFeatureLocked)
+			RespondError(w, http.StatusForbidden, domain.ErrMsgFeatureLocked)
 			return true
 		}
 
@@ -48,7 +49,7 @@ func CheckFeatureLocked(w http.ResponseWriter, r *http.Request, svc progression.
 			names = append(names, n.DisplayName)
 		}
 
-		msg := ErrMsgFeatureLocked
+		msg := domain.ErrMsgFeatureLocked
 		if len(names) > 0 {
 			msg = fmt.Sprintf(MsgLockedNodesFormat, strings.Join(names, ", "))
 		}

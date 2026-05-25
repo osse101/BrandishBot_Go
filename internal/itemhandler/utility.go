@@ -102,7 +102,7 @@ func handleUtility(ctx context.Context, ec EffectContext, inventory *domain.Inve
 	return username + MsgStickUsed, nil
 }
 
-func handleVideoFilter(ctx context.Context, ec EffectContext, user *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
+func handleVideoFilter(ctx context.Context, ec EffectContext, _ *domain.User, inventory *domain.Inventory, item *domain.Item, quantity int, args HandlerArgs) (string, error) {
 	log := logger.FromContext(ctx)
 	log.Info("handleVideoFilter called", "item", item.InternalName, "quantity", quantity)
 

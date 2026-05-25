@@ -72,7 +72,7 @@ func TestHandleUpgradeItem(t *testing.T) {
 				p.On("GetRequiredNodes", mock.Anything, progression.FeatureUpgrade).Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   `{"error":"Feature locked"}`,
+			expectedBody:   `{"error":"` + domain.ErrMsgFeatureLocked + `"}`,
 		},
 		{
 			name: "Service Error",

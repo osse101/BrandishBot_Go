@@ -42,7 +42,7 @@ func TestCheckFeatureLocked_Locked_NoRequiredNodes(t *testing.T) {
 
 	assert.True(t, locked)
 	assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
-	assert.Contains(t, w.Body.String(), ErrMsgFeatureLocked)
+	assert.Contains(t, w.Body.String(), domain.ErrMsgFeatureLocked)
 }
 
 func TestCheckFeatureLocked_Locked_WithRequiredNodes(t *testing.T) {
@@ -96,5 +96,5 @@ func TestCheckFeatureLocked_ServiceError_GetRequiredNodes(t *testing.T) {
 
 	assert.True(t, locked)
 	assert.Equal(t, http.StatusForbidden, w.Result().StatusCode) // Still forbidden, fallback error
-	assert.Contains(t, w.Body.String(), ErrMsgFeatureLocked)
+	assert.Contains(t, w.Body.String(), domain.ErrMsgFeatureLocked)
 }

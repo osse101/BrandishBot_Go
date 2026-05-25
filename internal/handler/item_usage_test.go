@@ -86,7 +86,7 @@ func TestHandleUseItem(t *testing.T) {
 				p.On("GetRequiredNodes", mock.Anything, "item_video_filter").Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "Feature locked",
+			expectedBody:   domain.ErrMsgFeatureLocked,
 		},
 	}
 
