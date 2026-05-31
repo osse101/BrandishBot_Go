@@ -3,6 +3,7 @@ package slots
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/osse101/BrandishBot_Go/internal/domain"
 	"github.com/osse101/BrandishBot_Go/internal/event"
@@ -16,10 +17,10 @@ func (s *service) SpinSlots(ctx context.Context, platform, platformID, username 
 	log := logger.FromContext(ctx)
 
 	if betAmount < MinBetAmount {
-		return nil, fmt.Errorf("minimum bet is %d money", MinBetAmount)
+		return nil, fmt.Errorf("minimum bet is %d money %w", MinBetAmount, domain.ErrInvalidInput)
 	}
 	if betAmount > MaxBetAmount {
-		return nil, fmt.Errorf("maximum bet is %d money", MaxBetAmount)
+		return nil, fmt.Errorf("maximum bet is %d money %w", MaxBetAmount, domain.ErrInvalidInput)
 	}
 
 	user, err := s.userRepo.GetUserByPlatformID(ctx, platform, platformID)
@@ -32,7 +33,7 @@ func (s *service) SpinSlots(ctx context.Context, platform, platformID, username 
 		log.Warn("Failed to check feature lock", "error", err)
 	}
 	if !isUnlocked {
-		return nil, fmt.Errorf("slots feature is not yet unlocked")
+		return nil, domain.ErrFeatureLocked
 	}
 
 	var result *domain.SlotsResult
@@ -62,7 +63,7 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 		return nil, fmt.Errorf("failed to get money item: %w", err)
 	}
 	if moneyItem == nil {
-		return nil, fmt.Errorf("money item not found")
+		return nil, fmt.Errorf("money item not found %w", domain.ErrInternalError)
 	}
 
 	inventory, err := tx.GetInventory(ctx, user.ID)
@@ -75,18 +76,18 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 	})
 
 	if currentMoney < betAmount {
-		return nil, fmt.Errorf("insufficient funds. You have %d money", currentMoney)
+		return nil, fmt.Errorf("insufficient funds. You have %d money %w", currentMoney, domain.ErrInsufficientFunds)
 	}
 
-	reel1, reel2, reel3 := s.spinReels()
+	resultReel := s.spinReels()
 
-	amount, mult, trigger := s.calculatePayout(reel1, reel2, reel3, betAmount)
+	amount, mult, trigger := s.calculatePayout(resultReel, betAmount)
 
 	netChange := amount - betAmount
 	newBalance := currentMoney + netChange
 
 	if newBalance < 0 {
-		return nil, fmt.Errorf("transaction would result in negative balance")
+		return nil, domain.ErrInsufficientFunds
 	}
 
 	if moneySlotIndex != -1 {
@@ -105,23 +106,36 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	isWin := (reel1 == reel2 && reel2 == reel3)
-	isNearMiss := false
+	isWin := resultReel == ResultCherryThreeMatch || resultReel == ResultBellThreeMatch || resultReel == ResultBarThreeMatch || resultReel == ResultSevenThreeMatch || resultReel == ResultDiamondThreeMatch || resultReel == ResultStarThreeMatch
+	isNearMiss := resultReel == ResultLemonTwoMatch
+	reel1, reel2, reel3 := s.buildReels(resultReel)
 
 	result := &domain.SlotsResult{
 		UserID:           user.ID,
 		Username:         username,
-		Reel1:            reel1,
-		Reel2:            reel2,
-		Reel3:            reel3,
+		Reel1:            string(reel1),
+		Reel2:            string(reel2),
+		Reel3:            string(reel3),
 		BetAmount:        betAmount,
 		PayoutAmount:     amount,
 		PayoutMultiplier: mult,
 		IsWin:            isWin,
 		IsNearMiss:       isNearMiss,
 		TriggerType:      trigger,
-		Message:          s.formatMessage(reel1, reel2, reel3, betAmount, amount, trigger),
+		Message:          s.formatMessage(resultReel, betAmount, amount, trigger),
 	}
+
+	logger.FromContext(ctx).Info("Slots spin completed",
+		"username", username,
+		"bet_amount", betAmount,
+		"payout_amount", amount,
+		"net_change", netChange,
+		"reel1", reel1,
+		"reel2", reel2,
+		"reel3", reel3,
+		"is_win", isWin,
+		"trigger", trigger,
+	)
 
 	s.wg.Add(1)
 	go s.recordAllEngagement(ctx, user.ID, result)
@@ -130,9 +144,9 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 		UserID:           user.ID,
 		Username:         username,
 		BetAmount:        betAmount,
-		Reel1:            reel1,
-		Reel2:            reel2,
-		Reel3:            reel3,
+		Reel1:            string(reel1),
+		Reel2:            string(reel2),
+		Reel3:            string(reel3),
 		PayoutAmount:     amount,
 		PayoutMultiplier: mult,
 		TriggerType:      trigger,
@@ -147,4 +161,58 @@ func (s *service) executeSpin(ctx context.Context, user *domain.User, username s
 	s.resilientPublisher.PublishWithRetry(ctx, evt)
 
 	return result, nil
+}
+
+func (s *service) spinReels() ResultType {
+	return s.randomResultType()
+}
+
+func (s *service) randomResultType() ResultType {
+	roll := s.rng(1000)
+
+	cumulative := 0
+	for _, resultType := range []ResultType{ResultNoMatch, ResultLemonTwoMatch, ResultLemonThreeMatch, ResultCherryThreeMatch, ResultBellThreeMatch, ResultBarThreeMatch, ResultSevenThreeMatch, ResultDiamondThreeMatch, ResultStarThreeMatch} {
+		cumulative += int(ResultWeights[resultType] * 1000)
+		if roll < cumulative {
+			return resultType
+		}
+	}
+
+	return ResultNoMatch
+}
+
+func (s *service) buildReels(resultType ResultType) (Symbol, Symbol, Symbol) {
+	switch resultType {
+	case ResultLemonTwoMatch:
+		return SymbolLemon, SymbolLemon, s.randomSymbolExcluding([]Symbol{SymbolLemon})
+	case ResultLemonThreeMatch:
+		return SymbolLemon, SymbolLemon, SymbolLemon
+	case ResultCherryThreeMatch:
+		return SymbolCherry, SymbolCherry, SymbolCherry
+	case ResultBellThreeMatch:
+		return SymbolBell, SymbolBell, SymbolBell
+	case ResultBarThreeMatch:
+		return SymbolBar, SymbolBar, SymbolBar
+	case ResultSevenThreeMatch:
+		return SymbolSeven, SymbolSeven, SymbolSeven
+	case ResultDiamondThreeMatch:
+		return SymbolDiamond, SymbolDiamond, SymbolDiamond
+	case ResultStarThreeMatch:
+		return SymbolStar, SymbolStar, SymbolStar
+	default:
+		s1 := s.randomSymbolExcluding([]Symbol{})
+		s2 := s.randomSymbolExcluding([]Symbol{s1})
+		s3 := s.randomSymbolExcluding([]Symbol{s1, s2})
+		return s1, s2, s3
+	}
+}
+
+func (s *service) randomSymbolExcluding(excluding []Symbol) Symbol {
+	available := make([]Symbol, 0, len(AllSymbols))
+	for _, symbol := range AllSymbols {
+		if !slices.Contains(excluding, symbol) {
+			available = append(available, symbol)
+		}
+	}
+	return available[s.rng(len(available))]
 }

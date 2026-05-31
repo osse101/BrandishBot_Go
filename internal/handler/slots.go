@@ -63,6 +63,8 @@ func (h *SlotsHandler) HandleSpinSlots(w http.ResponseWriter, r *http.Request) {
 			RespondError(w, http.StatusBadRequest, err.Error())
 		case errors.Is(err, domain.ErrOnCooldown):
 			RespondError(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, domain.ErrInvalidInput):
+			RespondError(w, http.StatusBadRequest, err.Error())
 		default:
 			//RespondError(w, http.StatusInternalServerError, "Failed to process slots spin")
 			RespondError(w, http.StatusBadRequest, err.Error())

@@ -27,7 +27,6 @@ const (
 
 	// Feature/progression error messages
 	ErrMsgFeatureCheckFailed         = "Failed to check feature availability"
-	ErrMsgFeatureLocked              = "Feature locked"
 	ErrMsgGetProgressionTreeFailed   = "Failed to retrieve progression tree"
 	ErrMsgGetAvailableUnlocksFailed  = "Failed to retrieve available unlocks"
 	ErrMsgGetProgressionStatusFailed = "Failed to retrieve progression status"

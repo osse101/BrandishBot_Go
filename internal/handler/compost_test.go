@@ -75,7 +75,7 @@ func TestHandleDeposit(t *testing.T) {
 					Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   ErrMsgFeatureLocked,
+			expectedBody:   domain.ErrMsgFeatureLocked,
 		},
 		{
 			name:        "Invalid Request Body",

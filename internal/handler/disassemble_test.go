@@ -67,7 +67,7 @@ func TestHandleDisassembleItem(t *testing.T) {
 				p.On("GetRequiredNodes", mock.Anything, "feature_disassemble").Return([]*domain.ProgressionNode{}, nil)
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   `{"error":"Feature locked"}`,
+			expectedBody:   `{"error":"` + domain.ErrMsgFeatureLocked + `"}`,
 		},
 		{
 			name: "Service Error",
